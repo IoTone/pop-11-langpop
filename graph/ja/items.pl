@@ -1,4 +1,4 @@
-% examples/langpop/graph/ja/items.pl -- the starter lexicon, kana only.
+% graph/ja/items.pl -- the starter lexicon, kana only.
 %
 % 50 words a pre-school student can both READ and WRITE with the base
 % syllabary plus dakuten, chosen so that no item needs a kanji to exist.

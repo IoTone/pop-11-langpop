@@ -1,7 +1,7 @@
-;;; examples/langpop/sheet.p -- printable sheets, generated from the graph.
+;;; sheet.p -- printable sheets, generated from the graph.
 ;;;
-;;;     ./poplog basepop11 examples/langpop/langpop.p --chart hiragana
-;;;     ./poplog basepop11 examples/langpop/langpop.p --sheet --user bob
+;;;     ./langpop --chart hiragana
+;;;     ./langpop --sheet --user bob
 ;;;
 ;;; and `:chart katakana` / `:sheet` inside a session.
 ;;;

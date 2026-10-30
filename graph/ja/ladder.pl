@@ -1,4 +1,4 @@
-% examples/langpop/graph/ja/ladder.pl -- the Japanese ladder, pre-school first.
+% graph/ja/ladder.pl -- the Japanese ladder, pre-school first.
 %
 % JLPT has no published content list: the Test Content Specifications
 % were withdrawn in 2010 and the official FAQ says vocabulary and kanji
@@ -47,7 +47,7 @@ exit(ja, preschool, skill(dakuten),        0.90, 3000).
 % Nothing in langpop can check the hear channel (there is no audio), so
 % these report as unverifiable rather than as zero.  That is the honest
 % answer and it is deliberately visible: see langpop.p's VERIFIABLE and
-% docs/projects/langpop-pronunciation.md.
+% docs/langpop-pronunciation.md.
 %
 % kanji takes no hear channel.  A character is not heard -- its READING
 % is, and that is the word's channel, not the character's.

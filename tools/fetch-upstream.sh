@@ -4,7 +4,7 @@
 # Neither file belongs in the repository and neither is small: JMdict_e is
 # about 10MB compressed and 63MB of XML on disk.  They are downloaded into
 # a directory you name, used at build time, and never committed.  See
-# examples/langpop/import.p for why the arrangement is shaped this way.
+# import.p for why the arrangement is shaped this way.
 #
 #     tools/fetch-upstream.sh ~/langpop-upstream
 #
@@ -81,23 +81,23 @@ cat <<NOTE
 
 Now import.  The kanji come from a rule, the words from the pick list:
 
-  ./poplog basepop11 examples/langpop/import.p \\
+  ./langpop import \\
       --source kanjidic --file $DEST/kanjidic2.xml --level n5 --jlpt 4
 
-  ./poplog basepop11 examples/langpop/import.p \\
+  ./langpop import \\
       --source jmdict --file $DEST/JMdict_e \\
       --picks graph/ja/picks/n5.pl
 
 Pronunciations and frequencies enrich English items the graph already
 has, so they are run per level rather than from a pick list:
 
-  ./poplog basepop11 examples/langpop/import.p \\
+  ./langpop import \\
       --source cmudict --file $DEST/cmudict.dict --lang en --level a1
 
-  ./poplog basepop11 examples/langpop/import.p \\
+  ./langpop import \\
       --source frequency --file $DEST/en_50k.txt --lang en --level a1
 
-  ./poplog basepop11 examples/langpop/import.p \\
+  ./langpop import \\
       --source cmudict --file $DEST/cmudict.dict --lang en --level a1
 
 Run the kanji import FIRST: the word import draws an edge from a word to

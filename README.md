@@ -20,35 +20,34 @@ privileges a phone app would not have.
 
 ```sh
 # A: the whole thing in one process
-./poplog basepop11 examples/langpop/langpop.p                   # Japanese, with Aoi
-./poplog basepop11 examples/langpop/langpop.p --lang en          # English, with Mr Hill
-./poplog basepop11 examples/langpop/langpop.p --check            # integrity-check the graph
-./poplog basepop11 examples/langpop/langpop.p --audit            # which rungs can be climbed
-./poplog basepop11 examples/langpop/langpop.p --chart hiragana   # a page to print
-./poplog basepop11 examples/langpop/langpop.p --zine --user bob  # a booklet to fold
-./poplog basepop11 examples/langpop/langpop.p --audio preschool  # make the sound files
-./poplog basepop11 examples/langpop/langpop.p --audio preschool --rate slow
-./poplog basepop11 examples/langpop/langpop.p --voicetest        # the voice tests the scorer
+./langpop                   # Japanese, with Aoi
+./langpop --lang en          # English, with Mr Hill
+./langpop --check            # integrity-check the graph
+./langpop --audit            # which rungs can be climbed
+./langpop --chart hiragana   # a page to print
+./langpop --zine --user bob  # a booklet to fold
+./langpop --audio preschool  # make the sound files
+./langpop --audio preschool --rate slow
+./langpop --voicetest        # the voice tests the scorer
 
 # B: the same session, over a protocol
-./poplog basepop11 examples/langpop/server.p --port 7801 &
-./poplog basepop11 examples/langpop/client.p --port 7801 --user bob
+./langpop server --port 7801 &
+./langpop client --port 7801 --user bob
 
-tools/test-libs.sh examples/langpop/tests/test_langpop.p \
-                   examples/langpop/tests/test_langpop_server.p   # 55 + 63 checks
-
-# or all of the above through the wrapper, from ANY directory:
-examples/langpop/langpop                       # the tutor
-examples/langpop/langpop --audit               # any report
-examples/langpop/langpop server --port 7801    # the server
-examples/langpop/langpop test                  # every suite, nonzero exit on failure
+./langpop test               # every suite, nonzero exit if any fails
 ```
 
-The working directory does not matter: every `.p` file here locates its
+`./langpop` is a thin wrapper over `poplog basepop11 <file>`, and the
+working directory does not matter: every `.p` file here locates its
 neighbours from its own path, read off `popfilename` while the compiler
 is still inside the file (the only moment it is right). The wrapper
-finds a Poplog by `$LANGPOP_POPLOG`, then the enclosing source tree's
-`./poplog`, then `poplog` on `PATH`.
+finds a Poplog by `$LANGPOP_POPLOG`, then an enclosing Poplog source
+tree's `./poplog`, then `poplog` on `PATH`.
+
+A fresh clone holds 326 items: the imported content under
+`graph/*/generated/` is deliberately not kept in git — it is regenerated
+from upstream (`tools/fetch-upstream.sh`, then `./langpop import`), and
+every suite passes with it and without it.
 
 What it finds has to be young enough. langpop leans on two libraries
 newer than most installed Poplogs — `lib/json` (with `json_object`,
@@ -172,7 +171,7 @@ listening*, which is true.
 
 That gap is widest exactly where it matters most, and it is written up
 rather than left implicit:
-[`docs/projects/langpop-pronunciation.md`](../../docs/projects/langpop-pronunciation.md)
+[`docs/langpop-pronunciation.md`](docs/langpop-pronunciation.md)
 — for a Japanese speaker learning English, all twelve sound contrasts are
 unprobeable, so `sound_contrasts` can never be mastered and
 `exit(en, preschool, sound_contrasts, ...)` can never be met. That chain
@@ -217,11 +216,11 @@ they know:
 tools/fetch-upstream.sh ~/langpop-upstream
 
 # KANJIDIC2 carries the level, so the selection is a RULE
-./poplog basepop11 examples/langpop/import.p --source kanjidic \
+./langpop import --source kanjidic \
     --file ~/langpop-upstream/kanjidic2.xml --level n5 --jlpt 4
 
 # JMdict does not, so the selection is a PICK LIST
-./poplog basepop11 examples/langpop/import.p --source jmdict \
+./langpop import --source jmdict \
     --file ~/langpop-upstream/JMdict_e --picks graph/ja/picks/n5.pl
 ```
 
@@ -326,7 +325,7 @@ adds a pronunciation, and the prerequisite edges that pronunciation
 implies, to English words a committed graph file already declared.
 
 ```sh
-./poplog basepop11 examples/langpop/import.p --source cmudict \
+./langpop import --source cmudict \
     --file ~/langpop-upstream/cmudict.dict --lang en --level a1
 ```
 
@@ -710,7 +709,7 @@ is perfectly consistent against 103 kanji. It is simply unreachable, and
 nothing said so.
 
 ```
-./poplog basepop11 examples/langpop/langpop.p --audit
+./langpop --audit
 ```
 
 ```
@@ -750,7 +749,7 @@ smallest number that can disagree with itself.
 first run of this reported `sound_contrasts` as a bug, which is wrong:
 the probe is not missing, the microphone is. An item-set criterion whose
 every item sits on a channel outside `VERIFIABLE` is the audio limit
-([the pronunciation note](../../docs/projects/langpop-pronunciation.md)),
+([the pronunciation note](docs/langpop-pronunciation.md)),
 not a defect.
 
 Counts are **cumulative**, because the criteria are: `kanji(2230)` at N1
@@ -922,8 +921,8 @@ noticed: **がっこう needs が**, and until now the starter words required a
 ## Something to take off the screen
 
 ```
-./poplog basepop11 examples/langpop/langpop.p --chart hiragana
-./poplog basepop11 examples/langpop/langpop.p --sheet --user bob
+./langpop --chart hiragana
+./langpop --sheet --user bob
 ```
 
 and `:chart katakana` / `:sheet` inside a session. A4 SVG — `width="210mm"
@@ -1092,7 +1091,7 @@ word buys — its share of the corpus, and the coverage the graph would
 reach if everything down to that row were added.
 
 ```
-./poplog basepop11 examples/langpop/import.p --source frequency \
+./langpop import --source frequency \
      --gap --file <dir>/en_50k.txt --lang en [--top 40]
 ```
 
@@ -1424,7 +1423,7 @@ checked and printed. See the section above.
 ## The study plan, as a booklet
 
 ```
-./poplog basepop11 examples/langpop/langpop.p --zine --user bob
+./langpop --zine --user bob
 ```
 
 and `:zine` in a session. Eight pages from one sheet of A4 — cover, where
@@ -1634,11 +1633,11 @@ records no evidence, so what it shows is the shape of the graph and
 nobody's progress:
 
 ```
-./poplog basepop11 examples/langpop/dump.p --html --out /tmp/graph.html
-./poplog basepop11 examples/langpop/dump.p                 # JSON on stdout
-./poplog basepop11 examples/langpop/dump.p --dot | dot -Tsvg -o graph.svg
-./poplog basepop11 examples/langpop/dump.p --text          # a report
-./poplog basepop11 examples/langpop/dump.p --lang ja       # one language
+./langpop dump --html --out /tmp/graph.html
+./langpop dump                 # JSON on stdout
+./langpop dump --dot | dot -Tsvg -o graph.svg
+./langpop dump --text          # a report
+./langpop dump --lang ja       # one language
 ```
 
 `--html` is the one to reach for: it inlines the dump into
@@ -2310,7 +2309,7 @@ down a JSON-RPC line would make every call pay for it.
 
 ## Stage 0 of audio: the student can hear it
 
-The first compounding factor in `docs/projects/langpop-pronunciation.md`
+The first compounding factor in `docs/langpop-pronunciation.md`
 is not a measurement problem. It is that a learner has *little exposure
 to correct pronunciation* — so asking someone to produce a sound we
 declined to let them hear is a test of material we never taught.
@@ -2318,7 +2317,7 @@ declined to let them hear is a test of material we never taught.
 So the first audio that ships is **output**, and it carries no verdict:
 
 ```sh
-./poplog basepop11 examples/langpop/langpop.p --audio preschool
+./langpop --audio preschool
 ```
 
 ```
@@ -2332,7 +2331,7 @@ audio: listen at ~/.langpop/audio/ja/listen-preschool.html
 `needs_audio` for every criterion on that channel. Playing a sound and
 checking that somebody heard it are different claims, and nothing in
 `audio.p` touches a belief. The plan for the half that does measure is
-`docs/projects/langpop-audio.md`.
+`docs/langpop-audio.md`.
 
 ### The voice is a command, not a dependency
 
@@ -2441,8 +2440,8 @@ config says `0.7`, and nothing in the engine has an opinion about which
 number means slow.
 
 ```sh
-./poplog basepop11 examples/langpop/langpop.p --audio preschool --rate slow
-./poplog basepop11 examples/langpop/langpop.p --audio preschool --rate all
+./langpop --audio preschool --rate slow
+./langpop --audio preschool --rate all
 ```
 
 In a session it is `:say <item> slow` for one word and `:rate slow` for
@@ -2734,7 +2733,7 @@ criterion in this graph is measurable without a microphone, and what is
 left on every rung is content — 28 `short` rows of curation.
 
 Which is also the uncomfortable conclusion: a pronunciation verdict,
-Stages 1 and 2 of `docs/projects/langpop-audio.md`, would not move a
+Stages 1 and 2 of `docs/langpop-audio.md`, would not move a
 single row of `--audit`. Production is an **unstated goal** — if it
 matters, the ladder has to declare criteria that say so, and it does
 not. That is a curation question before it is an engineering one.
@@ -2773,7 +2772,7 @@ Aoi> :speak w_kitte
 
 ### The measurement, which is not the one the plan specified
 
-`docs/projects/langpop-audio.md` scoped Stage 1 as *beat boundaries, a
+`docs/langpop-audio.md` scoped Stage 1 as *beat boundaries, a
 duration per mora, a comparison against a count the graph already
 computes*. **The first half of that is wrong, and measuring it is how we
 found out.**

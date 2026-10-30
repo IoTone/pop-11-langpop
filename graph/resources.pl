@@ -1,4 +1,4 @@
-% examples/langpop/graph/resources.pl -- the catalogue: pointers, never content.
+% graph/resources.pl -- the catalogue: pointers, never content.
 %
 % A resource node holds a URL and a date, and nothing else.  No sentence,
 % no audio, no card text ever enters this graph, so no licence from any of

@@ -1,4 +1,4 @@
-% examples/langpop/tests/bad.pl -- a graph that is wrong in seven ways.
+% tests/bad.pl -- a graph that is wrong in seven ways.
 %
 % Compiled LAST by the test suite, which replaces item/5, form/3 and
 % requires/2 wholesale (Poplog Prolog consults are reconsults), so these

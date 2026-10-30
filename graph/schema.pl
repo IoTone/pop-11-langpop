@@ -1,4 +1,4 @@
-% examples/langpop/graph/schema.pl -- the item schema, and what makes it a graph.
+% graph/schema.pl -- the item schema, and what makes it a graph.
 %
 % Everything the tutor knows about a language is one of the relations
 % below.  Nothing else is allowed in a graph file: a fact that does not
@@ -64,7 +64,7 @@ confused_with(A, B, Why) :- confusable(B, A, Why).
 
 % --- Imported content ----------------------------------------------------
 % A level's content can come from upstream reference data rather than from
-% this directory (examples/langpop/import.p), and a generated file stamps
+% this directory (import.p), and a generated file stamps
 % itself with one of these.  The point of the stamp is a distinction the
 % rest of the graph cannot make: a level with no items because nobody has
 % curated it yet and a level with no items because its content was never

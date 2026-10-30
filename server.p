@@ -1,4 +1,4 @@
-/* examples/langpop/server.p -- langpop, Proposal B: one protocol is the door.
+/* server.p -- langpop, Proposal B: one protocol is the door.
 
    Proposal A put the graph, the overlay and the session in one process and
    let the TUI reach straight into them.  B keeps all of that -- the engine
@@ -7,9 +7,9 @@
    phone app would not have.  That is the whole point: an interface that is
    also the first client is an interface somebody can actually build on.
 
-       ./poplog basepop11 examples/langpop/server.p              # stdio
-       ./poplog basepop11 examples/langpop/server.p --port 7801  # tcp
-       ./poplog basepop11 examples/langpop/client.p --port 7801  # the TUI
+       ./langpop server              # stdio
+       ./langpop server --port 7801  # tcp
+       ./langpop client --port 7801  # the TUI
 
    Line framing (one JSON value per line), which is what MCP uses over
    stdio, so an MCP host can speak to this with no shim -- see HELP JSONRPC.
@@ -1036,7 +1036,7 @@ define lp_m_audit(msg) -> res;
 enddefine;
 
 ;;; ---------------------------------------------------------------- audio
-;;; Stage 0 of docs/projects/langpop-audio.md: the student hears a correct
+;;; Stage 0 of docs/langpop-audio.md: the student hears a correct
 ;;; model of the item.  No verdict, no session, nothing recorded -- the
 ;;; sound of an item is a property of the GRAPH, like a card, so this
 ;;; method is as stateless as langpop/card.render and for the same reason.

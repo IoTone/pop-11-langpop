@@ -1,5 +1,5 @@
 #!/bin/sh
-# examples/langpop/langpop -- run the tutor from anywhere, with any Poplog.
+# langpop -- run the tutor from anywhere, with any Poplog.
 #
 #     ./langpop                    the tutor (Japanese; --lang en for English)
 #     ./langpop server --port N    the JSON-RPC server

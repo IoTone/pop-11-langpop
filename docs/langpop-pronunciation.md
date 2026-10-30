@@ -3,14 +3,14 @@
 **Status:** not built, deliberately. This is a record of a gap the engine
 cannot fill today, why it is the hardest part of the problem, and what an
 integration would have to look like. Raised while adding channel-aware
-mastery (`examples/langpop/langpop.p`, `VERIFIABLE`).
+mastery (`langpop.p`, `VERIFIABLE`).
 
 ## The problem
 
 For a Japanese speaker learning English, pronunciation and natural
 cadence are not a topic in the syllabus — they are the mountain. And the
 work is *unlearning*, which is a different exercise from learning and
-needs its own items; `examples/langpop/graph/en/items.pl` already says so
+needs its own items; `graph/en/items.pl` already says so
 about the katakana loanword traps, and the same argument applies with
 more force to the sounds.
 
@@ -146,11 +146,11 @@ trusting a score.
 
 ## Related
 
-- `examples/langpop/langpop.p` — `lp_channels/1`, `VERIFIABLE`, the
+- `langpop.p` — `lp_channels/1`, `VERIFIABLE`, the
   evidence tiers
-- `examples/langpop/graph/en/items.pl` — the twelve contrasts and the
+- `graph/en/items.pl` — the twelve contrasts and the
   unlearning argument
-- `examples/langpop/import.p` — `--source cmudict`, which derives the
+- `import.p` — `--source cmudict`, which derives the
   contrast each word exercises
-- `examples/langpop/graph/resources.pl` — `r_forvo_ja`, `r_minimal_rl`:
+- `graph/resources.pl` — `r_forvo_ja`, `r_minimal_rl`:
   the catalogue already points at where a human can hear the difference

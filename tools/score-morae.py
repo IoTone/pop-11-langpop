@@ -2,7 +2,7 @@
 """score-morae.py -- did the geminate get its beat?
 
 The verdict command for langpop's `speak` channel, Stage 1 of
-docs/projects/langpop-audio.md.  Reads a JSON request, writes a JSON
+docs/langpop-audio.md.  Reads a JSON request, writes a JSON
 verdict, and uses the Python standard library and nothing else:
 
     score-morae.py --request req.json --out verdict.json

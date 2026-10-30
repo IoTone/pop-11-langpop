@@ -148,7 +148,7 @@ Three options:
 3. **Count tier 5 as tier 1.** No. This is Lock 3 defeated by a
    different route, and it would make `:status` print a number that
    looks like the reading number and is not as trustworthy -- which
-   `docs/projects/langpop-audio.md` §7 already forbids by name.
+   `docs/langpop-audio.md` §7 already forbids by name.
 
 **Recommend (2),** and the argument is a precedent in the procedure
 itself. `lp_measure` already reports accuracy and speed as two numbers

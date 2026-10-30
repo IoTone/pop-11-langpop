@@ -1,6 +1,6 @@
 ;;; test_langpop_server.p -- the protocol (Proposal B), over a socket pair.
 ;;;
-;;;     tools/test-libs.sh examples/langpop/tests/test_langpop_server.p
+;;;     tools/test-libs.sh tests/test_langpop_server.p
 ;;;
 ;;; No forks and no ports: both ends of a sys_socket_pair live here, a
 ;;; request is written at one end and the server's handler is driven once,

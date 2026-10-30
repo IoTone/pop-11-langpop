@@ -1,4 +1,4 @@
-/* examples/langpop/import.p -- upstream content into graph facts.
+/* import.p -- upstream content into graph facts.
 
    The graph has one rung.  170 items sit at pre-school and every level
    above it is empty, while both ladders declare exit criteria -- N5's
@@ -29,11 +29,11 @@
    Two import modes, because the two sources differ in what they know:
 
        # KANJIDIC2 carries the level, so the selection is a RULE
-       ./poplog basepop11 examples/langpop/import.p --source kanjidic \
+       ./langpop import --source kanjidic \
             --file <dir>/kanjidic2.xml --level n5 --jlpt 4
 
        # JMdict does not, so the selection is a PICK LIST
-       ./poplog basepop11 examples/langpop/import.p --source jmdict \
+       ./langpop import --source jmdict \
             --file <dir>/JMdict_e --picks graph/ja/picks/n5.pl
 
        --check     resolve and report, write nothing
@@ -44,7 +44,7 @@
    ranked by what each missing word would buy.  Filling a level is
    curation, so the output is a queue for a person, never facts:
 
-       ./poplog basepop11 examples/langpop/import.p --source frequency \
+       ./langpop import --source frequency \
             --gap --file <dir>/en_50k.txt --lang en [--top 40]
 
    tools/fetch-upstream.sh downloads and unpacks both files.  Neither is
@@ -984,14 +984,14 @@ define imp_emit(es, srcname, path);
     imp_out('%\n');
     for line in imp_notice(srcname) do imp_pr('%% %p\n', [^line]) endfor;
     imp_out('%\n');
-    imp_pr('%% Written by examples/langpop/import.p on %p\n', [% dt_iso(sys_real_time()) %]);
+    imp_pr('%% Written by import.p on %p\n', [% dt_iso(sys_real_time()) %]);
     imp_pr('%% from %p.\n', [% imp_upstream or 'an unrecorded source' %]);
     imp_out('%\n');
     imp_pr('%% Nothing in this file is committed.  It is a build product, so\n'
            <> '%% that upstream\'s share-alike stays on upstream\'s layer and\n'
            <> '%% reaches nothing else the project ships -- which is the whole\n'
            <> '%% reason the importer exists.  Regenerate it with:\n'
-           <> '%%     tools/fetch-upstream.sh && see examples/langpop/import.p\n', []);
+           <> '%%     tools/fetch-upstream.sh && see import.p\n', []);
     imp_out('\n');
 
     ;;; The stamp.  A level with no content and a level whose content was
@@ -1479,7 +1479,7 @@ enddefine;
 ;;; `e_be` carrying all four forms would have collected the count of
 ;;; `be` alone and silently dropped the 2.21% of the corpus the other
 ;;; three carry -- a coverage figure quietly short by a third of what
-;;; the tranche was worth.  See docs/projects/langpop-function-words.md.
+;;; the tranche was worth.  See docs/langpop-function-words.md.
 ;;;
 ;;; So frequency reads every form and imp_frequency sums them, because
 ;;; coverage is a count of TOKENS on the page and all four tokens are on

@@ -1,6 +1,6 @@
-;;; examples/langpop/tests/test_langpop.p -- suite for langpop (Proposal A).
+;;; tests/test_langpop.p -- suite for langpop (Proposal A).
 ;;;
-;;;     ./poplog basepop11 examples/langpop/tests/test_langpop.p </dev/null
+;;;     poplog basepop11 tests/test_langpop.p </dev/null
 ;;;
 ;;; Three things are worth testing here and the rest follows from them:
 ;;; the graph is sound, the prerequisite order is actually enforced, and

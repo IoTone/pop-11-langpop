@@ -1,8 +1,8 @@
-% examples/langpop/graph/ja/picks/n5.pl -- which words are N5, and who they are.
+% graph/ja/picks/n5.pl -- which words are N5, and who they are.
 %
 % This file is the CURATION, and it is the part of an import that is ours.
 % It holds no Japanese that upstream wrote: a pick is an identity, a level
-% and a lookup key, and examples/langpop/import.p fetches the forms and
+% and a lookup key, and import.p fetches the forms and
 % the glosses from JMdict at build time so that upstream's share-alike
 % stays on upstream's layer.  That is the whole arrangement -- see
 % import.p's header, and graph/ja/generated/.gitignore.

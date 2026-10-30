@@ -1,4 +1,4 @@
-/* examples/langpop/card.p -- langpop/card.render: the item as a picture.
+/* card.p -- langpop/card.render: the item as a picture.
 
    A terminal can print あ.  It cannot print あ at 160 points with its
    reading in furigana position above it, which is the one view that

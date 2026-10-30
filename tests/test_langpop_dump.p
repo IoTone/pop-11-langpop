@@ -1,6 +1,6 @@
-;;; examples/langpop/tests/test_langpop_dump.p -- suite for the exporter.
+;;; tests/test_langpop_dump.p -- suite for the exporter.
 ;;;
-;;;     ./poplog basepop11 examples/langpop/tests/test_langpop_dump.p </dev/null
+;;;     poplog basepop11 tests/test_langpop_dump.p </dev/null
 ;;;
 ;;; An exporter is tested by reading its output back, not by reading its
 ;;; source: the JSON is parsed and the counts compared against the heap

@@ -1,4 +1,4 @@
-% examples/langpop/graph/ja/kana.pl -- the two syllabaries, below everything else.
+% graph/ja/kana.pl -- the two syllabaries, below everything else.
 %
 % Generated from Unicode codepoints rather than typed, so a glyph cannot
 % be wrong: see tools/mkkana.py.  The 92 base kana first, then the 46

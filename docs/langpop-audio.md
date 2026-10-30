@@ -7,7 +7,7 @@ before anything audio exists in the tree, because the first decision —
 *what question are we asking the microphone?* — determines almost
 everything after it, and the obvious answer is the wrong one.
 
-Companion to `docs/projects/langpop-pronunciation.md`, which records
+Companion to `docs/langpop-pronunciation.md`, which records
 **why the gap is hard** (the katakana box, testing fatigue, why immersion
 alone does not close it). This document is about **what to build**.
 
@@ -300,7 +300,7 @@ wrong.
 
 Kokoro behind a cache. No assessment, no verdict, no microphone.
 
-**Built 2026-10-21**: `examples/langpop/audio.p`, `--audio <level>`, the
+**Built 2026-10-21**: `audio.p`, `--audio <level>`, the
 TUI's `:say` and `:rate`, `langpop/audio.say` as the 18th method, and 94
 checks in `test_langpop_audio.p`. The engine runs with no model installed and says
 `no voice for ja`, which is the state CI is in. See the README section
@@ -732,11 +732,11 @@ The two checks that gate work rather than planning:
 
 ## Related
 
-- `docs/projects/langpop-pronunciation.md` — why this gap is the
+- `docs/langpop-pronunciation.md` — why this gap is the
   mountain, and the four compounding factors
-- `examples/langpop/langpop.p` — `lp_channels/1`, `VERIFIABLE`, the
+- `langpop.p` — `lp_channels/1`, `VERIFIABLE`, the
   evidence tiers, `--audit`
-- `examples/langpop/graph/en/items.pl` — the twelve contrasts
-- `examples/langpop/graph/ja/kana.pl` — the mora skills
-- `examples/langpop/import.p` — `--source cmudict`, the IPA targets
-- `examples/langpop/graph/resources.pl` — `r_forvo_ja`, `r_minimal_rl`
+- `graph/en/items.pl` — the twelve contrasts
+- `graph/ja/kana.pl` — the mora skills
+- `import.p` — `--source cmudict`, the IPA targets
+- `graph/resources.pl` — `r_forvo_ja`, `r_minimal_rl`

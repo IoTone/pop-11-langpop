@@ -1,4 +1,4 @@
-/* examples/langpop/dump.p -- the graph, out of the heap and onto a page.
+/* dump.p -- the graph, out of the heap and onto a page.
 
    langpop's graph is Prolog and its reader is a tutor, which means the
    only view of it is one item at a time, chosen for a student.  That is
@@ -9,11 +9,11 @@
    by definition; everything else is a judgment, and judgment needs to
    see the thing.
 
-       ./poplog basepop11 examples/langpop/dump.p                 # JSON
-       ./poplog basepop11 examples/langpop/dump.p --dot           # graphviz
-       ./poplog basepop11 examples/langpop/dump.p --text          # a report
-       ./poplog basepop11 examples/langpop/dump.p --lang ja       # one language
-       ./poplog basepop11 examples/langpop/dump.p --html --out g.html
+       ./langpop dump                 # JSON
+       ./langpop dump --dot           # graphviz
+       ./langpop dump --text          # a report
+       ./langpop dump --lang ja       # one language
+       ./langpop dump --html --out g.html
 
    --html is the one to reach for: it inlines the JSON into viewer/page.html
    and writes ONE file that opens by double-clicking it.  That matters more

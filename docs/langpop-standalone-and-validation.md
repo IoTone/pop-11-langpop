@@ -1,5 +1,13 @@
 # langpop on its own, and climbing the whole ladder
 
+**Status, 2026-10-29: Part 1 is executed.** This repository is the
+result — carved from the Poplog tree's `langpop-placement` branch with
+the history kept (paths in Part 1 name the old tree, and stay as
+written because they describe it). Decision A was overruled by its
+owner, deliberately: the point of the split is that poplog's history
+should not absorb langpop's, so the carve came first and the PR to
+`dev` closes unmerged. Parts 2 and 3 are still the plan.
+
 Three questions, asked together because the answers depend on each
 other: carve langpop out of the Poplog tree, decide what it means to
 *validate* a climb from pre-school to the top of each ladder, and work
@@ -15,16 +23,16 @@ marked `yes` / `no` / `other`.**
 
 ## What actually moves
 
-`git log` over `examples/langpop` and `docs/projects/langpop-*.md`:
+`git log` over `examples/langpop` and `docs/langpop-*.md`:
 
 | | |
 |---|---|
 | commits touching langpop | **44**, the first `9010925` (2026-10-19), the last `f01eb23` (2026-10-26) |
 | commits on the branch in total | 691 |
 | files in the directory | 49, 1.2 MB |
-| paths those 44 commits touch outside `examples/langpop/` | 7 |
+| paths those 44 commits touch outside `` | 7 |
 
-The seven: five `docs/projects/langpop-*.md` (audio, function-words,
+The seven: five `docs/langpop-*.md` (audio, function-words,
 japanese-tranche, production-criteria, pronunciation -- six, with this
 one), one row in
 `examples/README.md`, and -- in one commit -- `gfx-font-test`,
@@ -35,7 +43,7 @@ NotoSansJP: that commit was doing two things, and the SVG cards ask for
 a family by name and let the renderer find it. The `examples/README.md`
 row does not come either; it is a row in an index that stays behind.
 
-So the carve is: **44 commits, `examples/langpop/` to the root, plus
+So the carve is: **44 commits, `` to the root, plus
 the five project docs into `docs/`.** That is unusually clean -- the
 history was written in one directory and never wandered.
 
@@ -45,11 +53,11 @@ history was written in one directory and never wandered.
 test suites all say
 
 ```pop11
-load 'examples/langpop/langpop.p';
+load 'langpop.p';
 ```
 
 and the tests are invoked as `./poplog basepop11
-examples/langpop/tests/test_langpop.p`. Moving the directory to the root
+tests/test_langpop.p`. Moving the directory to the root
 breaks every one. There is already a right answer in the tree --
 `langpop_dir`, set by `find_dir()` -- so the fix is mechanical: one
 `load` of `langpop.p` by a path relative to the loading file, and
@@ -101,9 +109,9 @@ cd /tmp/carve && git checkout langpop-placement
 
 git filter-repo \
   --path examples/langpop \
-  --path-glob 'docs/projects/langpop-*' \
-  --path-rename examples/langpop/: \
-  --path-rename docs/projects/langpop-:docs/
+  --path-glob 'docs/langpop-*' \
+  --path-rename : \
+  --path-rename docs/langpop-:docs/
 
 git init --bare /Users/dkords/dev/projects/iotone/pop-11-langpop.git
 git remote add origin /Users/dkords/dev/projects/iotone/pop-11-langpop.git
@@ -111,7 +119,7 @@ git push origin --all --tags
 ```
 
 Expect 44 commits, every one of them a langpop commit, with
-`examples/langpop/README.md` appearing as `README.md` throughout its
+`README.md` appearing as `README.md` throughout its
 history -- `git log --follow` keeps working because filter-repo rewrites
 the trees rather than adding a rename.
 
@@ -213,7 +221,7 @@ The honest target, and the one the content can nearly reach:
 
 1. **Content.** 602 more n5 words (the pool is cumulative: 198 held). The importer already does this
    (`import.p`, `tools/fetch-upstream.sh`, the n5 picks file); the
-   blocker is curation, and `docs/projects/langpop-japanese-tranche.md`
+   blocker is curation, and `docs/langpop-japanese-tranche.md`
    is waiting on marks. The okurigana-stripped kun readings -- about 16
    of the 28 one-character hiragana forms, 会 expecting あ -- is a bug in
    the content and must be fixed before any climb, because a simulated

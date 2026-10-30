@@ -1,6 +1,6 @@
-/* examples/langpop/audio.p -- Stage 0 of the audio plan: say(Item).
+/* audio.p -- Stage 0 of the audio plan: say(Item).
 
-   The first compounding factor in docs/projects/langpop-pronunciation.md
+   The first compounding factor in docs/langpop-pronunciation.md
    is not a measurement problem at all: a learner who has never heard the
    target cannot fairly be asked to produce it.  So the first audio that
    ships is OUTPUT -- the student hears a correct model of the item --
@@ -434,13 +434,13 @@ define lp_audio_make(item, rate) -> (path, made, why);
 enddefine;
 
 ;;; ------------------------------------------------- the microphone side
-;;; Stage A of docs/projects/langpop-audio.md: the seam, before any
+;;; Stage A of docs/langpop-audio.md: the seam, before any
 ;;; model.  Two more commands in audio.conf, on exactly the terms the
 ;;; voice is on -- named by the config, absent without consequence:
 ;;;
 ;;;     "record":  {"cmd": "rec -S -r 16000 -c 1 -b 16 %o trim 0 %s",
 ;;;                 "seconds": "2"}
-;;;     "verdict": {"cmd": "python3 examples/langpop/tools/score-morae.py
+;;;     "verdict": {"cmd": "python3 tools/score-morae.py
 ;;;                         --request %q --out %v"}
 ;;;     "meter":   optional; defaults to tools/mic-level.py
 ;;;
@@ -798,7 +798,7 @@ define lp_audio_show(level, rate);
           counts = newproperty([], 8, 0, "perm"), k;
     unless lp_audio_ready(lp_lang) then
         printf('audio: no voice for %p.  Name one in %p -- see the '
-               <> 'header of examples/langpop/audio.p for the shape.\n',
+               <> 'header of audio.p for the shape.\n',
                [% lp_lang, lp_audio_conf_path() %]);
         return;
     endunless;

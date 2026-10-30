@@ -1,4 +1,4 @@
-% examples/langpop/graph/en/items.pl -- English pre-school, for a Japanese speaker.
+% graph/en/items.pl -- English pre-school, for a Japanese speaker.
 %
 % Two kinds of item, and the second kind is the unusual one.
 %

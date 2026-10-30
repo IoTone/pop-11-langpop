@@ -1,6 +1,6 @@
-;;; examples/langpop/tests/test_langpop_import.p -- suite for the importer.
+;;; tests/test_langpop_import.p -- suite for the importer.
 ;;;
-;;;     ./poplog basepop11 examples/langpop/tests/test_langpop_import.p </dev/null
+;;;     poplog basepop11 tests/test_langpop_import.p </dev/null
 ;;;
 ;;; The importer's inputs are 63MB and 15MB of XML that are deliberately
 ;;; not in the repository, so this suite runs against fixtures in

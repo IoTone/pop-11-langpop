@@ -1,12 +1,12 @@
-/* examples/langpop/langpop.p -- langpop, Proposal A: one heap, three languages.
+/* langpop.p -- langpop, Proposal A: one heap, three languages.
 
    The language graph is Prolog, the learner overlay is Pop-11, and the
    session is the process.  Nothing is serialised, no server is started
    and no model is consulted: when A is wrong about something, it is
    wrong in one address space, which is the only reason to build it first.
 
-       ./poplog basepop11 examples/langpop/langpop.p            # Japanese
-       ./poplog basepop11 examples/langpop/langpop.p --lang en  # English
+       ./langpop            # Japanese
+       ./langpop --lang en  # English
 
    The division of labour is the design:
 
@@ -61,7 +61,7 @@ define find_dir() -> d;
     ;;; by, which is right wherever the process was started.  The rest
     ;;; are the old guesses, kept for a caller who assigned langpop_dir
     ;;; something else and wants the walk.
-    for c in [% langpop_dir, 'examples/langpop/', './', '../', 'langpop/' %] do
+    for c in [% langpop_dir, '', './', '../', 'langpop/' %] do
         if sys_file_exists(c <> 'graph/schema.pl') then c -> d; return endif;
     endfor;
     langpop_dir -> d;
@@ -226,7 +226,7 @@ enddefine;
 ;;;
 ;;; `produce` stays unverifiable by typing, for the harder reason: it
 ;;; wants a microphone, which is Stage 1 and Stage 2 of
-;;; docs/projects/langpop-audio.md.  The self-report path stays too -- a
+;;; docs/langpop-audio.md.  The self-report path stays too -- a
 ;;; criterion can still be driven by an assignment at tier 2, capped
 ;;; below MASTERY -- so "your reading is at N2 and I cannot certify your
 ;;; production" remains sayable, and true.
@@ -3016,7 +3016,7 @@ enddefine;
 ;;;                -- a bug, or an unbuilt import
 ;;;   needs audio  the channel is outside VERIFIABLE
 ;;;                -- a limit of this build, recorded in
-;;;                docs/projects/langpop-pronunciation.md
+;;;                docs/langpop-pronunciation.md
 ;;;   unmeasured   nothing measures this criterion at all
 ;;;                -- the honest verdict for coverage/2
 ;;;
@@ -3275,7 +3275,7 @@ define lp_audit_show();
     printf('\n  thin        = passes on fewer than %p askable items\n', [^AUDIT_THIN]);
     printf('  short       = curation: the criterion works, the content is thin\n');
     printf('  no probe    = a criterion nothing can ask about -- a bug, or an unbuilt import\n');
-    printf('  needs audio = outside VERIFIABLE; see docs/projects/langpop-pronunciation.md\n');
+    printf('  needs audio = outside VERIFIABLE; see docs/langpop-pronunciation.md\n');
     printf('  unmeasured  = nothing measures it at all\n');
     printf('  "N of M cannot be asked" = an item-set criterion whose accuracy\n');
     printf('                is measured over part of its set -- see lp_audit_one\n');
@@ -3636,7 +3636,7 @@ define lp_mic_check();
     unless lp_recorder() then
         printf('  I have no recorder.  It is a command named in %p --\n',
                [% lp_audio_conf_path() %]);
-        printf('  see the header of examples/langpop/audio.p.\n');
+        printf('  see the header of audio.p.\n');
         return;
     endunless;
     printf('\n  Say anything -- a word, a count to three.  I will show you\n');
@@ -3682,7 +3682,7 @@ define lp_speak_drill(item) -> done;
         printf('  I have no microphone or no scorer.  Both are commands\n');
         printf('  named in %p -- see the header of\n',
                [% lp_audio_conf_path() %]);
-        printf('  examples/langpop/audio.p for the shape.\n');
+        printf('  audio.p for the shape.\n');
         return;
     endunless;
     ;;; The one question this build can score is the held beat, so it is
@@ -3782,7 +3782,7 @@ define lp_show_say(i, rate);
     unless lp_audio_ready(lp_ilang(i)) then
         printf('  I have no %p voice.  Name one in %p -- the shape is in\n',
                [% lp_ilang(i), lp_audio_conf_path() %]);
-        printf('  the header of examples/langpop/audio.p.\n');
+        printf('  the header of audio.p.\n');
         return;
     endunless;
     unless rate == false or member(rate, lp_audio_rates(lp_ilang(i))) then
@@ -4342,7 +4342,7 @@ enddefine;
 
 ;;; Loaded as a library (the test suite does this) there is no session:
 ;;;     vars langpop_lib = true;
-;;;     load 'examples/langpop/langpop.p';
+;;;     load 'langpop.p';
 unless isdefined("langpop_lib") then
     lp_main();
     ;;; AND STOP, rather than letting lp_main RETURN.

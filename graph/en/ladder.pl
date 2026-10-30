@@ -1,4 +1,4 @@
-% examples/langpop/graph/en/ladder.pl -- the English ladder, as two axes.
+% graph/en/ladder.pl -- the English ladder, as two axes.
 %
 % TOEIC has no syllabus to teach to, so the ladder is CEFR bands with
 % their score ranges, and the scores are kept as TWO numbers plus a

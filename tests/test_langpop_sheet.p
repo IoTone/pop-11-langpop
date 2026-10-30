@@ -1,6 +1,6 @@
-;;; examples/langpop/tests/test_langpop_sheet.p -- the printable sheets.
+;;; tests/test_langpop_sheet.p -- the printable sheets.
 ;;;
-;;;     ./poplog basepop11 examples/langpop/tests/test_langpop_sheet.p </dev/null
+;;;     poplog basepop11 tests/test_langpop_sheet.p </dev/null
 ;;;
 ;;; Two claims are worth testing and the rest follows from them: a chart
 ;;; is DERIVED FROM THE GRAPH rather than drawn, so it cannot disagree

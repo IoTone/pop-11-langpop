@@ -1,6 +1,6 @@
-;;; examples/langpop/tests/test_langpop_card.p -- suite for card.p.
+;;; tests/test_langpop_card.p -- suite for card.p.
 ;;;
-;;;     ./poplog basepop11 examples/langpop/tests/test_langpop_card.p </dev/null
+;;;     poplog basepop11 tests/test_langpop_card.p </dev/null
 ;;;
 ;;; A renderer is tested by reading what it wrote.  Three properties are
 ;;; worth the trouble and the rest follows from them: the right form is

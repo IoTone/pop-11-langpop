@@ -1,4 +1,4 @@
-/* examples/langpop/client.p -- the TUI, demoted to a client.
+/* client.p -- the TUI, demoted to a client.
 
    Same session as Proposal A, same teacher, same questions -- but this
    program holds no graph, no beliefs and no judgment.  It asks the server
@@ -6,8 +6,8 @@
    do, an application in any language can do, which is the only honest
    test of an API: the reference client has no private door.
 
-       ./poplog basepop11 examples/langpop/server.p --port 7801 &
-       ./poplog basepop11 examples/langpop/client.p --port 7801 --user bob
+       ./langpop server --port 7801 &
+       ./langpop client --port 7801 --user bob
 
    Note what is NOT here: no answer key, no scoring, no belief arithmetic.
    The client cannot tell whether an answer was right until the server

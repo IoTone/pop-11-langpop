@@ -1,6 +1,6 @@
-;;; examples/langpop/tests/test_langpop_audio.p -- suite for audio.p.
+;;; tests/test_langpop_audio.p -- suite for audio.p.
 ;;;
-;;;     ./poplog basepop11 examples/langpop/tests/test_langpop_audio.p </dev/null
+;;;     poplog basepop11 tests/test_langpop_audio.p </dev/null
 ;;;
 ;;; THE SUITE RUNS WITH NO MODEL INSTALLED, and that is the first thing
 ;;; it checks.  Kokoro is not a dependency of langpop; a voice is a

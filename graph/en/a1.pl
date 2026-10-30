@@ -1,4 +1,4 @@
-% examples/langpop/graph/en/a1.pl -- A1 English, for a Japanese speaker.
+% graph/en/a1.pl -- A1 English, for a Japanese speaker.
 %
 % Committed, and hand-written, which needs saying because the Japanese
 % side's N5 words are neither (graph/ja/picks/n5.pl + an import).  The
