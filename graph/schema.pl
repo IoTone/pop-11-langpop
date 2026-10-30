@@ -180,6 +180,7 @@ index :- item(I, K, L, Lv, S), lp_item(I, K, L, Lv, S), fail.
 index :- form(I, Sc, T), lp_form(I, Sc, T), fail.
 index :- gloss(I, Lg, T), lp_gloss(I, Lg, T), fail.
 index :- confusable(A, B, W), lp_conf(A, B, W), fail.
+index :- starter_kanji(I, K), lp_skanji(I, K), fail.
 index :- ladder(Lang, N, Level), lp_ladder(Lang, N, Level), fail.
 index :- exit(Lang, Level, C, Th, Ms), lp_exit(Lang, Level, C, Th, Ms), fail.
 index :- resource(R, Lang, Kind, Target, Url, Checked),

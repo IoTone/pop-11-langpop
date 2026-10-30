@@ -130,3 +130,43 @@ requires(p_wo_tabemasu,  w_taberu).
 requires(p_wo_tabemasu,  w_sakana).
 requires(p_ni_ikimasu,   w_iku).
 requires(p_ni_ikimasu,   w_gakkou).
+
+% --- The spelling the corpus uses -----------------------------------------
+% Pre-school is the kana level, so every starter word is kana-only by
+% design -- but the corpus writes 行く, not いく, and 32 of the 50
+% starters have a kanji spelling that together is 5.72% of all dialogue
+% (docs/langpop-japanese-tranche.md, Category A).  These rows are that
+% spelling, for the rows with a measurable share; ちょっと is 一寸 in the
+% dictionary and nobody writes it that way, and its 0.00% share is the
+% evidence that cut the tail.
+%
+% DELIBERATELY NOT form/3.  A form is what the tutor may show, and a
+% pre-school student has met no kanji; the honest prerequisite edge is
+% forbidden (requires_from_above), and a second word identity would
+% split a student's beliefs.  So the spelling is its own predicate, and
+% the engine asks it only when every character in it is mastered -- the
+% conjunction both facts already support.  starter_kanji(none, none) is
+% the usual guard against unknown(_, error).
+starter_kanji(none, none).
+starter_kanji(w_iku,      '行く').     % 1.18%
+starter_kanji(w_hito,     '人').       % 0.94%
+starter_kanji(w_kuru,     '来る').     % 0.69%
+starter_kanji(w_ie,       '家').       % 0.35%
+starter_kanji(w_te,       '手').       % 0.30%
+starter_kanji(w_issho,    '一緒').     % 0.29%
+starter_kanji(w_me,       '目').       % 0.26%
+starter_kanji(w_kuruma,   '車').       % 0.24%
+starter_kanji(w_namae,    '名前').     % 0.20%
+starter_kanji(w_kyou,     '今日').     % 0.17%
+starter_kanji(w_zenbu,    '全部').     % 0.13%
+starter_kanji(w_taberu,   '食べる').   % 0.12%
+starter_kanji(w_tomodachi, '友達').    % 0.11%
+starter_kanji(w_ashita,   '明日').     % 0.10%
+starter_kanji(w_sensei,   '先生').     % 0.09%
+starter_kanji(w_hon,      '本').       % 0.08%
+starter_kanji(w_mizu,     '水').       % 0.07%
+starter_kanji(w_takai,    '高い').     % 0.06%
+starter_kanji(w_gakkou,   '学校').     % 0.06%
+starter_kanji(w_kuchi,    '口').       % 0.06%
+starter_kanji(w_ookii,    '大きい').   % 0.05%
+starter_kanji(w_asa,      '朝').       % 0.05%

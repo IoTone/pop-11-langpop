@@ -80,6 +80,7 @@ vars
     lp_forms    = newproperty([], 512, [], "perm"),     ;;; item -> [[script text] ...]
     lp_gl       = newproperty([], 512, [], "perm"),     ;;; item -> [[lang text] ...]
     lp_confs    = newproperty([], 256, [], "perm"),     ;;; item -> [[other why] ...]
+    lp_skanjis  = newproperty([], 64, false, "perm"),   ;;; word -> kanji spelling
     lp_beliefs  = newproperty([], 1024, 0.0, "perm"),
     lp_items    = [],
     lp_ladders  = [],                                   ;;; [[lang n level] ...]
@@ -378,6 +379,15 @@ define :prolog lp_gloss/3(i, lg, t, contn);
     chain(contn);
 enddefine;
 
+;;; starter_kanji/2: the spelling the corpus uses for a kana-level word.
+;;; Not a form -- see the facts' comment in graph/ja/items.pl -- so it
+;;; gets its own table, and the (none, none) guard row is dropped here.
+define :prolog lp_skanji/2(i, k, contn);
+    lvars i, k, contn, id = prolog_deref(i);
+    unless id == "none" then prolog_deref(k) -> lp_skanjis(id) endunless;
+    chain(contn);
+enddefine;
+
 define :prolog lp_conf/3(a, b, w, contn);
     lvars a, b, w, contn, x = prolog_deref(a), y = prolog_deref(b),
           why = prolog_full_deref(w);
@@ -537,10 +547,12 @@ define lp_index();
     clearproperty(lp_kind); clearproperty(lp_ilang);
     clearproperty(lp_ilevel); clearproperty(lp_isrc);
     clearproperty(lp_forms); clearproperty(lp_gl); clearproperty(lp_confs);
+    clearproperty(lp_skanjis);
     clearproperty(lp_ranks);
     [] -> lp_items; [] -> lp_ladders; [] -> lp_exits; [] -> lp_rsrc;
     [] -> lp_gens;
     false -> lp_edges_ready;
+    false -> lp_kanji_map_ready;
     lp_ask("index", 0).erase;
     rev(lp_items) -> lp_items;
     ;;; The kana-to-romaji map is built on first use rather than here --
@@ -1704,6 +1716,47 @@ define lp_rollup_mastered(item);
     true;
 enddefine;
 
+;;; Which character is which item.  Built on first use, like the edges:
+;;; every grapheme whose kanji form is one character claims its
+;;; codepoint, which is how a spelling is decomposed back into the items
+;;; the student has or has not met.
+vars lp_kanji_map = newproperty([], 256, false, "perm"),
+     lp_kanji_map_ready = false;
+
+define lp_kanji_item(cp) -> i;
+    lvars cp, i, f, cps;
+    unless lp_kanji_map_ready then
+        true -> lp_kanji_map_ready;
+        clearproperty(lp_kanji_map);
+        for i in lp_items do
+            nextunless(lp_kind(i) == "grapheme");
+            lp_form_of(i, "kanji") -> f;
+            nextunless(f);
+            [% utf8_explode(f sys_>< '') %] -> cps;
+            nextunless(length(cps) == 1);
+            i -> lp_kanji_map(hd(cps));
+        endfor;
+    endunless;
+    lp_kanji_map(cp) -> i;
+enddefine;
+
+;;; Is every character in this spelling a mastered item?  The conjunction
+;;; that lets 行く be asked of someone who has met both the word and the
+;;; character: kana pass through (they are the okurigana), and a single
+;;; unmet or unmastered kanji says no.  Without the imported content the
+;;; characters are not items at all, so this is false and the kana
+;;; question stands -- the same graceful degradation the suites lean on.
+define lp_kanji_ready(k) -> yes;
+    lvars k, cp, i, yes = false;
+    for cp in [% utf8_explode(k sys_>< '') %] do
+        nextif(cp < 16:4E00 or cp > 16:9FFF);
+        lp_kanji_item(cp) -> i;
+        returnunless(i);
+        returnunless(lp_mastered(i));
+    endfor;
+    true -> yes;
+enddefine;
+
 ;;; Which kind of question a skill's probe is: `morae` or `syllables`.
 define lp_probe_kind(skill) -> k;
     lvars skill, f = lp_probe_of(skill), k = false;
@@ -1980,9 +2033,27 @@ define lp_question(item, ch) -> (shape, prompt, answer, options);
         ;;; word met as 学校 at N5 is a reading-the-kanji exercise, where
         ;;; the length of the vowel is not what is being asked and gakko
         ;;; answers the question.  Two skills, two strictnesses.
-        lp_any_form(item) -> glyph;
-        ("type", glyph sys_>< '', [% lp_lower(r sys_>< '') %], [])
-            -> (shape, prompt, answer, options);
+        ;;;
+        ;;; One upgrade, earned and not declared: a starter word may
+        ;;; carry the spelling the corpus uses (starter_kanji/2 -- 行く
+        ;;; for w_iku), and once every character in it is mastered the
+        ;;; prompt becomes that spelling.  Reading 行く needs the word
+        ;;; AND the character, which are two facts the graph holds
+        ;;; separately, so the conjunction is asked here rather than a
+        ;;; prerequisite edge bent (requires_from_above forbids it,
+        ;;; correctly).  Until then -- and always, without the imported
+        ;;; kanji -- the kana question stands, and nobody is asked to
+        ;;; read a character they have not met.
+        lvars sk = lp_skanjis(item), hira = lp_form_of(item, "hiragana");
+        if k == "word" and sk and hira and lp_kanji_ready(sk) then
+            ("type", sk sys_>< '',
+             [% hira sys_>< '', lp_lower(r sys_>< '') %], [])
+                -> (shape, prompt, answer, options);
+        else
+            lp_any_form(item) -> glyph;
+            ("type", glyph sys_>< '', [% lp_lower(r sys_>< '') %], [])
+                -> (shape, prompt, answer, options);
+        endif;
     elseif (k == "grapheme" or k == "word") and lp_ilang(item) == "ja"
     and kanji then
         ;;; An imported kanji or N5 word.  form(_, kanji, '山') together

@@ -38,6 +38,12 @@
 % it again would mint a second identity for one word and split a student's
 % beliefs in half without telling anybody.  import.p refuses that too.
 %
+% HOMOPHONES.  The ids are romaji and Japanese is rich in homophones, so
+% sooner or later a pick wants an id that is taken.  The convention: a
+% short English sense tag after the romaji -- 気 is w_ki_mind, because
+% w_ki is 木.  Readable in a journal without a lookup, and the tag is
+% the curator's one word for which word this is, not a translation.
+%
 % This is a first tranche and not the finished level: the ladder wants
 % vocabulary(800) and there are a few over 160 picks here.  The rest is
 % curation, which is the work this file exists to make possible.
@@ -237,3 +243,35 @@ pick_requires(w_deru,    w_hairu).
 % two for the price of the time word.
 pick_requires(w_hirugohan, w_asagohan).
 pick_requires(w_bangohan,  w_asagohan).
+
+% --- The frequency tranche of 2026-10-30 -----------------------------------
+% From import.p --source frequency --gap against ja_full.txt
+% (OpenSubtitles, 34,504 entries), marked in docs/langpop-japanese-tranche.md.
+% Shares are of all dialogue tokens; together these carry ~14.6%.
+%
+% あなた and お前 are both here and both real, but the choice between
+% them is a register lesson the vocabulary rows cannot teach -- a
+% politeness pattern item is flagged in the tranche doc and not yet built.
+
+pick(w_nani,     ja, n5, word, jmdict('1577100')).      % 何 なに     2.67%
+pick(w_anata,    ja, n5, word, jmdict('1223615')).      % 貴方 あなた  1.61%
+pick(w_iu,       ja, n5, word, jmdict_kanji('言う')).   %            1.40%
+pick(w_koto,     ja, n5, word, jmdict('1313580')).      % 事 こと     0.89%
+pick(w_kanojo,   ja, n5, word, jmdict_kanji('彼女')).   %            0.87%
+pick(w_omae,     ja, n5, word, jmdict_kanji('お前')).   %            0.83%
+pick(w_toki,     ja, n5, word, jmdict('1315840')).      % 時 とき     0.51%
+pick(w_shinu,    ja, n5, word, jmdict_kanji('死ぬ')).   %            0.51%
+pick(w_korosu,   ja, n5, word, jmdict_kanji('殺す')).   %            0.47%
+pick(w_mae,      ja, n5, word, jmdict('1392580')).      % 前 まえ     0.47%
+pick(w_naka,     ja, n5, word, jmdict('1423310')).      % 中 なか     0.47%
+pick(w_hitsuyou, ja, n5, word, jmdict_kanji('必要')).   %            0.43%
+pick(w_ki_mind,  ja, n5, word, jmdict('1221520')).      % 気 き       0.42%
+pick(w_daijoubu, ja, n5, word, jmdict('1414150')).      % 大丈夫      0.40%
+pick(w_jibun,    ja, n5, word, jmdict_kanji('自分')).   %            0.39%
+pick(w_hontou,   ja, n5, word, jmdict_kanji('本当')).   %            0.37%
+pick(w_ichi,     ja, n5, word, jmdict('1160790')).      % 一 いち     0.37%
+pick(w_nai,      ja, n5, word, jmdict_kanji('無い')).   %            0.35%
+pick(w_arigatou, ja, n5, word, jmdict_kana('ありがとう')). %         0.35%
+pick(w_toshi,    ja, n5, word, jmdict('1468060')).      % 年 とし     0.33%
+pick(w_ato,      ja, n5, word, jmdict('1269320')).      % 後 あと     0.28%
+pick(w_dekiru,   ja, n5, word, jmdict_kanji('出来る')). %            0.28%

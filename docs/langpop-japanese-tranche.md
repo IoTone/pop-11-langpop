@@ -1,5 +1,14 @@
 # The Japanese tranche
 
+**Marked and built, 2026-10-30.** The owner took all of Category B (22
+picks, `w_ki2` renamed `w_ki_mind` under the new homophone convention in
+`picks/n5.pl`'s header), Category A as recommended (`starter_kanji/2` +
+the conjunction-gated question in `lp_question`, tested per student),
+nothing from Category C, and deferred the ja `coverage` criterion. The
+n5 word count went 148 to 170; the pre-school spelling upgrade is live
+wherever the kanji import is built. The queue below is kept as the
+record of how the rows were argued.
+
 A queue for a curator, like `langpop-function-words.md`, and a different
 shape of problem. Mark rows `yes` / `no` / `other`. Nothing enters
 `graph/ja/picks/n5.pl` or `graph/ja/items.pl` until marked.

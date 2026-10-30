@@ -199,6 +199,40 @@ false -> lp_probes_ready;
 check_true('the plan survives a nested query building the caches',
            member("w_neko", lp_plan()));
 
+;;; -------------------------------------------- the spelling the corpus uses
+;;; starter_kanji/2: 行く for w_iku.  Three claims, in rising order of
+;;; consequence: the spelling is NOT a form (nothing that shows forms may
+;;; show it), the kana question stands while any character is unmet, and
+;;; the prompt becomes the spelling exactly when the student has mastered
+;;; every character in it -- the conjunction, asked per student.
+"skanji" -> lp_user;
+
+check('the spelling is declared', lp_skanjis("w_iku") sys_>< '', '行く');
+check_false('but it is not a form', lp_form_of("w_iku", "kanji"));
+check_false('so the word face is still the kana',
+            lp_any_form("w_iku") sys_>< '' = '行く');
+
+lvars (ksh, kpr, kans, ) = lp_question("w_iku", lp_primary("w_iku"));
+check('a fresh student is asked the kana', kpr sys_>< '', 'いく');
+
+if lp_ilang("k_884c") then
+    mark_known("k_884c");
+    lp_question("w_iku", lp_primary("w_iku")) -> (ksh, kpr, kans, );
+    check('with 行 mastered the prompt is the spelling', kpr sys_>< '', '行く');
+    check_true('the kana answer it', member('いく', kans));
+    check_true('and so does the romaji', member('iku', kans));
+
+    ;;; Two characters is a conjunction, not a first match.
+    mark_known("k_5b66");            ;;; 学, but not yet 校
+    lp_question("w_gakkou", lp_primary("w_gakkou")) -> (ksh, kpr, kans, );
+    check('half of 学校 mastered is still the kana', kpr sys_>< '', 'がっこう');
+    mark_known("k_6821");
+    lp_question("w_gakkou", lp_primary("w_gakkou")) -> (ksh, kpr, kans, );
+    check('all of it mastered is the spelling', kpr sys_>< '', '学校');
+else
+    printf(';;; imported content not built -- the spelling upgrade not checked\n');
+endif;
+
 ;;; ---------------------------------------------------- tier 5: a machine
 ;;; A verdict from a model: the student spoke, something measured it, and
 ;;; nobody listened.  Above an inference, because what was observed IS
