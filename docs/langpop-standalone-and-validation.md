@@ -417,6 +417,44 @@ Honest expectations, ranked by how likely I think each is:
 - **the aids interacting** -- four of them now, independently switchable,
   logged, and never exercised in combination.
 
+## What the first runs actually found (2026-10-29/30)
+
+Phase 4 is built (`oracle.p`, `./langpop oracle`), and its first runs
+did what the section above predicted, in order:
+
+1. **The roll-up deadlock.** `hiragana_all` could never be mastered --
+   no probe, inference runs the other way, every indirect tier capped
+   below `MASTERY` -- so every starter word was locked for ever and the
+   first long run sat at vocabulary 0 of 50 with every kana mastered.
+   Fixed: a probeless skill with requires is mastered exactly when
+   everything it requires is (`lp_rollup_mastered`). Seed 42 now climbs
+   to 50 of 50.
+
+2. **The oracle itself over-reached twice**, which is also the harness
+   working: ready items with no typed question (the patterns, taught by
+   `assign`) are not starvation, and an *ungateable* prerequisite (the
+   English sound contrasts) not holding the door shut is `gate_ok`'s
+   second clause, not a violation. Both invariants are now stated with
+   the same exemptions the engine argues for.
+
+3. **Open design question -- the lifetime denominator.** `lp_measure`
+   runs over the whole journal, so a student who starts from zero
+   carries every early mistake for ever: seed 42 plateaus near 0.57
+   recognise-accuracy while demonstrably knowing all of it, and the
+   0.90 exit line may be unreachable for any genuine beginner. The
+   honest measure is probably recency-windowed (or read off current
+   beliefs, which already decay the past geometrically). Not changed:
+   it moves an exit criterion, which is an owner's decision.
+
+4. **Smaller observations, not yet acted on:** a reported-but-never-
+   masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
+   `assign` call, with no way for a client to ask for the *next* one;
+   and `vocabulary(50, hear)` needs the audio build before any run can
+   move it, exactly as `--audit` says.
+
+Soak state: seeds 1-5 (ja) and 1-3 (en) all pass, deterministically,
+~1300 turns to exhaust ja pre-school's typed pool from empty.
+
 ---
 
 # Sequencing

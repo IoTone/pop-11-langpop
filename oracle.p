@@ -69,7 +69,9 @@ vars
     ora_seq = 0,
     ora_sid = false,
     ora_user = false,
+    ora_lang = 'ja',
     ora_comp = newproperty([], 256, false, "perm"),  ;;; item -> competence
+    ora_assigned = newproperty([], 16, 0, "perm"),   ;;; item -> reports sent
     ora_offered = newproperty([], 256, 0, "perm"),   ;;; item -> times offered
     ora_violations = [],
     ora_stats = newproperty([], 16, 0, "perm"),
@@ -191,16 +193,22 @@ enddefine;
 
 ;;; ------------------------------------------------------- the invariants
 define ora_check_prereqs(item);
-    lvars item, res, pre;
+    lvars item, res, pre, prew;
     ora_rpc('langpop/explain',
             jsonrpc_obj([% 'session_id', ora_sid,
                            'item', item sys_>< '' %])) -> res;
     returnunless(res);
     for pre in datalist(ora_p(res, 'prerequisites')) do
-        unless ora_p(pre, 'known') then
-            ora_note((item sys_>< '') <> ' offered before its prerequisite '
-                     <> (ora_p(pre, 'item') sys_>< ''));
-        endunless;
+        nextif(ora_p(pre, 'known'));
+        ;;; A prerequisite nothing can check does not hold the door shut
+        ;;; -- gate_ok's second clause, judged here from the same graph.
+        ;;; Every English trap requires the sound contrasts, and all of
+        ;;; them are ungateable until a listening question can ask a
+        ;;; minimal pair.
+        consword(ora_p(pre, 'item') sys_>< '') -> prew;
+        nextif(lp_ungateable(prew));
+        ora_note((item sys_>< '') <> ' offered before its prerequisite '
+                 <> (prew sys_>< ''));
     endfor;
 enddefine;
 
@@ -276,6 +284,87 @@ define ora_fixed_point(sample);
     endfor;
 enddefine;
 
+;;; -------------------------------------------------------- away from keys
+;;; When nothing is left that typing can check, a real student asks for
+;;; homework, does it, and reports back -- the tier-2/3 path, which no
+;;; harness had ever walked.  The arithmetic is asserted exactly, like
+;;; tier 1's: a score moves the gate belief by lp_record's tier-2 rule
+;;; and never past TIER2_CAP; "ok" moves it by the tier-3 rule and never
+;;; past TIER3_CAP; neither ever reaches mastery on its own.
+;;;
+;;; Returns true when an assignment was reported, false when the tutor
+;;; has nothing left to hand out -- which is where the run ends.
+define ora_study() -> did;
+    lvars did = false, res, item, itemw, aid, pre, post, want, outcome,
+          c, tier;
+
+    define belief_of(itemw) -> b;
+        lvars itemw, b = false, res;
+        ora_rpc('langpop/explain',
+                jsonrpc_obj([% 'session_id', ora_sid,
+                               'item', itemw sys_>< '' %])) -> res;
+        if res then (ora_p(res, 'belief') or 0) * 1.0 -> b endif;
+    enddefine;
+
+    ora_rpc('langpop/assign', jsonrpc_obj([% 'session_id', ora_sid %])) -> res;
+    returnunless(res);
+    ora_p(res, 'assignment_id') -> aid;
+    returnunless(aid);
+    consword(ora_p(res, 'item') sys_>< '') -> itemw;
+
+    ;;; An unprobeable item reported for ever asymptotes at TIER2_CAP and
+    ;;; never leaves the plan, so the tutor will hand it out again and
+    ;;; again -- which is honest of the tutor and would be an endless run
+    ;;; for the oracle.  Three reports is enough to test the path.
+    returnif(ora_assigned(itemw) >= 3);
+    ora_assigned(itemw) + 1 -> ora_assigned(itemw);
+
+    if ora_comp(itemw) == false then ora_skill -> ora_comp(itemw) endif;
+    ora_comp(itemw) -> c;
+    belief_of(itemw) -> pre;
+    returnunless(pre /== false)(true -> did);
+
+    if ora_u() < 0.25 then
+        'ok' -> outcome; 3 -> tier;
+    elseif ora_u() < c then
+        '18/20' -> outcome; 2 -> tier;      ;;; a result worth reporting
+    else
+        '10/20' -> outcome; 2 -> tier;      ;;; below the 0.7 line
+    endif;
+    ora_rpc('langpop/report',
+            jsonrpc_obj([% 'session_id', ora_sid,
+                           'assignment_id', aid,
+                           'outcome', outcome %])) -> res;
+    returnunless(res)(true -> did);
+    true -> did;
+    ora_count("report");
+
+    unless ora_p(res, 'tier') == tier then
+        ora_note((itemw sys_>< '') <> ': reported "' <> outcome
+                 <> '" expecting tier ' <> (tier sys_>< '')
+                 <> ', server said ' <> (ora_p(res, 'tier') sys_>< ''));
+    endunless;
+    (ora_p(res, 'belief') or 0) * 1.0 -> post;
+    if tier == 2 then
+        min(pre + (1.0 - pre) * 0.20
+              * (if outcome = '18/20' then 1.0 else 0.3 endif),
+            TIER2_CAP) -> want;
+    else
+        min(pre + 0.05, TIER3_CAP) -> want;
+    endif;
+    unless abs(post - want) < ORA_TOL then
+        ora_note((itemw sys_>< '') <> ' report ' <> outcome <> ': belief '
+                 <> (pre sys_>< '') <> ' became ' <> (post sys_>< '')
+                 <> ', expected ' <> (want sys_>< ''));
+    endunless;
+    if ora_p(res, 'mastered') and pre < MASTERY then
+        ora_note((itemw sys_>< '') <> ': a report alone reached mastery');
+    endif;
+
+    ;;; studying teaches, whatever the report said
+    c + (1.0 - c) * ora_learn -> ora_comp(itemw);
+enddefine;
+
 ;;; ------------------------------------------------------------- one turn
 ;;; Returns true while there is anything left to answer.
 define ora_turn() -> more;
@@ -287,8 +376,12 @@ define ora_turn() -> more;
     returnunless(q)(false -> more);
     ora_p(q, 'item') -> item;
     unless item then
-        if ora_verbose then printf(';;; next: %p\n', [% ora_p(q, 'note') %]) endif;
-        false -> more;
+        ;;; nothing to type: ask for homework instead, and only when the
+        ;;; tutor has none either is the rung exhausted for this harness
+        ora_study() -> more;
+        if not(more) and ora_verbose then
+            printf(';;; next: %p\n', [% ora_p(q, 'note') %]);
+        endif;
         return;
     endunless;
     consword(item sys_>< '') -> itemw;
@@ -481,11 +574,12 @@ define ora_report();
         endunless;
     endif;
 
-    printf('\n%p answered: %p right, %p near, %p wrong, %p skip; %p slips, %p laters\n',
+    printf('\n%p answered: %p right, %p near, %p wrong, %p skip; %p slips, %p laters, %p reports\n',
            [% ora_stats("right") + ora_stats("near")
                 + ora_stats("wrong") + ora_stats("skip"),
               ora_stats("right"), ora_stats("near"), ora_stats("wrong"),
-              ora_stats("skip"), ora_stats("slip"), ora_stats("later") %]);
+              ora_stats("skip"), ora_stats("slip"), ora_stats("later"),
+              ora_stats("report") %]);
 enddefine;
 
 define ora_main();
@@ -501,11 +595,17 @@ define ora_main();
         elseif a = '--answers' then strnumber(hd(tl(args))) -> ora_budget; tl(tl(args)) -> args;
         elseif a = '--skill' then strnumber(hd(tl(args))) -> ora_skill; tl(tl(args)) -> args;
         elseif a = '--user' then hd(tl(args)) -> ora_user; tl(tl(args)) -> args;
+        elseif a = '--lang' then hd(tl(args)) -> ora_lang; tl(tl(args)) -> args;
         elseif a = '--verbose' then true -> ora_verbose; tl(args) -> args;
         else tl(args) -> args;
         endif;
     enduntil;
-    unless ora_user then 'oracle-' sys_>< ora_seed -> ora_user endunless;
+    ;;; the local engine judges gateability per language, so it must be
+    ;;; looking at the same one the server is teaching
+    consword(ora_lang sys_>< '') -> lp_lang;
+    unless ora_user then
+        'oracle-' sys_>< ora_lang sys_>< '-' sys_>< ora_seed -> ora_user
+    endunless;
     ora_seed -> ranseed;
 
     jsonrpc_connect_wait(host, port, "line", 5) -> ora_conn;
@@ -515,7 +615,8 @@ define ora_main();
     endunless;
 
     ora_rpc('langpop/register',
-            jsonrpc_obj([% 'student_id', ora_user %])) -> res;
+            jsonrpc_obj([% 'student_id', ora_user,
+                           'language', ora_lang %])) -> res;
     ora_rpc('langpop/session.open',
             jsonrpc_obj([% 'student_id', ora_user %])) -> res;
     unless res then
