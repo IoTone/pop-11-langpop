@@ -70,6 +70,7 @@ vars
     ora_sid = false,
     ora_user = false,
     ora_lang = 'ja',
+    ora_place = false,
     ora_comp = newproperty([], 256, false, "perm"),  ;;; item -> competence
     ora_assigned = newproperty([], 16, 0, "perm"),   ;;; item -> reports sent
     ora_offered = newproperty([], 256, 0, "perm"),   ;;; item -> times offered
@@ -514,6 +515,128 @@ define ora_turn() -> more;
     endif;
 enddefine;
 
+;;; ----------------------------------------------------------- placement
+;;; --place runs the five-minute interview instead of the climb.  The
+;;; student's competence is FIXED here (ora_skill, no drift): a test is
+;;; a measurement, and a student who learns the material from the test
+;;; while taking it would make the verdict untestable.
+;;;
+;;; What it asserts, against its own transcript rather than the server's
+;;; bookkeeping -- the engine's constants restated: PLACE_SAMPLE 4,
+;;; PLACE_PASS 0.75, PLACE_FREEZE 2 (lconstants in langpop.p, so they
+;;; are repeated here; if someone retunes the descent, this is the test
+;;; that says the oracle must be retuned with it):
+;;;
+;;;   - the descent TERMINATES well inside a budget; the sampler used to
+;;;     return the same head every time, and a driver looping on it
+;;;     asked about the same kana four times running;
+;;;   - nothing is asked again once an answer to it was RECORDED (a slip
+;;;     is not recorded, so the retry is the same question, honestly);
+;;;   - every axis the report places is one the transcript agrees was
+;;;     passed: accuracy >= 0.75 over that axis's items at that level,
+;;;     with the sample quorum met.
+define ora_place_run();
+    lvars q, item, itemw, shape, prompt, options, truth, given, res,
+          outcome, recorded, u, n = 0, level = false,
+          answered = newproperty([], 64, 0, "perm"),
+          transcript = [];        ;;; [[item outcome] ...] as recorded
+
+    repeat 300 times
+        ora_rpc('langpop/placement.next',
+                jsonrpc_obj([% 'session_id', ora_sid %])) -> q;
+        returnunless(q);
+        if ora_p(q, 'done') then
+            ora_p(q, 'level') -> level;
+            quitloop;
+        endif;
+        n + 1 -> n;
+        consword(ora_p(q, 'item') sys_>< '') -> itemw;
+        ora_p(q, 'shape') sys_>< '' -> shape;
+        ora_p(q, 'prompt') -> prompt;
+        datalist(ora_p(q, 'options') or {}) -> options;
+
+        if answered(itemw) > 0 then
+            ora_note('placement asked ' <> (itemw sys_>< '')
+                     <> ' again after recording an answer');
+        endif;
+
+        ora_truth(itemw, shape, prompt, options) -> truth;
+        if truth == [] or (ora_u() >= ora_skill) then
+            ;;; wrong on purpose: half freezes, half reaches for the
+            ;;; confusable -- the two mistakes the descent reads
+            if truth == [] or ora_u() < 0.5 then '' -> given;
+            else (ora_confusion(itemw) or 'zzq') -> given;
+            endif;
+        else
+            hd(truth) -> given;
+        endif;
+        ora_rpc('langpop/answer',
+                jsonrpc_obj([% 'session_id', ora_sid,
+                               'item', itemw sys_>< '',
+                               'answer', given %])) -> res;
+        returnunless(res);
+        if (ora_p(res, 'outcome') sys_>< '') = 'slip' then
+            ;;; not recorded; answer properly, as the student would
+            ora_rpc('langpop/answer',
+                    jsonrpc_obj([% 'session_id', ora_sid,
+                                   'item', itemw sys_>< '',
+                                   'answer', if truth == [] then ''
+                                             else hd(truth) endif %])) -> res;
+            returnunless(res);
+        endif;
+        if ora_p(res, 'recorded') then
+            answered(itemw) + 1 -> answered(itemw);
+            conspair([% itemw, consword(ora_p(res, 'outcome') sys_>< '') %],
+                     transcript) -> transcript;
+        endif;
+    endrepeat;
+
+    unless level then
+        ora_note('placement did not settle within 300 questions');
+        return;
+    endunless;
+    printf('placed after %p questions: teaching starts at %p\n',
+           [% n, level %]);
+
+    ;;; the verdict, re-derived from this side's transcript
+    ora_rpc('langpop/placement.report',
+            jsonrpc_obj([% 'session_id', ora_sid %])) -> res;
+    returnunless(res);
+    lvars row, ax, placed, a, axis, items, e, right, total;
+    for row in datalist(ora_p(res, 'axes') or {}) do
+        ora_p(row, 'axis') sys_>< '' -> ax;
+        ora_p(row, 'placed') -> placed;
+        printf('  %p: %p (%p)\n', [% ax, placed or 'unplaced',
+                                     ora_p(row, 'why') %]);
+        nextunless(placed);
+        false -> axis;
+        for a in lp_place_axes() do
+            if (a(1) sys_>< '') = ax then a -> axis; quitloop endif;
+        endfor;
+        unless axis then
+            ora_note('the report names an axis this graph does not: ' <> ax);
+            nextloop;
+        endunless;
+        lp_place_items(axis, consword(placed sys_>< '')) -> items;
+        0 -> right; 0 -> total;
+        for e in transcript do
+            nextunless(member(e(1), items));
+            total + 1 -> total;
+            if e(2) == "right" then right + 1 -> right endif;
+        endfor;
+        if total == 0 then
+            ora_note(ax <> ' placed at ' <> (placed sys_>< '')
+                     <> ' with no recorded answer there');
+        elseif total < min(4, length(items)) then
+            ora_note(ax <> ' placed at ' <> (placed sys_>< '')
+                     <> ' on ' <> (total sys_>< '') <> ' answers, below the quorum');
+        elseif (right * 1.0) / total < 0.75 then
+            ora_note(ax <> ' placed at ' <> (placed sys_>< '') <> ' on '
+                     <> (right sys_>< '') <> ' of ' <> (total sys_>< ''));
+        endif;
+    endfor;
+enddefine;
+
 ;;; -------------------------------------------------------------- the run
 define ora_sample() -> l;
     lvars l = [], n = 0;
@@ -596,6 +719,7 @@ define ora_main();
         elseif a = '--skill' then strnumber(hd(tl(args))) -> ora_skill; tl(tl(args)) -> args;
         elseif a = '--user' then hd(tl(args)) -> ora_user; tl(tl(args)) -> args;
         elseif a = '--lang' then hd(tl(args)) -> ora_lang; tl(tl(args)) -> args;
+        elseif a = '--place' then true -> ora_place; tl(args) -> args;
         elseif a = '--verbose' then true -> ora_verbose; tl(args) -> args;
         else tl(args) -> args;
         endif;
@@ -624,6 +748,20 @@ define ora_main();
         sysexit(3);
     endunless;
     ora_p(res, 'session_id') -> ora_sid;
+
+    if ora_place then
+        printf('oracle: placement, seed %p, skill %p, as %p\n',
+               [% ora_seed, ora_skill, ora_user %]);
+        ora_place_run();
+        if ora_violations == [] then
+            printf('ORACLE PASS (placement, seed %p)\n', [^ora_seed]);
+            sysexit(0);
+        else
+            printf('ORACLE FAIL (placement, seed %p): %p violations\n',
+                   [% ora_seed, length(ora_violations) %]);
+            sysexit(2);
+        endif;
+    endif;
 
     printf('oracle: seed %p, %p answers, skill %p, as %p\n',
            [% ora_seed, ora_budget, ora_skill, ora_user %]);
