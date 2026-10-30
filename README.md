@@ -56,6 +56,36 @@ is still inside the file (the only moment it is right). The wrapper
 finds a Poplog by `$LANGPOP_POPLOG`, then an enclosing Poplog source
 tree's `./poplog`, then `poplog` on `PATH`.
 
+## Installing a Poplog
+
+The easy way is the main project's binary one-liner -- see
+[IoTone/poplog](https://github.com/IoTone/poplog#install) for the
+details and the uninstall line:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/IoTone/poplog/master/tools/install-skill.sh | sh
+```
+
+That unpacks a relocatable runtime to `~/.local/share/pop11-skill` with
+a `poplog` driver inside, which is exactly what the wrapper wants:
+
+```sh
+LANGPOP_POPLOG="$HOME/.local/share/pop11-skill/poplog" ./langpop
+```
+
+One honest date to check: the tutor itself needs `lib/json`
+(2026-10-01), which the current release carries -- but the JSON-RPC
+pieces (`server`, `client`, `oracle`) need `lib/jsonrpc` (2026-10-20),
+and as of this writing the newest tarball (`skill-2026.10.1`) was built
+three days before that library landed. Until a newer release ships,
+those three need a Poplog [built from
+source](https://github.com/IoTone/poplog/blob/master/INSTALL) (`git
+clone`, seed `corepop`, `./configure && make all`, then point
+`LANGPOP_POPLOG` at the tree's `./poplog`). langpop checks at startup
+and names the release it needs rather than dying mid-compile.
+
+## What a fresh clone holds
+
 A fresh clone holds 326 items: the imported content under
 `graph/*/generated/` is deliberately not kept in git — it is regenerated
 from upstream (`tools/fetch-upstream.sh`, then `./langpop import`), and
