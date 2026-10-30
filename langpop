@@ -42,6 +42,13 @@ case "$1" in
         # run starts from an empty profile and leaves nothing behind.
         port=$(( ($$ % 2000) + 7800 ))
         data=$(mktemp -d "${TMPDIR:-/tmp}/langpop-oracle.XXXXXX")
+        # The voice and its cache are machine content, not student state,
+        # so the scratch home starts with this machine's copy -- and the
+        # listening questions appear wherever the machine can ask them.
+        if [ -f "$HOME/.langpop/audio.conf" ]; then
+            cp "$HOME/.langpop/audio.conf" "$data/"
+            [ -d "$HOME/.langpop/audio" ] && cp -R "$HOME/.langpop/audio" "$data/audio"
+        fi
         "$run" basepop11 "$here/server.p" --port "$port" --data "$data/" \
             >"$data/server.log" 2>&1 &
         srv=$!

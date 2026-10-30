@@ -398,6 +398,17 @@ define ora_turn() -> more;
     ;;; gate channel, which is where lp_m_answer reports belief
     chw == lp_primary(itemw) -> gate;
 
+    ;;; a listening question's prompt is a PATH, and the contract is that
+    ;;; it arrives under its own name and never as something to print
+    if chw == "hear" then
+        unless ora_p(q, 'audio') then
+            ora_note((itemw sys_>< '') <> ': a hear question with no audio');
+        endunless;
+        if ora_p(q, 'prompt') then
+            ora_note((itemw sys_>< '') <> ': a hear question leaked its prompt');
+        endif;
+    endif;
+
     if ora_offered(itemw) == 0 then ora_check_prereqs(itemw) endif;
     ora_offered(itemw) + 1 -> ora_offered(itemw);
 
