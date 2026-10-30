@@ -362,11 +362,6 @@ define lp_m_next(msg) -> res;
     if not(item) and lp_pending /== [] then
         hd(lp_pending)(1) -> item; true -> requeued;
     endif;
-    ;;; Everything ready is deferred and nothing else can be asked: the
-    ;;; gap gives way rather than handing the client an empty reply.
-    if not(item) and lp_pending /== [] then
-        hd(lp_pending)(1) -> item; true -> requeued;
-    endif;
     ;;; Nothing left to read here, but something left to hear.
     unless item then
         lvars hitem2 = lp_choose_hear();

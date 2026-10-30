@@ -157,6 +157,48 @@ check_false('a word does not unlock before the whole syllabary',
             member("w_neko", plan2));
 check_false('katakana ka waits for hiragana ka', member("ka_ka", plan2));
 
+;;; ------------------------------------------------------------ roll-ups
+;;; hiragana_all has no probe, so no answer can ever raise its own
+;;; belief to MASTERY and no indirect tier reaches that high by design.
+;;; Its gloss is "reads every hiragana at speed", so that, literally, is
+;;; what mastering it means: it is mastered exactly when everything it
+;;; requires is.  Before this rule existed the first long oracle run
+;;; showed the consequence: every kana mastered, hiragana_all still
+;;; unknown, and all 50 starter words locked for ever.
+"rollup" -> lp_user;
+
+check_true('hiragana_all is a roll-up: a skill with no probe',
+           lp_kind("hiragana_all") == "skill"
+           and not(lp_probe_of("hiragana_all")));
+check_false('unmastered while its kana are', lp_mastered("hiragana_all"));
+
+lvars ri;
+for ri in lp_edges_of("hiragana_all") do mark_known(ri) endfor;
+check_true('mastered through its parts, with its own belief untouched',
+           lp_mastered("hiragana_all"));
+check('whose own belief IS untouched',
+      lp_bel("hiragana_all", lp_primary("hiragana_all")), 0.0);
+check_false('katakana_all stays shut on the same evidence',
+            lp_mastered("katakana_all"));
+
+;;; A probe-carrying skill is NOT a roll-up: mora_count must still be
+;;; answered, not aggregated -- its requires are teaching order.
+for ri in lp_edges_of("mora_count") do mark_known(ri) endfor;
+check_false('a skill with a probe is not mastered through its parts',
+            lp_mastered("mora_count"));
+
+;;; And the door the roll-up was holding opens: with every hiragana
+;;; mastered the starter words become ready.
+check_true('the starter words unlock', member("w_neko", lp_plan()));
+
+;;; A query inside a query: lp_rollup_mastered builds its caches with
+;;; lp_ask while plan/3 is mid-collection, so lp_ask must keep each
+;;; query's basket separate or the outer answers are thrown away.
+false -> lp_edges_ready;
+false -> lp_probes_ready;
+check_true('the plan survives a nested query building the caches',
+           member("w_neko", lp_plan()));
+
 ;;; ---------------------------------------------------- tier 5: a machine
 ;;; A verdict from a model: the student spoke, something measured it, and
 ;;; nobody listened.  Above an inference, because what was observed IS

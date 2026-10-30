@@ -257,9 +257,15 @@ define lp_mastered_on(item, ch);
 enddefine;
 
 ;;; Mastered FOR THE PURPOSE OF UNLOCKING -- see lp_primary above.
+;;; A roll-up is the one kind of item whose mastery is not its own
+;;; belief -- see lp_rollup_mastered, defined after the machinery it
+;;; reads from the graph.
+vars procedure lp_rollup_mastered;
+
 define lp_mastered(item);
     lvars item;
     lp_bel(item, lp_primary(item)) >= MASTERY
+    or lp_rollup_mastered(item)
 enddefine;
 
 ;;; -------------------------------------- Pop-11 procedures AS predicates
@@ -316,11 +322,11 @@ enddefine;
 ;;; For `read` and `produce` the answer is the channel alone, exactly as
 ;;; it was before listening existed -- and deliberately NOT drillability,
 ;;; which was the first attempt and was wrong.  hiragana_all has no probe
-;;; and is not drillable, but its belief rises by INFERENCE from the 46
-;;; kana it requires, so it is perfectly checkable and must go on holding
-;;; the door shut.  Treating undrillable as uncheckable made every
-;;; aggregate a free pass and declared all 50 starter words ready at the
-;;; first question.
+;;; and is not drillable, but it is mastered THROUGH its 46 kana -- see
+;;; lp_rollup_mastered -- so it is perfectly checkable and must go on
+;;; holding the door shut.  Treating undrillable as uncheckable made
+;;; every aggregate a free pass and declared all 50 starter words ready
+;;; at the first question.
 ;;;
 ;;; For `hear` the channel became verifiable only because a voice is
 ;;; installed, so there it means precisely "a listening question can be
@@ -512,6 +518,11 @@ enddefine;
 ;;; building: the goal is a term, made in Pop-11.
 define lp_ask(/* args */ name, arity) -> answers;
     lvars name, arity, answers;
+    ;;; Dynamically local, so a query may run INSIDE another query's
+    ;;; continuation without emptying its basket: lp_known now reaches
+    ;;; lp_rollup_mastered, whose first call builds the edge and probe
+    ;;; caches with queries of their own, in the middle of plan/3.
+    dlocal lp_taken;
     [] -> lp_taken;
     erase(prolog_invoke(prolog_maketerm(/* args */ name, arity)));
     rev(lp_taken) -> answers;
@@ -1665,6 +1676,32 @@ define lp_probe_of(skill) -> f;
         endfor;
     endunless;
     lp_probes(skill) -> f;
+enddefine;
+
+;;; A roll-up: a skill with no probe of its own, standing for its parts.
+;;; hiragana_all's gloss is "reads every hiragana at speed" -- so that,
+;;; literally, is what mastering it means, and the only place the truth
+;;; of it can live is in the 46 beliefs underneath.  Its own belief
+;;; cannot carry it: nothing can ask it a question (no probe), inference
+;;; runs the other way (lp_infer credits what an answered item CONTAINS,
+;;; and no kana contains a roll-up), and every indirect tier is capped
+;;; below MASTERY by design.  The first long oracle run found the
+;;; consequence empirically: every kana mastered, hiragana_all still
+;;; unknown, all 50 starter words locked for ever, and the pre-school
+;;; vocabulary criterion unreachable at 0 of 50.
+;;;
+;;; Recursive, because a roll-up may one day require a roll-up; the
+;;; schema's integrity checks keep requires/2 acyclic, so this ends.
+define lp_rollup_mastered(item);
+    lvars item, pre, es;
+    returnunless(lp_kind(item) == "skill")(false);
+    returnif(lp_probe_of(item) and true)(false);
+    lp_edges_of(item) -> es;
+    returnif(es == [])(false);
+    for pre in es do
+        returnunless(lp_mastered(pre))(false);
+    endfor;
+    true;
 enddefine;
 
 ;;; Which kind of question a skill's probe is: `morae` or `syllables`.
