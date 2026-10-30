@@ -329,6 +329,61 @@ vars sl2 = result('langpop/answer',
 check('the second time it counts', sl2('recorded'), true);
 check('as a plain wrong answer', sl2('outcome'), 'wrong');
 
+;;; A SLIP DOES NOT END THE QUESTION.  The retry is the same question,
+;;; and the server has to still know which one: clearing the item in
+;;; flight as soon as an answer arrived meant the retry was filed on the
+;;; gate channel rather than the one it was asked on, and -- once
+;;; questions had phases -- a review answered after a typing slip was
+;;; recorded as learning.  It then counted towards no criterion and left
+;;; the item's rung where it was.  The oracle found it; this pins it.
+result('langpop/register', jsonrpc_obj([% 'student_id', 'slipper',
+                                          'language', 'ja' %])).erase;
+vars ssid = result('langpop/session.open',
+                   jsonrpc_obj([% 'student_id', 'slipper' %]))('session_id');
+repeat 3 times
+    result('langpop/answer',
+           jsonrpc_obj([% 'session_id', ssid, 'item', 'w_neko',
+                          'answer', 'neko' %])).erase;
+endrepeat;
+check_true('three rights master it', lp_mastered_on("w_neko", "read"));
+check('and schedule a review', lp_review_of("w_neko", "read")(1), 1);
+
+;;; A day later, as far as the ladder is concerned.
+{% 1, lp_now_ms() - 1 %} -> lp_reviews(lp_bkey("slipper", "w_neko", "read"));
+vars rq = result('langpop/next', jsonrpc_obj([% 'session_id', ssid %]));
+check('the review is what comes next', rq('item'), 'w_neko');
+check('and it says so', rq('phase'), 'review');
+
+vars rs1 = result('langpop/answer',
+                  jsonrpc_obj([% 'session_id', ssid, 'item', 'w_neko',
+                                 'answer', 'nek' %]));
+check('the slip is not recorded', rs1('recorded'), false);
+vars rs2 = result('langpop/answer',
+                  jsonrpc_obj([% 'session_id', ssid, 'item', 'w_neko',
+                                 'answer', 'neko' %]));
+check('the retry is recorded', rs2('recorded'), true);
+check('on the channel it was asked on', lp_journal(1)(2), "read");
+check('and still as a review', lp_jphase(lp_journal(1)), "review");
+check('so the rung moved', lp_review_of("w_neko", "read")(1), 2);
+
+;;; What a client is told about the period: the numbers it needs to say
+;;; which month a score belongs to, and advice only when there is any.
+vars pst = result('langpop/status', jsonrpc_obj([% 'session_id', ssid %]));
+check('the period is reported', pst('period'), 1);
+check_true('with an end to it', pst('period_ends') /== json_null);
+check_true('reviews owed are counted', isinteger(pst('reviews_due')));
+check_true('consistency is reported', pst('consistency') and true);
+check_true('including the days',
+           isinteger(pst('consistency')('days_worked')));
+check('and no advice on the first day',
+      pst('consistency')('advice'), json_null);
+lvars mrow = false, cc;
+for cc in datalist(pst('criteria')) do
+    if cc('criterion') = 'recognise(hiragana)' then cc -> mrow endif;
+endfor;
+check_true('a measured criterion is still there', mrow and true);
+check('measured over reviews, which need a floor', mrow('need'), 69);
+
 ;;; A short answer is never treated as a slip, so nothing hints that it
 ;;; was close.
 vars sl3 = result('langpop/answer',

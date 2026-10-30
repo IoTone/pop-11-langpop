@@ -154,3 +154,40 @@ trusting a score.
   contrast each word exercises
 - `graph/resources.pl` — `r_forvo_ja`, `r_minimal_rl`:
   the catalogue already points at where a human can hear the difference
+
+## Two item kinds this needs that the graph does not have
+
+Raised 2026-10-30, not built. Both are English-for-a-Japanese-reader
+problems, and both are *minimal pair* work rather than vocabulary.
+
+### 1. English words that sound the same, or nearly
+
+*presents* and *presence*; *rice* and *lice*; *sink* and *think*;
+*coffee* and *copy*. The gap is not meaning and not spelling -- the
+learner may know both words perfectly -- it is that the contrast is
+inaudible to them and so unmakeable by them. `confusable/3` already
+records which pairs are confused and `lp_mistook` already diagnoses
+which partner a learner reached for, so the graph has the right shape;
+what is missing is the pair list and a question that plays one and asks
+which it was. That question is `listen_pick`, which exists.
+
+Two of these are distinguishable by ear only in context (*presents* /
+*presence* differ in the final consonant and nothing else a Japanese
+phonology distinguishes), so the honest version of the item may be a
+carrier sentence rather than a word -- which makes it a `pattern`, and
+patterns are taught by assignment today rather than asked.
+
+### 2. Words whose katakana shape will be produced instead
+
+Distinct from the loanword traps already in `graph/en/items.pl`, which
+ask whether the learner knows the English word *means* something else.
+This asks whether they can say it: レストラン is a correct pronunciation of
+a Japanese word, fluent and already owned, and it will come out instead
+of *restaurant* unless something makes the substitution audible to the
+speaker. That needs the speaking channel and so it needs everything in
+the rest of this document; until then the item can at least be
+*heard*: two recordings and "which one was that".
+
+Both sets are content, not engine. Neither is in `--audit` yet, because
+nothing measures them: they want a criterion of their own
+(`contrast(en, …)`) before the audit has anything to count.

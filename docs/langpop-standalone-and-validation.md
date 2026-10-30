@@ -446,14 +446,32 @@ did what the section above predicted, in order:
    beliefs, which already decay the past geometrically). Not changed:
    it moves an exit criterion, which is an owner's decision.
 
-4. **Smaller observations, not yet acted on:** a reported-but-never-
+4. **The lifetime denominator: settled, 2026-10-30.** It was not a
+   denominator problem at all. A window onto the same journal reads
+   0.645 where the lifetime reads 0.569, because `ready/4` excludes what
+   is known: an item is asked only while it is unlearned, so the journal
+   holds the record of not-yet-knowing and no evidence of knowing. The
+   answer was refresh reviews, a ladder that burns, and a 28-day period
+   the scores reset with -- see `langpop-reviews-and-periods.md`. The
+   same criteria now read 0.97-1.00 for the same student.
+
+5. **A review answered after a typing slip was recorded as learning.**
+   Found by the oracle counting six passed reviews of a four-rung
+   ladder. `lp_m_answer` cleared the item in flight as soon as any
+   answer arrived, so the retry -- the same question -- fell back to the
+   gate channel and the learning phase. The channel half of that
+   predates phases and was live. Pinned in the server suite.
+
+6. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
    move it, exactly as `--audit` says.
 
-Soak state: seeds 1-5 (ja) and 1-3 (en) all pass, deterministically,
-~1300 turns to exhaust ja pre-school's typed pool from empty.
+Soak state: seeds 1-5 (ja) and 1-3 (en) all pass, deterministically.
+~1300 turns to exhaust ja pre-school's typed pool from empty before
+reviews existed; ~2650 with them, which is the ladder being climbed four
+rungs deep on every item and then burned.
 
 ---
 

@@ -59,8 +59,14 @@ define lp_new_session(student) -> sid;
     ;;; item is now asked two ways -- read it, hear it -- and an answer
     ;;; filed against the wrong channel is the comfortable averaging that
     ;;; channels exist to prevent.
+    ;;; Slot 10 is the PHASE the question in flight was asked in --
+    ;;; learning, or a review owed from an earlier day.  Remembered for
+    ;;; the same reason as the channel: lp_m_answer records long after
+    ;;; lp_m_next chose, and an answer filed in the wrong phase would be
+    ;;; a review that measures nothing or a first attempt that counts
+    ;;; towards an exit criterion.
     {% student, lp_now_ms(), false, 0, false,
-       [], 0, newproperty([], 32, 0, "perm"), false %}
+       [], 0, newproperty([], 32, 0, "perm"), false, "learn" %}
         -> lp_sessions(consword(sid));
 enddefine;
 
@@ -346,12 +352,19 @@ define lp_m_next(msg) -> res;
     ;;; was told it would come round again, so it comes before anything
     ;;; new.  Reported as `requeued` so a client can say so rather than
     ;;; showing it as a fresh question.
-    lvars requeued = lp_due(), ch = false;
+    lvars requeued = lp_due(), ch = false, phase = "learn";
     (requeued or lp_choose(lp_plan())) -> item;
     if requeued then lp_due_ch(item) -> ch endif;
-    ;;; Every fourth question by ear, exactly as the TUI interleaves --
+    ;;; Then anything owed from an earlier day, before anything new --
     ;;; the rule lives in the engine so both doors ask the same way.
     unless requeued then
+        lvars ritem, rch;
+        lp_review_next() -> (ritem, rch);
+        if ritem then ritem -> item; rch -> ch; "review" -> phase endif;
+    endunless;
+    ;;; Every fourth question by ear, exactly as the TUI interleaves --
+    ;;; the rule lives in the engine so both doors ask the same way.
+    unless requeued or phase == "review" then
         if (lp_asked_n + 1) mod lp_hear_every() == 0 then
             lvars hitem = lp_choose_hear();
             if hitem then hitem -> item; "hear" -> ch endif;
@@ -383,6 +396,7 @@ define lp_m_next(msg) -> res;
     item -> s(3);
     lp_now_ms() -> s(4);
     ch -> s(9);
+    phase -> s(10);
     ;;; A listening question's `prompt` is a PATH and not something to
     ;;; print: showing it would not give the answer away, but a client
     ;;; that rendered it as a glyph would be showing the student a
@@ -398,6 +412,12 @@ define lp_m_next(msg) -> res;
                    'options', lp_vec([% lvars o; for o in options do lp_jkey(o) endfor %]),
                    'kind', lp_jkey(lp_kind(item)),
                    'requeued', requeued and true,
+                   ;;; Said out loud, because a client should be able to
+                   ;;; tell a student that this one is a review of
+                   ;;; something they already know rather than a fresh
+                   ;;; failure waiting to happen.
+                   'phase', lp_jkey(phase),
+                   'reviews_due', lp_review_count(),
                    'belief', lp_bel(item, ch) %]) -> res;
 enddefine;
 
@@ -490,11 +510,20 @@ define lp_m_answer(msg) -> res;
     ;;; drives the graph without going through next (a batch import, a
     ;;; test), and it is reported separately so the two never blur.
     unless isinteger(latency) and latency >= 0 then false -> latency endunless;
+    ;;; THE QUESTION STAYS IN FLIGHT UNTIL SOMETHING IS RECORDED.
+    ;;; Clearing s(3) here cleared it for the slip retry too, and the
+    ;;; retry is the same question: the second answer arrived with
+    ;;; `asked` false, so it was filed on the gate channel instead of
+    ;;; the one it was asked on, and -- once questions had phases -- a
+    ;;; review answered after a typing slip was recorded as learning.
+    ;;; It then counted towards no criterion and left the item's rung
+    ;;; where it was, which is how the oracle found this: it had seen
+    ;;; six passed reviews of a four-rung ladder.
+    ;;;
+    ;;; The CLOCK still runs from s(4), which the slip path has always
+    ;;; left alone on purpose, so a deliberate slip still buys no time.
     lvars timed = false, asked = s(3) == item;
-    if s(3) == item and s(4) > 0 then
-        lp_now_ms() - s(4) -> timed;
-        false -> s(3);
-    endif;
+    if asked and s(4) > 0 then lp_now_ms() - s(4) -> timed endif;
     lvars used = timed or latency or 0;
     ;;; The channel the question IN FLIGHT was asked on -- and only when
     ;;; the item matches.  The first version read s(9) whenever it was
@@ -562,8 +591,14 @@ define lp_m_answer(msg) -> res;
     ;;; lp_undo_last restores every belief this moved, which is more than
     ;;; one whenever a correct answer inferred a prerequisite from what
     ;;; the item contains.
+    ;;; Out of flight, now that it is being recorded.
+    false -> s(3);
     lp_undo_start(item);
-    lp_record(item, ach, 1, outcome, used);
+    ;;; In the phase the question was ASKED in, and only when the answer
+    ;;; is to the question in flight -- a client answering something else
+    ;;; is learning, whatever the last question happened to be.
+    lp_record_phase(if asked then s(10) else "learn" endif,
+                    item, ach, 1, outcome, used);
     lp_undo_stop();
     lp_answered(item);
     lp_q_out(s);
@@ -636,6 +671,21 @@ define lp_m_explain(msg) -> res;
                    'prerequisites', lp_vec(pres) %]) -> res;
 enddefine;
 
+define lp_m_consistency() -> o;
+    lvars o, worked, elapsed, n, minutes, adv = lp_schedule_advice();
+    lp_period_worked() -> (worked, elapsed);
+    lp_period_sessions() -> (n, minutes);
+    jsonrpc_obj([% 'days_worked', worked,
+                   'days_elapsed', elapsed,
+                   'sittings', n,
+                   'minutes', minutes,
+                   'advice', if adv then
+                                 jsonrpc_obj([% 'shape', lp_jkey(adv(1)),
+                                                'times', adv(2),
+                                                'minutes', adv(3) %])
+                             else json_null endif %]) -> o;
+enddefine;
+
 define lp_m_status(msg) -> res;
     lvars msg, res, s = lp_need_session(msg), e, c, th, ms, items, acc, fast, n,
           crits = [];
@@ -678,12 +728,18 @@ define lp_m_status(msg) -> res;
                               'note', 'needs the content build' %])
            else
                lp_ask(c, "criterion_items", 1) -> items;
-               lp_measure(items, ms) -> (acc, fast, n);
+               ;;; Reviews, this period -- see lp_measure_in.  `need` is
+               ;;; the floor: a client that showed 100% over three
+               ;;; reviews of a sixty-nine item set would be reporting
+               ;;; a sample, not a skill.
+               lp_measure_in(items, ms, lp_period_start, "review")
+                   -> (acc, fast, n);
                jsonrpc_obj([% 'criterion', lp_term_str(c),
                               'kind', 'measured',
                               'accuracy', acc,
                               'within_latency', fast,
                               'answers', n,
+                              'need', length(items),
                               'threshold', th,
                               'latency_ms', ms %])
            endif;
@@ -692,6 +748,21 @@ define lp_m_status(msg) -> res;
                    'language', lp_jkey(lp_lang),
                    'level', lp_jkey(lp_level),
                    'ready_count', length(lp_plan()),
+                   ;;; Which period the student is in, and what it has
+                   ;;; left: the scores reset with it, so a client that
+                   ;;; shows a score has to be able to say over what.
+                   'period', lp_period_n,
+                   'period_started', lp_period_start or json_null,
+                   'period_ends', if lp_period_start
+                                  then lp_period_start + lp_period_span()
+                                  else json_null endif,
+                   'reviews_due', lp_review_count(),
+                   ;;; How the period has gone, and the schedule to offer
+                   ;;; if it has gone badly.  Numbers, not a sentence: a
+                   ;;; client says it in the language its student reads,
+                   ;;; and `advice` is null whenever the student is
+                   ;;; keeping up -- there is nothing to say then.
+                   'consistency', lp_m_consistency(),
                    'criteria', lp_vec(crits) %]) -> res;
 enddefine;
 
@@ -1169,6 +1240,9 @@ define lp_server_main();
         hd(args) -> a;
         if a = '--port' then strnumber(hd(tl(args))) -> port; tl(tl(args)) -> args;
         elseif a = '--data' then hd(tl(args)) -> lp_home_dir; tl(tl(args)) -> args;
+        ;;; A short day, for a run that lasts seconds -- see lp_day_ms.
+        elseif a = '--day-ms' then
+            strnumber(hd(tl(args))) -> lp_day_ms; tl(tl(args)) -> args;
         elseif a = '--stdio' then tl(args) -> args;
         else tl(args) -> args;
         endif;

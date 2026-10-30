@@ -49,7 +49,14 @@ case "$1" in
             cp "$HOME/.langpop/audio.conf" "$data/"
             [ -d "$HOME/.langpop/audio" ] && cp -R "$HOME/.langpop/audio" "$data/audio"
         fi
+        # A SHORT DAY.  The review ladder and the period are measured in
+        # wall-clock days and an oracle run lasts under a minute, so
+        # without this nothing that waits a day could ever be exercised:
+        # no review would come due and every criterion would read as
+        # untested.  200ms a day puts the first review 200ms out and the
+        # period at 5.6s, which a full run crosses once or twice.
         "$run" basepop11 "$here/server.p" --port "$port" --data "$data/" \
+            --day-ms "${LANGPOP_DAY_MS:-200}" \
             >"$data/server.log" 2>&1 &
         srv=$!
         i=0

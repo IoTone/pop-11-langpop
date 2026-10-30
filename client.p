@@ -202,14 +202,22 @@ enddefine;
 define show_status();
     lvars st = rpc('langpop/status', jsonrpc_obj([% 'session_id', lp_sid %])), c;
     returnunless(st);
-    printf('\n  %p, %p -- level %p\n',
-           [% p(st, 'display_name'), p(st, 'language'), p(st, 'level') %]);
+    printf('\n  %p, %p -- level %p, period %p\n',
+           [% p(st, 'display_name'), p(st, 'language'), p(st, 'level'),
+              p(st, 'period') %]);
     for c in_vector (p(st, 'criteria') or {}) do
-        if p(c, 'kind') = 'measured' then
-            printf('    %p: %p%% right, %p%% within %pms, over %p answers (need %p)\n',
+        if p(c, 'kind') = 'measured' and p(c, 'answers') == 0 then
+            ;;; Nothing to read yet rather than nought per cent: a
+            ;;; student who has not been asked anything this period has
+            ;;; not failed it.
+            printf('    %p: no reviews yet this period (needs %p)\n',
+                   [% p(c, 'criterion'), p(c, 'need') %]);
+        elseif p(c, 'kind') = 'measured' then
+            printf('    %p: %p%% right, %p%% within %pms, over %p of %p reviews (need %p)\n',
                    [% p(c, 'criterion'), round(p(c, 'accuracy') * 100),
                       round(p(c, 'within_latency') * 100), p(c, 'latency_ms'),
-                      p(c, 'answers'), round(p(c, 'threshold') * 100) %]);
+                      p(c, 'answers'), p(c, 'need'),
+                      round(p(c, 'threshold') * 100) %]);
         elseif p(c, 'kind') = 'count' then
             printf('    %p: %p of %p\n',
                    [% p(c, 'criterion'), p(c, 'have'), p(c, 'want') %]);
@@ -217,7 +225,32 @@ define show_status();
             printf('    %p: %p\n', [% p(c, 'criterion'), p(c, 'note') %]);
         endif;
     endfor;
-    printf('    %p items ready to teach now\n', [% p(st, 'ready_count') %]);
+    printf('    %p items ready to teach now', [% p(st, 'ready_count') %]);
+    if (p(st, 'reviews_due') or 0) > 0 then
+        printf(', %p waiting to come round again', [% p(st, 'reviews_due') %]);
+    endif;
+    printf('\n');
+    ;;; The month as it has actually gone, and a schedule only when the
+    ;;; server offers one -- it says nothing when the student is keeping
+    ;;; up, and so does this.
+    lvars cy = p(st, 'consistency'), ad;
+    if cy then
+        printf('    %p of the last %p days had some study in them\n',
+               [% p(cy, 'days_worked'), p(cy, 'days_elapsed') %]);
+        p(cy, 'advice') -> ad;
+        if ad then
+            if p(ad, 'shape') = 'daily' then
+                printf('    a suggestion: %p minutes a day would keep up with it\n',
+                       [% p(ad, 'minutes') %]);
+            elseif p(ad, 'shape') = 'weekly' then
+                printf('    a suggestion: %p sittings a week, %p minutes each\n',
+                       [% p(ad, 'times'), p(ad, 'minutes') %]);
+            else
+                printf('    a suggestion: %p sittings this month, %p minutes each\n',
+                       [% p(ad, 'times'), p(ad, 'minutes') %]);
+            endif;
+        endif;
+    endif;
 enddefine;
 
 define do_assign();

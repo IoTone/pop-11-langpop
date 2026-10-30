@@ -924,9 +924,11 @@ define zine_status_text(r) -> txt;
                 [% r(3), r(5), r(6), r(4) %])
     elseif r(2) == "unbuilt" then
         'コンテンツ未生成のため、まだ測っていません'
+    elseif r(6) == 0 then
+        sprintf('今期の復習はまだありません（%p 問必要）', [% r(8) %])
     else
-        sprintf('正解 %p%%・%pms 以内 %p%%・%p 問（必要 %p%%）',
-                [% r(3), r(5), r(4), r(6), r(7) %])
+        sprintf('正解 %p%%・%pms 以内 %p%%・復習 %p/%p 問（必要 %p%%）',
+                [% r(3), r(5), r(4), r(6), r(8), r(7) %])
     endif -> txt;
 enddefine;
 

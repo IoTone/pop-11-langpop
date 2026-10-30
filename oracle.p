@@ -74,6 +74,16 @@ vars
     ora_comp = newproperty([], 256, false, "perm"),  ;;; item -> competence
     ora_assigned = newproperty([], 16, 0, "perm"),   ;;; item -> reports sent
     ora_offered = newproperty([], 256, 0, "perm"),   ;;; item -> times offered
+    ;;; "item/channel" -> reviews passed.  A WORD and not a list: a
+    ;;; property compares keys with ==, and two freshly consed lists are
+    ;;; never == each other, so a list key would make every lookup a
+    ;;; miss and the counter would sit at zero forever.  Words are
+    ;;; interned, so they compare the way a key has to.  The ladder has
+    ;;; four rungs, so a
+    ;;; fifth successful review of the same item means a burned item was
+    ;;; scheduled again -- which this side can see and the server, from
+    ;;; inside, cannot.
+    ora_passed = newproperty([], 256, 0, "perm"),
     ora_violations = [],
     ora_stats = newproperty([], 16, 0, "perm"),
 ;
@@ -82,6 +92,10 @@ define ora_note(s);
     lvars s;
     conspair(s, ora_violations) -> ora_violations;
     printf('ORACLE VIOLATION: %p\n', [^s]);
+enddefine;
+
+define ora_rkey(item, ch) -> k;
+    lvars item, ch, k = consword((item sys_>< '') <> '/' <> (ch sys_>< ''));
 enddefine;
 
 define ora_count(k);
@@ -393,6 +407,7 @@ define ora_turn() -> more;
     consword(ch sys_>< '') -> chw;
     (ora_p(q, 'belief') or 0) * 1.0 -> pre;
     ora_p(q, 'requeued') -> requeued;
+    lvars phase = (ora_p(q, 'phase') or 'learn') sys_>< '';
 
     ;;; the arithmetic is only checkable when both numbers are on the
     ;;; gate channel, which is where lp_m_answer reports belief
@@ -406,6 +421,34 @@ define ora_turn() -> more;
         endunless;
         if ora_p(q, 'prompt') then
             ora_note((itemw sys_>< '') <> ': a hear question leaked its prompt');
+        endif;
+    endif;
+
+    ;;; A REVIEW IS OF SOMETHING ALREADY KNOWN.  The whole point of the
+    ;;; ladder is that it produces evidence about settled knowledge, so
+    ;;; a review of an item under mastery would be a learning question
+    ;;; wearing the wrong label -- and would be counted towards an exit
+    ;;; criterion it has no business in.
+    ;;; Counted, not flagged, until it is understood: a LEARNING question
+    ;;; about something already mastered.  ready/4 excludes what is
+    ;;; known, so every one of these arrived by another door.
+    if phase /= 'review' and gate and pre >= MASTERY then
+        ora_count("learn_known");
+        if requeued then ora_count("learn_known_requeued") endif;
+    endif;
+    if phase = 'review' then
+        ora_count("review");
+        if gate and pre < MASTERY - ORA_TOL then
+            ora_note((itemw sys_>< '') <> ': reviewed at belief '
+                     <> (pre sys_>< '') <> ', under mastery');
+        endif;
+        if ora_passed(ora_rkey(itemw, chw)) >= 4 then
+            ora_note((itemw sys_>< '') <> ' on ' <> (chw sys_>< '')
+                     <> ': a burned item came back for review (belief '
+                     <> (pre sys_>< '') <> ', passed '
+                     <> (ora_passed(ora_rkey(itemw, chw)) sys_>< '')
+                     <> ', offered ' <> (ora_offered(itemw) sys_>< '')
+                     <> ' times)');
         endif;
     endif;
 
@@ -517,6 +560,18 @@ define ora_turn() -> more;
     (ora_p(res, 'belief') or 0) * 1.0 -> post;
     ora_p(res, 'mastered') -> mastered;
     if gate then ora_check_arith(itemw, outcome, pre, post, mastered) endif;
+    ;;; THE LADDER RESTARTS WHENEVER MASTERY DOES.  An answer that leaves
+    ;;; the belief under MASTERY takes the item off the ladder entirely,
+    ;;; and relearning it starts again at the first rung -- so counting
+    ;;; reviews without this said "a burned item came back" about an item
+    ;;; that had honestly been forgotten and learned again.  It is the
+    ;;; belief and not the outcome that decides, because a requeued
+    ;;; LEARNING question about a mastered item can drop it just as a
+    ;;; failed review can.
+    if phase = 'review' and outcome = 'right' then
+        ora_passed(ora_rkey(itemw, chw)) + 1 -> ora_passed(ora_rkey(itemw, chw));
+    endif;
+    if gate and post < MASTERY then 0 -> ora_passed(ora_rkey(itemw, chw)) endif;
 
     ;;; learning: being shown the answer teaches more than being right
     ora_comp(itemw) -> c;
@@ -664,17 +719,19 @@ define ora_report();
     lvars res, c, items, i, missing = [], ready = 0;
     ora_rpc('langpop/status', jsonrpc_obj([% 'session_id', ora_sid %])) -> res;
     if res then
-        printf('\nlevel %p, %p ready\n',
-               [% ora_p(res, 'level'), ora_p(res, 'ready_count') %]);
+        printf('\nlevel %p, %p ready, period %p, %p reviews owed\n',
+               [% ora_p(res, 'level'), ora_p(res, 'ready_count'),
+                  ora_p(res, 'period'), ora_p(res, 'reviews_due') %]);
         for c in datalist(ora_p(res, 'criteria') or {}) do
             if ora_p(c, 'kind') = 'count' then
                 printf('  %p: %p of %p (graph holds %p)\n',
                        [% ora_p(c, 'criterion'), ora_p(c, 'have'),
                           ora_p(c, 'want'), ora_p(c, 'in_graph') %]);
             elseif ora_p(c, 'kind') = 'measured' then
-                printf('  %p: accuracy %p, within latency %p, over %p\n',
+                printf('  %p: accuracy %p, within latency %p, over %p of %p reviews\n',
                        [% ora_p(c, 'criterion'), ora_p(c, 'accuracy'),
-                          ora_p(c, 'within_latency'), ora_p(c, 'answers') %]);
+                          ora_p(c, 'within_latency'), ora_p(c, 'answers'),
+                          ora_p(c, 'need') %]);
             endif;
         endfor;
     endif;
@@ -714,6 +771,14 @@ define ora_report();
               ora_stats("right"), ora_stats("near"), ora_stats("wrong"),
               ora_stats("skip"), ora_stats("slip"), ora_stats("later"),
               ora_stats("report") %]);
+    printf('%p learning questions about mastered items (%p of them requeued)\n',
+           [% ora_stats("learn_known"), ora_stats("learn_known_requeued") %]);
+    printf('%p of them reviews; %p items burned\n',
+           [% ora_stats("review"),
+              length([% appproperty(ora_passed,
+                             procedure(k, v);
+                                 if v >= 4 then k endif;
+                             endprocedure) %]) %]);
 enddefine;
 
 define ora_main();

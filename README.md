@@ -41,7 +41,20 @@ privileges a phone app would not have.
 # a failing run prints its seed, and the seed is the bug report
 ./langpop oracle --seed 42 --answers 3000
 ./langpop oracle --place --skill 0.9   # the placement interview instead
+
+# a day, in milliseconds.  The review ladder and the scoring period are
+# measured in wall-clock days, so a test needs a short one -- it scales
+# the clock and nothing else
+./langpop server --port 7801 --day-ms 200
 ```
+
+A mastered item is scheduled, not shelved: it comes back after a day,
+three days, a week and four weeks, and is then burned. Scores reset
+every 28 days, on the student's own clock -- the *reading* resets, never
+the record -- and the exit criteria are measured over the reviews in the
+current period, because measured over a lifetime they read what it cost
+somebody to learn rather than what they know. The numbers that settled
+that are in `docs/langpop-reviews-and-periods.md`.
 
 This repository was carved out of
 [IoTone/poplog](https://github.com/IoTone/poplog) with its history

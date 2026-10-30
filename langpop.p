@@ -82,6 +82,10 @@ vars
     lp_confs    = newproperty([], 256, [], "perm"),     ;;; item -> [[other why] ...]
     lp_skanjis  = newproperty([], 64, false, "perm"),   ;;; word -> kanji spelling
     lp_beliefs  = newproperty([], 1024, 0.0, "perm"),
+    ;;; bkey -> {stage due}, the review ladder.  Up here with the other
+    ;;; student state because the undo path, which is above the ladder
+    ;;; itself, has to be able to put a rung back.
+    lp_reviews  = newproperty([], 512, false, "perm"),
     lp_items    = [],
     lp_ladders  = [],                                   ;;; [[lang n level] ...]
     lp_exits    = [],                                   ;;; [[lang level crit th ms] ...]
@@ -905,11 +909,16 @@ enddefine;
 vars lp_undo = false,                   ;;; [[key before] ...] or false
     lp_undo_item = false,
     lp_undo_journal = false,
+    ;;; The ladder moves on a recorded answer too, so an undone answer
+    ;;; that burned an item has to put the rung back -- otherwise :oops
+    ;;; is a way to retire an item by mistyping.
+    lp_undo_rev = [],
     lp_undo_watch = false;
 
 define lp_undo_start(item);
     lvars item;
     [] -> lp_undo;
+    [] -> lp_undo_rev;
     item -> lp_undo_item;
     lp_journal -> lp_undo_journal;
     true -> lp_undo_watch;
@@ -923,9 +932,191 @@ define lp_undo_last() -> ok;
     lvars ok = false, p;
     returnunless(lp_undo and lp_undo_item);
     for p in lp_undo do hd(tl(p)) -> lp_beliefs(hd(p)) endfor;
+    for p in lp_undo_rev do hd(tl(p)) -> lp_reviews(hd(p)) endfor;
+    [] -> lp_undo_rev;
     lp_undo_journal -> lp_journal;
     lp_undo_item -> ok;
     false -> lp_undo; false -> lp_undo_item;
+enddefine;
+
+;;; ----------------------------------------------- periods and reviews
+;;; WHY MASTERY IS NOT THE END OF AN ITEM.
+;;;
+;;; Mastery used to retire an item for good: ready/4 excludes what is
+;;; known, so a kana answered right three times was never asked again.
+;;; That is wrong twice over.  It is wrong about people, who forget --
+;;; and it is wrong about the measurement, because it guarantees the
+;;; journal holds nothing but the record of not yet knowing (see
+;;; lp_measure_in).  A mastered item is therefore scheduled, not shelved.
+;;;
+;;; The ladder is the obvious one and the gaps are days, widening, with
+;;; a last rung that ends it: an item that has come back right after
+;;; four weeks is BURNED and stops being scheduled.  Burning is not a
+;;; claim that it can never be forgotten.  It is a claim that individual
+;;; drill has stopped earning its place in the hour -- and in Japanese
+;;; it keeps being tested anyway, because a burned kanji is a building
+;;; block of every later word that contains it.
+;;;
+;;; A review that goes wrong needs no special arithmetic.  The ordinary
+;;; update already multiplies the belief by 0.30, which takes 0.83 to
+;;; 0.25 -- under MASTERY, so the item walks back into the plan by
+;;; itself and the ladder simply forgets where it had got to.
+lconstant REVIEW_GAPS = [1 3 7 28];     ;;; days between reviews
+
+;;; Declared forward: the ladder lives next to the evidence it is made
+;;; of, and the drillability test lives next to the drill loop.
+vars procedure lp_drillable_on;
+
+;;; A day, so that a test can have a short one.  Reviews and periods are
+;;; the first thing here measured in wall-clock time rather than in
+;;; questions, and an oracle run lasts two seconds: without this knob
+;;; nothing that waits a day could ever be exercised.  It scales time
+;;; and nothing else -- no outcome, no threshold, no interval ORDER.
+vars lp_day_ms = 86400000;
+
+;;; THE PERIOD, and why it is not a calendar month.
+;;;
+;;; Scoring that counts forever cannot be recovered from: a month of
+;;; honest beginner mistakes sits in the denominator of a 0.90 criterion
+;;; for the rest of the student's life, and the only cure is grinding
+;;; thousands of answers on material they already know.  So the reading
+;;; resets -- the READING, not the record.  The journal stays exactly as
+;;; it was, append-only and complete, and the period is a lower bound on
+;;; what the criteria read from it.  Nothing is ever deleted to make a
+;;; student look better.
+;;;
+;;; It runs on the student's own clock, from their first answer, in
+;;; whole weeks.  A calendar month would put the boundary on the 1st for
+;;; everybody, which both truncates whoever started on the 28th and
+;;; makes a weekly rhythm land on a different weekday every period.
+lconstant PERIOD_DAYS = 28;
+
+vars lp_period_start = false,           ;;; ms, or false before the first answer
+    lp_period_n = 1;
+
+define lp_period_span() -> ms;
+    lvars ms = PERIOD_DAYS * lp_day_ms;
+enddefine;
+
+;;; Rolled forward lazily, from whenever it last started.  WHILE, not
+;;; IF: a student who comes back after three months has crossed three
+;;; boundaries and is in period four, not period two.
+define lp_period_roll();
+    lvars now = lp_now_ms();
+    unless lp_period_start then now -> lp_period_start; return endunless;
+    while now >= lp_period_start + lp_period_span() do
+        lp_period_start + lp_period_span() -> lp_period_start;
+        lp_period_n + 1 -> lp_period_n;
+    endwhile;
+enddefine;
+
+;;; The phase a journal entry was answered in.  Entries written before
+;;; there were phases are learning, which is what they were.
+define lp_jphase(e) -> ph;
+    lvars e, ph = if length(e) >= 7 then e(7) else "learn" endif;
+enddefine;
+
+;;; What the question being answered right now is for.  A dlocal in the
+;;; one place that asks a review, rather than an argument threaded
+;;; through every caller of lp_record -- there are eleven of them and
+;;; ten would pass "learn".
+vars lp_phase = "learn";
+
+define lp_review_of(item, ch) -> r;
+    lvars item, ch, r = lp_reviews(lp_bkey(lp_user, item, ch));
+enddefine;
+
+define lp_burned(item, ch) -> yes;
+    lvars item, ch, r = lp_review_of(item, ch),
+          yes = r and r(1) > length(REVIEW_GAPS);
+enddefine;
+
+define lp_review_gap(stage) -> ms;
+    lvars stage, ms;
+    if stage > length(REVIEW_GAPS) then false
+    else REVIEW_GAPS(stage) * lp_day_ms
+    endif -> ms;
+enddefine;
+
+;;; Where an answer leaves the ladder.  Called for every recorded answer,
+;;; so the three cases have to be exhaustive:
+;;;
+;;;   not mastered   off the ladder entirely, whether it just fell off
+;;;                  or was never on
+;;;   newly mastered on at the first rung
+;;;   a review       one rung up if it went well, and burned past the top
+;;;
+;;; A review that did NOT go well is covered by the first case, because
+;;; the belief update has already taken the item under MASTERY.
+define lp_review_note(item, ch, tier, outcome);
+    lvars item, ch, tier, outcome, k = lp_bkey(lp_user, item, ch), r, stage;
+    returnunless(tier == 1);
+    if lp_undo_watch then
+        lp_undo_rev <> [[% k, lp_reviews(k) %]] -> lp_undo_rev;
+    endif;
+    unless lp_mastered_on(item, ch) then
+        false -> lp_reviews(k);
+        return;
+    endunless;
+    lp_reviews(k) -> r;
+    if not(r) then
+        {% 1, lp_now_ms() + lp_review_gap(1) %} -> lp_reviews(k);
+    elseif lp_phase == "review" and lp_outcome_ok(outcome) then
+        r(1) + 1 -> stage;
+        if lp_review_gap(stage) then
+            {% stage, lp_now_ms() + lp_review_gap(stage) %}
+        else
+            {% stage, false %}                  ;;; burned
+        endif -> lp_reviews(k);
+    endif;
+enddefine;
+
+;;; Everything whose gap has elapsed, soonest first, so that a session
+;;; clears the oldest debt before the freshest.
+define lp_review_due() -> due;
+    lvars due = [], item, ch, r, p, q, out;
+    for item in lp_items do
+        for ch in [% lp_primary(item), "hear" %] do
+            lp_review_of(item, ch) -> r;
+            nextunless(r and r(2) and r(2) <= lp_now_ms());
+            nextunless(lp_drillable_on(item, ch));
+            due <> [{% item, ch, r(2) %}] -> due;
+        endfor;
+    endfor;
+    ;;; An insertion sort over a list that holds a day's reviews, not a
+    ;;; lifetime's.  syssort would want a vector copy of it.
+    [] -> out;
+    for p in due do
+        [] -> q;
+        until out == [] or hd(out)(3) > p(3) do
+            q <> [% hd(out) %] -> q; tl(out) -> out;
+        enduntil;
+        q <> [% p %] <> out -> out;
+    endfor;
+    out -> due;
+enddefine;
+
+;;; How many of a set are waiting, which is the number a student needs
+;;; to see at the top of a session.
+define lp_review_count() -> n;
+    lvars n = length(lp_review_due());
+enddefine;
+
+;;; lp_record, in a named phase.  The server chooses the question in one
+;;; method and records the answer in another, so it cannot hold the
+;;; phase in a dlocal across the two the way the TUI does.
+define lp_record_phase(phase, item, ch, tier, outcome, latency_ms);
+    lvars phase, item, ch, tier, outcome, latency_ms;
+    dlocal lp_phase = phase or "learn";
+    lp_record(item, ch, tier, outcome, latency_ms);
+enddefine;
+
+;;; The review owed longest, as (item, channel).
+define lp_review_next() -> (item, ch);
+    lvars d = lp_review_due();
+    if d == [] then (false, false) -> (item, ch)
+    else (hd(d)(1), hd(d)(2)) -> (item, ch)
+    endif;
 enddefine;
 
 define lp_record(item, ch, tier, outcome, latency_ms);
@@ -978,21 +1169,152 @@ define lp_record(item, ch, tier, outcome, latency_ms);
     ;;; first version of this both failed to measure anything (a string
     ;;; is never == to the word "right") and crashed json_generate on the
     ;;; next save, which has no idea what a Pop-11 word is.
-    conspair({% item, ch, tier, outcome, latency_ms, lp_now_ms() %},
+    ;;; The seventh field is the PHASE.  An entry written before there
+    ;;; were phases has six fields and reads back as learning, which is
+    ;;; what every answer before the ladder existed was.
+    lp_period_roll();
+    conspair({% item, ch, tier, outcome, latency_ms, lp_now_ms(), lp_phase %},
              lp_journal) -> lp_journal;
+    lp_review_note(item, ch, tier, outcome);
     ;;; Only a CHECK infers, and an inference records at tier 4, so this
     ;;; cannot run away: one level, once.
     if tier == 1 and outcome == "right" then lp_infer(item) endif;
+enddefine;
+
+;;; ------------------------------------------------------ keeping it up
+;;; WHAT A PERIOD IS FOR, besides resetting the score.  A month with a
+;;; boundary is a month a student can be behind in, and being behind is
+;;; the one thing a tutor can actually help with: the reviews pile up
+;;; whether or not anybody turns up for them.
+;;;
+;;; So the facts are counted here and the SUGGESTION is drawn from the
+;;; student's own history rather than from an ideal.  A learner who has
+;;; managed three sessions in three weeks will not start studying daily
+;;; because a program told them to; they might well agree to three
+;;; sessions a week, because they have already proved they can.  Telling
+;;; somebody to do what they have just failed to do is not advice.
+;;;
+;;; Nothing here scolds, and nothing here is worded here either -- the
+;;; numbers go out and the persona says it, for the reason lp_line
+;;; gives.
+
+;;; A session ends after half a day's forty-eighth of idleness -- half an
+;;; hour of a real day, and it scales with lp_day_ms so that a test with
+;;; a short day still has sessions in it.
+lconstant SESSION_SLICE = 48;
+
+;;; Tier-1 answers this period, oldest first.
+define lp_period_answers() -> es;
+    lvars e, es = [];
+    returnif(not(lp_period_start))([]);
+    for e in lp_journal do
+        nextunless(e(3) == 1 and e(6) >= lp_period_start);
+        conspair(e, es) -> es;              ;;; lp_journal is newest first
+    endfor;
+enddefine;
+
+;;; How many distinct days of this period have any work in them, and how
+;;; many days of it have gone by.  Days are counted from the period's
+;;; own start, not from midnight: a student who studies at one in the
+;;; morning has not studied twice.
+define lp_period_worked() -> (worked, elapsed);
+    lvars e, es = lp_period_answers(), seen = newproperty([], 32, false, "perm"),
+          worked = 0, elapsed;
+    for e in es do
+        lvars d = (e(6) - lp_period_start) div lp_day_ms;
+        unless seen(d) then true -> seen(d); worked + 1 -> worked endunless;
+    endfor;
+    ((lp_now_ms() - (lp_period_start or lp_now_ms())) div lp_day_ms) + 1
+        -> elapsed;
+enddefine;
+
+;;; Sittings, and how long they lasted.  A session of one answer lasts no
+;;; time at all, which is correct: the point of the number is how long
+;;; this student can sit with it, and somebody who answered once and
+;;; left could not sit with it.
+define lp_period_sessions() -> (n, minutes);
+    lvars e, es = lp_period_answers(), n = 0, last = false, start = false,
+          total = 0, minutes;
+    for e in es do
+        if not(last) or e(6) - last > lp_day_ms div SESSION_SLICE then
+            if start then total + (last - start) -> total endif;
+            n + 1 -> n; e(6) -> start;
+        endif;
+        e(6) -> last;
+    endfor;
+    if start then total + (last - start) -> total endif;
+    total div 60000 -> minutes;
+enddefine;
+
+;;; The schedule to offer, or false when they are keeping it up.
+;;;
+;;;   {"daily" n minutes}    n days a week, that long
+;;;   {"weekly" n minutes}   n sittings a week
+;;;   {"monthly" n minutes}  n sittings a period
+;;;
+;;; Chosen by what their own record shows they sustain, and rounded to
+;;; something sayable: "about twenty minutes" is advice, "19.4 minutes"
+;;; is a measurement read out loud.
+define lp_schedule_advice() -> advice;
+    lvars worked, elapsed, n, minutes, perweek, each;
+    false -> advice;
+    returnunless(lp_period_start);
+    lp_period_worked() -> (worked, elapsed);
+    ;;; Too early to have an opinion.  Three days of a four-week period
+    ;;; is not evidence of anything, and a tutor that offers a schedule
+    ;;; on day one is a tutor nobody listens to on day ten.
+    returnif(elapsed < 4);
+    ;;; Half the days, or better, is keeping it up.  No advice is needed
+    ;;; and offering it anyway would be the program talking for the sake
+    ;;; of talking.
+    returnif(worked * 2 >= elapsed);
+    lp_period_sessions() -> (n, minutes);
+    if n == 0 then
+        ;;; Nothing at all this period: the smallest honest thing to ask
+        ;;; for, rather than a schedule built out of no evidence.
+        {% "daily", 1, 10 %} -> advice;
+        return;
+    endif;
+    max(5, 5 * round((minutes / n) / 5)) -> each;
+    ;;; Weeks, rounded up, so a period that is four days old asks about
+    ;;; one week and not nought.
+    max(1, (elapsed + 6) div 7) -> perweek;
+    if n >= perweek and n >= 2 then
+        ;;; They turn up about weekly.  Make that the plan rather than
+        ;;; arguing with it.
+        {% "weekly", max(1, round(n / perweek)), each %} -> advice;
+    elseif worked >= 1 then
+        ;;; Fewer sittings than weeks: a shorter, likelier habit.
+        {% "daily", 1, min(each, 15) %} -> advice;
+    else
+        {% "monthly", max(1, n), each %} -> advice;
+    endif;
 enddefine;
 
 ;;; Accuracy and speed over the tier-1 evidence for one item set.  Speed
 ;;; is reported separately and never averaged into accuracy: a student
 ;;; who is right slowly has not learned to read, and one number would
 ;;; hide that.
-define lp_measure(items, latency_ms) -> (acc, fast, n);
-    lvars items, latency_ms, e, right = 0, quick = 0, n = 0;
+;;;
+;;; SINCE and PHASE are what make an exit criterion answerable at all.
+;;; Measured over everything, forever, the number is not a reading of
+;;; what the student can do -- it is a reading of what it cost them to
+;;; learn.  Every item is asked only while it is unknown and leaves the
+;;; plan the moment it is mastered, so the journal contains the mistakes
+;;; of learning and no evidence whatsoever of settled knowledge.  A
+;;; student with all 69 kana at mastery measured 0.569 over their
+;;; lifetime and 0.645 over their last 200 answers, which is the same
+;;; bias in a shorter window: the recent answers are the hard remainder.
+;;;
+;;; So the criteria read REVIEW evidence from the CURRENT PERIOD, and
+;;; the reviews exist to produce it.  Placement still reads everything,
+;;; because the answers it is weighing are the ones it just collected.
+define lp_measure_in(items, latency_ms, since, phase) -> (acc, fast, n);
+    lvars items, latency_ms, since, phase, e, right = 0, quick = 0, n = 0;
     for e in lp_journal do
         nextunless(e(3) == 1 and member(e(1), items));
+        nextif(since and e(6) < since);
+        nextif(phase and lp_jphase(e) /== phase);
         ;;; A skipped question counts in the denominator.  Declining to
         ;;; answer is evidence, and dropping it would let a student raise
         ;;; their accuracy by answering only what they knew.
@@ -1009,6 +1331,11 @@ define lp_measure(items, latency_ms) -> (acc, fast, n);
     if n == 0 then (0.0, 0.0, 0) -> (acc, fast, n)
     else ((right * 1.0) / n, (quick * 1.0) / n, n) -> (acc, fast, n)
     endif;
+enddefine;
+
+define lp_measure(items, latency_ms) -> (acc, fast, n);
+    lvars items, latency_ms;
+    lp_measure_in(items, latency_ms, false, false) -> (acc, fast, n);
 enddefine;
 
 ;;; --------------------------------------------------------- the persona
@@ -1117,9 +1444,21 @@ define lp_save();
     b -> o('beliefs');
     for e in lp_journal do
         conspair({% e(1) sys_>< '', e(2) sys_>< '', e(3),
-                    e(4) sys_>< '', e(5), e(6) %}, j) -> j;
+                    e(4) sys_>< '', e(5), e(6), lp_jphase(e) sys_>< '' %},
+                 j) -> j;
     endfor;
     consvector(#| for e in j do e endfor |#) -> o('journal');
+    ;;; The period is two numbers and the ladder is a map, and both are
+    ;;; state the journal cannot reconstruct: where the student's own
+    ;;; month started, and when each mastered item is next owed.
+    if lp_period_start then lp_period_start -> o('period_start') endif;
+    lp_period_n -> o('period_n');
+    lvars rv = newmapping([], 32, false, true);
+    appproperty(lp_reviews,
+        procedure(k, v);
+            if v then {% v(1), v(2) or 0 %} -> rv(k sys_>< '') endif;
+        endprocedure);
+    rv -> o('reviews');
     consvector(#| for a in lp_assigns do
                       {% a(1), a(2) sys_>< '', a(3) sys_>< '', a(4), a(5) %}
                   endfor |#) -> o('assignments');
@@ -1155,6 +1494,11 @@ define lp_load_profile(user) -> found;
     ;;; sitting in the globals.  lp_beliefs is safe either way because
     ;;; lp_bkey puts the student in the key.
     [] -> lp_journal; [] -> lp_assigns; [] -> lp_corrections;
+    ;;; Cleared with the journal and for the same reason: the server is
+    ;;; long-lived, and another student's reviews must not be owed by
+    ;;; whoever binds next.
+    false -> lp_period_start; 1 -> lp_period_n;
+    clearproperty(lp_reviews);
     lp_aids_reset(); lp_queue_reset();
     returnunless(s);
     json_parse(s) -> o;
@@ -1175,7 +1519,9 @@ define lp_load_profile(user) -> found;
                         if e(4) == true then "right"
                         elseif e(4) == false then "wrong"
                         else consword(e(4) sys_>< '') endif,
-                        e(5), e(6) %}, lp_journal) -> lp_journal;
+                        e(5), e(6),
+                        if length(e) >= 7 then consword(e(7) sys_>< '')
+                        else "learn" endif %}, lp_journal) -> lp_journal;
         endfor;
     endif;
     ;;; Assignments outlive the session on purpose: the whole point of
@@ -1188,6 +1534,15 @@ define lp_load_profile(user) -> found;
             lp_assigns <> [{% e(1), consword(e(2)), consword(e(3)),
                               e(4), e(5) %}] -> lp_assigns;
         endfor;
+    endif;
+    if o('period_start') then o('period_start') -> lp_period_start endif;
+    if o('period_n') then o('period_n') -> lp_period_n endif;
+    if o('reviews') then
+        appproperty(o('reviews'),
+            procedure(k, v);
+                {% v(1), if v(2) == 0 then false else v(2) endif %}
+                    -> lp_reviews(consword(k));
+            endprocedure);
     endif;
     if o('corrections') then
         for i from 1 to length(o('corrections')) do
@@ -2277,6 +2632,17 @@ enddefine;
 ;;; drill's.  The drill only has to know when to ask for it.
 vars procedure lp_show_glyph;
 
+vars procedure lp_drill;
+
+;;; An ordinary drill, recorded as a review.  A procedure rather than a
+;;; dlocal at the call site, because dlocal is a declaration and the
+;;; call site is inside a conditional.
+define lp_drill_review(item, ch);
+    lvars item, ch;
+    dlocal lp_phase = "review";
+    lp_drill(item, ch).erase;
+enddefine;
+
 define lp_drill(item, ch) -> done;
     lvars item, ch, shape, prompt, answer, options, o, i = 0, t0, line, typed,
           other, kslip = false, retried = false, heard = false, shown;
@@ -3077,12 +3443,21 @@ define lp_status_rows() -> rows;
             endif -> row;
         else
             lp_ask(c, "criterion_items", 1) -> items;
-            lp_measure(items, ms) -> (acc, fast, n);
+            ;;; Reviews, this period.  Not everything ever answered: see
+            ;;; lp_measure_in for why that number cannot be passed.
+            lp_measure_in(items, ms, lp_period_start, "review")
+                -> (acc, fast, n);
             {% "measured", round(acc * 100), round(fast * 100), ms, n,
-               round(th * 100) %} -> row;
+               round(th * 100), length(items) %} -> row;
         endif;
         rows <> [{% lp_term_str(c), row(1), row(2), row(3), row(4), row(5),
-                    if length(row) > 5 then row(6) else false endif %}]
+                    if length(row) > 5 then row(6) else false endif,
+                    ;;; HOW MANY REVIEWS THE SET IS OWED.  Without it a
+                    ;;; student who reviewed four kana out of sixty-nine
+                    ;;; and got them all right reads as 100%, which is
+                    ;;; the gaming the lifetime denominator was guarding
+                    ;;; against.  The window is only honest with a floor.
+                    if length(row) > 6 then row(7) else false endif %}]
             -> rows;
     endfor;
 enddefine;
@@ -3102,20 +3477,53 @@ define lp_status_text(r) -> txt;
                 [% r(3), r(5), r(6), r(4) %])
     elseif r(2) == "unbuilt" then
         'needs the content build (not measured yet)'
+    elseif r(6) == 0 then
+        ;;; Nothing to read yet rather than nought per cent.  A student
+        ;;; who has not been asked anything this period has not failed
+        ;;; it, and 0% on screen says they have.
+        sprintf('no reviews yet this period (needs %p)', [% r(8) %])
     else
-        sprintf('%p%% right, %p%% within %pms, over %p answers (need %p)',
-                [% r(3), r(4), r(5), r(6), r(7) %])
+        sprintf('%p%% right, %p%% within %pms, over %p of %p reviews (need %p)',
+                [% r(3), r(4), r(5), r(6), r(8), r(7) %])
     endif -> txt;
 enddefine;
 
 define lp_status();
     lvars r;
-    printf('\n  %p, %p -- level %p\n',
-           [% lp_display or (lp_user sys_>< ''), lp_lang, lp_level %]);
+    printf('\n  %p, %p -- level %p, period %p\n',
+           [% lp_display or (lp_user sys_>< ''), lp_lang, lp_level,
+              lp_period_n %]);
     for r in lp_status_rows() do
         printf('    %p: %p\n', [% r(1), lp_status_text(r) %]);
     endfor;
-    printf('    %p items ready to teach now\n', [% length(lp_plan()) %]);
+    printf('    %p items ready to teach now', [% length(lp_plan()) %]);
+;;; `owed` and not `rev`, which is a procedure in this language.
+    lvars owed = lp_review_count();
+    if owed > 0 then printf(', %p waiting to come round again', [% owed %]) endif;
+    printf('\n');
+    ;;; HOW THE MONTH HAS ACTUALLY GONE, and a schedule only if it has
+    ;;; gone badly.  The offer is built out of what this student has
+    ;;; already managed -- see lp_schedule_advice -- so it is something
+    ;;; they have proved they can do rather than an ideal they have just
+    ;;; failed to meet.
+    lvars worked, elapsed, adv = lp_schedule_advice();
+    lp_period_worked() -> (worked, elapsed);
+    if elapsed > 1 then
+        printf('    %p of the last %p days had some study in them\n',
+               [% worked, elapsed %]);
+    endif;
+    if adv then
+        if     adv(1) == "daily" then
+            printf('    a suggestion: %p minutes a day would keep up with it\n',
+                   [% adv(3) %]);
+        elseif adv(1) == "weekly" then
+            printf('    a suggestion: %p sittings a week, %p minutes each\n',
+                   [% adv(2), adv(3) %]);
+        else
+            printf('    a suggestion: %p sittings this month, %p minutes each\n',
+                   [% adv(2), adv(3) %]);
+        endif;
+    endif;
     ;;; What was helping, if anything was not.  A number read without
     ;;; this is a number of unknown strictness, which is the whole
     ;;; argument for letting the aids be switched off at all.
@@ -4123,6 +4531,17 @@ define lp_next();
         lp_drill(due, lp_due_ch(due)).erase;
         return;
     endif;
+    ;;; Then anything owed from an earlier day.  After the within-session
+    ;;; deferral, which was promised to come straight back, and before
+    ;;; anything new: a student with reviews waiting has already learned
+    ;;; the thing they are about to be taught instead.
+    lvars ritem, rch;
+    lp_review_next() -> (ritem, rch);
+    if ritem then
+        printf('  A review.\n');
+        lp_drill_review(ritem, rch);
+        return;
+    endif;
     ;;; Every fourth question, by ear.
     if (lp_asked_n + 1) mod HEAR_EVERY == 0 then
         lp_choose_hear() -> hitem;
@@ -4402,6 +4821,12 @@ define lp_main();
         elseif a = '--name' then hd(tl(args)) -> display; tl(tl(args)) -> args;
         elseif a = '--batch' then true -> batch; tl(args) -> args;
         elseif a = '--data' then hd(tl(args)) -> lp_home_dir; tl(tl(args)) -> args;
+        ;;; How long a day is.  Test instrumentation, and deliberately
+        ;;; the only one: it scales the clock the review ladder and the
+        ;;; period are measured against, so a run lasting seconds can
+        ;;; cross both.  No outcome, threshold or interval order moves.
+        elseif a = '--day-ms' then
+            strnumber(hd(tl(args))) -> lp_day_ms; tl(tl(args)) -> args;
         elseif a = '--check' then true -> checkonly; tl(args) -> args;
         elseif a = '--audit' then true -> auditonly; tl(args) -> args;
         elseif a = '--chart' then

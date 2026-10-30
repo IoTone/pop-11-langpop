@@ -433,6 +433,211 @@ check('accuracy over verified answers only', cnt, 2);
 check('half right', acc, 0.5);
 check('both inside the latency window', fast, 0.5);
 
+;;; ------------------------------------------------- periods and reviews
+;;; Mastery schedules an item rather than retiring it, and the criteria
+;;; read the reviews.  Time is faked by rewriting a due time into the
+;;; past, which is what a day passing amounts to here -- the suite is
+;;; not going to sleep for one.
+
+define t_master(item);
+    lvars item;
+    lp_record(item, "read", 1, "right", 100);
+    lp_record(item, "read", 1, "right", 100);
+    lp_record(item, "read", 1, "right", 100);
+enddefine;
+
+define t_rev(item) -> r;
+    lvars item, r = lp_review_of(item, "read");
+enddefine;
+
+define t_due_now(item);
+    lvars item, k = lp_bkey(lp_user, item, "read"), r = lp_reviews(k);
+    {% r(1), lp_now_ms() - 1 %} -> lp_reviews(k);
+enddefine;
+
+"reviews" -> lp_user;
+[] -> lp_journal;
+clearproperty(lp_reviews);
+false -> lp_period_start; 1 -> lp_period_n;
+
+check('nothing is scheduled before mastery', t_rev("hi_a"), false);
+lp_record("hi_a", "read", 1, "right", 100);
+check('one right is not mastery either', t_rev("hi_a"), false);
+t_master("hi_a");
+check_true('mastered', lp_mastered_on("hi_a", "read"));
+check('and now on the ladder', t_rev("hi_a")(1), 1);
+check_true('due a day out, not now', t_rev("hi_a")(2) > lp_now_ms());
+check('so nothing is owed yet', lp_review_due(), []);
+
+;;; A day later.
+t_due_now("hi_a");
+check('one review owed', length(lp_review_due()), 1);
+check('and it is the right one', hd(lp_review_due())(1), "hi_a");
+check('on the channel it was learned on', hd(lp_review_due())(2), "read");
+
+;;; A review answered right climbs a rung and goes quiet again.
+lp_record_phase("review", "hi_a", "read", 1, "right", 100);
+check('up a rung', t_rev("hi_a")(1), 2);
+check('and quiet again', lp_review_due(), []);
+check('the answer is marked as a review', lp_jphase(lp_journal(1)), "review");
+
+;;; Four rungs and it is burned: scheduled no more.
+t_due_now("hi_a"); lp_record_phase("review", "hi_a", "read", 1, "right", 100);
+t_due_now("hi_a"); lp_record_phase("review", "hi_a", "read", 1, "right", 100);
+t_due_now("hi_a"); lp_record_phase("review", "hi_a", "read", 1, "right", 100);
+check_true('burned', lp_burned("hi_a", "read"));
+check('with no next time', t_rev("hi_a")(2), false);
+check('and never owed again', lp_review_due(), []);
+check_true('still mastered', lp_mastered_on("hi_a", "read"));
+
+;;; A review that goes wrong needs no special arithmetic: the ordinary
+;;; update takes the belief under MASTERY, and the item walks back into
+;;; the plan with the ladder forgotten.
+t_master("hi_i");
+check('on the ladder', t_rev("hi_i")(1), 1);
+t_due_now("hi_i");
+lp_record_phase("review", "hi_i", "read", 1, "wrong", 100);
+check_true('no longer mastered', not(lp_mastered_on("hi_i", "read")));
+check('off the ladder', t_rev("hi_i"), false);
+check_true('and back in the plan', member("hi_i", lp_plan()) and true);
+
+;;; A skipped review is the same case -- 0.20 is a steeper fall than a
+;;; wrong answer, and honestly so: the student did not even reach for it.
+t_master("hi_u");
+t_due_now("hi_u");
+lp_record_phase("review", "hi_u", "read", 1, "skip", 100);
+check('a skipped review drops it too', t_rev("hi_u"), false);
+
+;;; WHAT THE CRITERIA READ.  Learning answers are not evidence of
+;;; knowing: every one of them was given while the item was unknown.
+"window" -> lp_user;
+[] -> lp_journal;
+clearproperty(lp_reviews);
+false -> lp_period_start; 1 -> lp_period_n;
+lp_record("hi_a", "read", 1, "wrong", 100);
+lp_record("hi_a", "read", 1, "wrong", 100);
+t_master("hi_a");
+lvars (lacc, , lcnt) = lp_measure([hi_a], 2000);
+check('lifetime counts the learning', lcnt, 5);
+;;; `=` and a tolerance, not `check` on a float literal: 0.6 computed
+;;; and 0.6 written are not the same object, which is the same trap
+;;; lp_choose documents.
+check_true('at three fifths', lacc > 0.599 and lacc < 0.601);
+lvars (racc, , rcnt) =
+    lp_measure_in([hi_a], 2000, lp_period_start, "review");
+check('the criterion sees no reviews yet', rcnt, 0);
+t_due_now("hi_a");
+lp_record_phase("review", "hi_a", "read", 1, "right", 100);
+lp_measure_in([hi_a], 2000, lp_period_start, "review") -> (racc, , rcnt);
+check('and now sees exactly the review', rcnt, 1);
+check('which went well', racc, 1.0);
+
+;;; The period is a lower bound on the journal and nothing is deleted.
+lvars before = lp_period_start;
+lp_now_ms() + 1 -> lp_period_start;     ;;; as though the period had rolled
+lp_measure_in([hi_a], 2000, lp_period_start, "review") -> (, , rcnt);
+check('last period does not count against this one', rcnt, 0);
+check_true('but the journal still holds it', length(lp_journal) >= 6);
+before -> lp_period_start;
+
+;;; Crossing a boundary advances the period, and three boundaries
+;;; advance it three times rather than once.
+1 -> lp_day_ms;                         ;;; a one-millisecond day
+lp_now_ms() - (4 * lp_period_span()) -> lp_period_start;
+1 -> lp_period_n;
+lp_period_roll();
+check('four short periods, four rolls', lp_period_n, 5);
+check_true('and the start caught up',
+           lp_period_start + lp_period_span() > lp_now_ms());
+86400000 -> lp_day_ms;
+
+;;; Undo puts the rung back.  Without this, :oops after a mistyped
+;;; review is a way to burn an item by accident.
+"undone" -> lp_user;
+[] -> lp_journal;
+clearproperty(lp_reviews);
+t_master("hi_a");
+check('at the first rung', t_rev("hi_a")(1), 1);
+t_due_now("hi_a");
+lp_undo_start("hi_a");
+lp_record_phase("review", "hi_a", "read", 1, "right", 100);
+lp_undo_stop();
+check('the review climbed', t_rev("hi_a")(1), 2);
+lp_undo_last().erase;
+check('and the undo put it back', t_rev("hi_a")(1), 1);
+
+;;; ------------------------------------------------------ keeping it up
+;;; The suggestion is drawn from what the student has already managed,
+;;; so these tests build a history by hand: a journal entry is
+;;; {item ch tier outcome latency when phase}, and `when` is the whole
+;;; point.
+
+define t_hist(days);
+    ;;; one answer on each of these days of the period, plus the minute
+    ;;; after it, so that a day has a sitting in it with a length
+    lvars days, d;
+    [] -> lp_journal;
+    for d in days do
+        conspair({% "hi_a", "read", 1, "right", 100,
+                    lp_period_start + (d * lp_day_ms), "learn" %},
+                 lp_journal) -> lp_journal;
+        conspair({% "hi_a", "read", 1, "right", 100,
+                    lp_period_start + (d * lp_day_ms) + 60000, "learn" %},
+                 lp_journal) -> lp_journal;
+    endfor;
+enddefine;
+
+"keeper" -> lp_user;
+86400000 -> lp_day_ms;
+lp_now_ms() - (10 * lp_day_ms) -> lp_period_start;
+
+;;; Ten days in, studied on eight of them: nothing to say.
+t_hist([0 1 2 3 4 5 6 7]);
+lvars advice, (wk, el) = lp_period_worked();
+check('eight days worked', wk, 8);
+check('on the eleventh day of the period', el, 11);
+check('a student keeping up is offered nothing', lp_schedule_advice(), false);
+
+;;; Two answers a day, a minute apart, is one sitting a day.
+lvars (sn, smin) = lp_period_sessions();
+check('one sitting a day', sn, 8);
+check('a minute each', smin, 8);
+
+;;; Studied twice in ten days: that is a weekly learner, and the offer is
+;;; the rhythm they have rather than the rhythm they have not.
+t_hist([0 7]);
+lp_schedule_advice() -> advice;
+check_true('something is offered', advice and true);
+check('and it is weekly', advice(1), "weekly");
+check('once a week', advice(2), 1);
+check('for the five minutes they manage', advice(3), 5);
+
+;;; Nothing at all: the smallest honest ask, not a schedule invented out
+;;; of no evidence.
+[] -> lp_journal;
+lp_schedule_advice() -> advice;
+check('nothing studied gets the floor', advice(1), "daily");
+check('ten minutes a day', advice(3), 10);
+
+;;; Too early to judge.  A tutor with an opinion on day two is a tutor
+;;; nobody listens to on day ten.
+lp_now_ms() - (2 * lp_day_ms) -> lp_period_start;
+check('three days in, no opinion', lp_schedule_advice(), false);
+
+;;; A sitting is a run of answers, and half an hour of silence ends it.
+lp_now_ms() - (10 * lp_day_ms) -> lp_period_start;
+[] -> lp_journal;
+lvars t = lp_period_start + lp_day_ms;
+conspair({% "hi_a", "read", 1, "right", 100, t, "learn" %}, lp_journal)
+    -> lp_journal;
+conspair({% "hi_a", "read", 1, "right", 100, t + 600000, "learn" %}, lp_journal)
+    -> lp_journal;                          ;;; ten minutes later: same sitting
+conspair({% "hi_a", "read", 1, "right", 100, t + 4000000, "learn" %},
+         lp_journal) -> lp_journal;         ;;; an hour later: another
+lp_period_sessions() -> (sn, smin);
+check('two sittings', sn, 2);
+check('ten minutes between them all', smin, 10);
+
 ;;; --------------------------------------------------------- the questions
 check('a grapheme is typed',
       [% lvars sh; lp_question("hi_a", lp_primary("hi_a")) -> (sh, , , ); sh %], [type]);
@@ -1629,6 +1834,43 @@ check('its status survives', lp_assigns(1)(5), 'open');
 check_true('and it can be found by id', lp_find_assign(1) and true);
 check('the journal survives', length(lp_journal), 1);
 check('tier survives the round trip', lp_journal(1)(3), 3);
+
+;;; The ladder and the period are state the journal cannot reconstruct:
+;;; where this student's own month started, and when each mastered item
+;;; is next owed.  Both have to come back, or every reload is an amnesty.
+"ladder_saver" -> lp_user;
+[] -> lp_journal; [] -> lp_assigns;
+clearproperty(lp_reviews);
+"ja" -> lp_lang;
+lp_record("hi_a", "read", 1, "right", 100);
+lp_record("hi_a", "read", 1, "right", 100);
+lp_record("hi_a", "read", 1, "right", 100);
+lp_record_phase("review", "hi_ka", "read", 1, "right", 100);
+lvars saved_due = lp_review_of("hi_a", "read")(2),
+      saved_start = lp_period_start, saved_n = lp_period_n;
+lp_save();
+clearproperty(lp_reviews);
+[] -> lp_journal;
+check_true('the profile reloads', lp_load_profile("ladder_saver"));
+check('the rung survives', lp_review_of("hi_a", "read")(1), 1);
+check('and so does the day it is owed',
+      lp_review_of("hi_a", "read")(2), saved_due);
+check('the period start survives', lp_period_start, saved_start);
+check('the period number survives', lp_period_n, saved_n);
+check('a review is still a review after a reload',
+      lp_jphase(lp_journal(1)), "review");
+
+;;; A profile written before any of this existed still loads, and its
+;;; answers read as what they were: learning, with nothing scheduled.
+lvars oldp = lp_profile_path("ladder_saver");
+lp_write_file(oldp, '{"user":"ladder_saver","lang":"ja","level":"preschool",'
+                    <> '"journal":[["hi_a","read",1,"right",100,1700000000000]]}');
+clearproperty(lp_reviews);
+check_true('an old profile loads', lp_load_profile("ladder_saver"));
+check('its answers are learning', lp_jphase(lp_journal(1)), "learn");
+check('and nothing is scheduled', lp_review_of("hi_a", "read"), false);
+check('with the period not yet started', lp_period_start, false);
+sysdelete(oldp).erase;
 
 ;;; ------------------------------------------------------- recognition
 ;;; The teacher is allowed to MISremember.  Offering the nearest name and
