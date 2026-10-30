@@ -167,7 +167,8 @@ check_true('Japanese round-trips',
 check_true('and a doubled quote would NOT have -- which is the whole point',
            not(atom_survives_doubled('one\'s own')));
 
-check('okurigana notation is not a reading', imp_kun('やす.い'), 'やす');
+check('okurigana is kept, bracketed', imp_kun('やす.い'), 'やす(い)');
+check('because a cut stem taught non-readings', imp_kun('あ.う'), 'あ(う)');
 check('a prefix marker is not a reading', imp_kun('ひと-'), 'ひと');
 check('a plain reading is unchanged', imp_kun('みぎ'), 'みぎ');
 
@@ -209,7 +210,7 @@ check_true('a character with no freq carries only what it has',
            not(any(imp_e_ranks(an), procedure(r); lvars r;
                hd(r) == "freq" endprocedure)));
 
-check('the second rmgroup is ignored', imp_e_forms(an)(2), [hiragana 'やす']);
+check('the second rmgroup is ignored', imp_e_forms(an)(2), [hiragana 'やす(い)']);
 check_true('and its meaning with it',
            issubstring('must not be mixed', imp_e_gloss(an)) == false);
 

@@ -410,6 +410,29 @@ check('a reading with no kana at all gives nothing', lp_romaji('山'), false);
 check('katakana folds to hiragana', lp_kata_to_hira('イチ'), 'いち');
 check('and a long mark is left alone', lp_kata_to_hira('コーヒー'), 'こーひー');
 
+;;; ------------------------------------------- okurigana in brackets
+;;; 会's kun reading arrives from KANJIDIC as あ.う and is stored as
+;;; あ(う).  The first import CUT at the dot instead, and the tutor
+;;; then said "It is あ" -- a single mora that is not a reading anyone
+;;; can learn from; about sixteen of the 103 n5 kanji had the failure.
+;;; The bracketed notation keeps what the kanji says and what the word
+;;; adds on one card, and the answer set takes both, typed either way.
+lvars kw, ks;
+lp_kun_parts('あ(う)') -> (kw, ks);
+check('the whole reading', kw, 'あう');
+check('and the stem', ks, 'あ');
+lp_kun_parts('みぎ') -> (kw, ks);
+check_false('a plain reading has no parts', kw);
+check('plain stays plain', lp_plain_form('みぎ'), 'みぎ');
+check('bracketed flattens', lp_plain_form('やす(い)'), 'やすい');
+
+lvars oku = lp_take_reading([], 'あ(う)');
+check('the tutor says the bracketed form', hd(oku), 'あ(う)');
+check_true('the whole is accepted', member('あう', oku));
+check_true('and its romaji', member('au', oku));
+check_true('the stem is accepted', member('あ', oku));
+check_true('and its romaji', member('a', oku));
+
 ;;; The spellings a learner might type.  Generous on purpose: the probe
 ;;; asks whether they know the reading, not whether they can spell
 ;;; Hepburn.

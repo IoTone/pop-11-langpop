@@ -561,17 +561,29 @@ vars imp_upstream = false;
 ;;; A KANJIDIC2 kun reading, as Japanese rather than as KANJIDIC notation.
 ;;; Upstream writes 安 as やす.い and 一 as ひと-, where the dot marks where
 ;;; the character's own reading stops and the okurigana begins, and the
-;;; hyphen marks a prefix or suffix position.  The reading of the KANJI is
-;;; the part before the dot: 安い is a word and やす is what 安 says in it.
-;;; Emitting the notation raw would put a full stop in the middle of a
-;;; flashcard, which is how this was noticed.
+;;; hyphen marks a prefix or suffix position.
+;;;
+;;; The dot becomes BRACKETS -- やす(い) -- and is not simply cut.  The
+;;; first version of this kept the part before the dot, on the argument
+;;; that 安い is a word and やす is what 安 says in it.  That argument
+;;; collapses on 会: its kun is あ.う, the cut left あ, and the tutor
+;;; then taught "It is あ" -- a single mora that is not a reading anyone
+;;; can learn from.  About sixteen of the 103 n5 kanji had that failure.
+;;; The bracketed form keeps both truths on one card: what the kanji
+;;; says, and what the word around it adds.  lp_take_reading knows the
+;;; notation and accepts the whole (あう) or the stem (あ) typed either
+;;; way; the display always shows the brackets.
 define imp_kun(s) -> t;
-    lvars s, c, n = 0;
+    lvars s, c, n = 0, dotted = false;
     for c in_string s do
-        quitif(c == `.`);
         nextif(c == `-`);
-        c; n fi_+ 1 -> n;
+        if c == `.` then
+            unless dotted then `(`; n fi_+ 1 -> n; true -> dotted endunless;
+        else
+            c; n fi_+ 1 -> n;
+        endif;
     endfor;
+    if dotted then `)`; n fi_+ 1 -> n endif;
     consstring(n) -> t;
 enddefine;
 

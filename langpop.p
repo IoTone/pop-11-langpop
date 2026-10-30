@@ -705,13 +705,38 @@ enddefine;
 ;;; character's encoding can appear inside another's at a non-boundary,
 ;;; because every continuation byte is distinguishable from every
 ;;; leading one.
+;;; A kun reading that carries okurigana is stored as あ(う): the part
+;;; the kanji says, then the part the word around it adds, rendered by
+;;; the importer from KANJIDIC's dot notation.  The brackets are ASCII
+;;; in an otherwise-kana string, so the two procedures that need the
+;;; semantics can parse them and everything that just prints the form
+;;; is honest for free.
+define lp_kun_parts(g) -> (whole, stem);
+    lvars g, i, c, whole = false, stem = false;
+    g sys_>< '' -> g;
+    issubstring('(', g) -> i;
+    returnunless(i);
+    substring(1, i - 1, g) -> stem;
+    consstring(#| for c in_string g do
+                      nextif(c == `(` or c == `)`); c
+                  endfor |#) -> whole;
+enddefine;
+
+define lp_plain_form(g) -> g;
+    lvars g, whole, stem;
+    lp_kun_parts(g) -> (whole, stem);
+    if whole then whole -> g else g sys_>< '' -> g endif;
+enddefine;
+
 define lp_contains(item, pre) -> yes;
     lvars item, pre, sc, a, b, yes = false;
     for sc in [kanji hiragana katakana latin] do
         lp_form_of(item, sc) -> a;
         lp_form_of(pre, sc) -> b;
         nextunless(a and b);
-        a sys_>< '' -> a; b sys_>< '' -> b;
+        ;;; brackets out first, or 会's あ(う) could never be found
+        ;;; inside 会う's あう
+        lp_plain_form(a) -> a; lp_plain_form(b) -> b;
         nextif(a = b);                      ;;; identity is not containment
         if issubstring(b, a) then true -> yes; return endif;
     endfor;
@@ -1443,11 +1468,22 @@ enddefine;
 ;;; spellings of each.  A kanji has two readings in the graph (kun as
 ;;; hiragana, on as katakana) and either one answers "can you read it".
 define lp_take_reading(l, g) -> l;
-    lvars l, g, h, x;
+    lvars l, g, h, x, whole, stem;
     returnunless(g);
     lp_build_kana_rom();
     g sys_>< '' -> g;
     lp_push_str(l, g) -> l;
+    ;;; A reading with okurigana -- あ(う) -- answers as the whole word
+    ;;; (あう) or as the kanji's own part (あ), in kana or romaji; the
+    ;;; bracketed string itself stays at the head of the list because
+    ;;; hd(answer) is what the tutor SAYS, and saying "It is あ" for 会
+    ;;; was the bug.
+    lp_kun_parts(g) -> (whole, stem);
+    if whole then
+        lp_take_reading(l, whole) -> l;
+        lp_take_reading(l, stem) -> l;
+        return;
+    endif;
     lp_kata_to_hira(g) -> h;
     lp_push_str(l, h) -> l;
     for x in lp_romaji_variants(g) do lp_push_str(l, x) -> l endfor;
@@ -4219,6 +4255,8 @@ define lp_undeclared_kana() -> bad;
                 consutf8(#| cp |#) -> c;
                 nextif(lp_kana_rom(consword(c)));
                 nextif(lp_modifier_of(c));
+                ;;; okurigana notation, not a glyph: あ(う)
+                nextif(c = '(' or c = ')');
                 nextif(seen(c));
                 true -> seen(c);
                 bad <> [% 'undeclared_kana(' <> c <> ', ' <> (i sys_>< '')
