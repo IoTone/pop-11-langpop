@@ -35,7 +35,19 @@ privileges a phone app would not have.
 ./langpop client --port 7801 --user bob
 
 ./langpop test               # every suite, nonzero exit if any fails
+
+# the oracle student: a seeded harness that climbs the ladder over
+# JSON-RPC, asserting the engine's invariants at every answer --
+# a failing run prints its seed, and the seed is the bug report
+./langpop oracle --seed 42 --answers 3000
+./langpop oracle --place --skill 0.9   # the placement interview instead
 ```
+
+This repository was carved out of
+[IoTone/poplog](https://github.com/IoTone/poplog) with its history
+intact: it grew past what an example is, and it is a program that USES
+Poplog rather than part of the language. What it needs from Poplog is
+listed below, and probed for at startup.
 
 `./langpop` is a thin wrapper over `poplog basepop11 <file>`, and the
 working directory does not matter: every `.p` file here locates its
