@@ -53,8 +53,11 @@ three days, a week and four weeks, and is then burned. Scores reset
 every 28 days, on the student's own clock -- the *reading* resets, never
 the record -- and the exit criteria are measured over the reviews in the
 current period, because measured over a lifetime they read what it cost
-somebody to learn rather than what they know. The numbers that settled
-that are in `docs/langpop-reviews-and-periods.md`.
+somebody to learn rather than what they know. A rung is finished when
+every criterion for it is met -- or excused, by name, when nothing on
+this machine can measure it -- and the student moves up there and then.
+The numbers that settled all this are in
+`docs/langpop-reviews-and-periods.md`.
 
 This repository was carved out of
 [IoTone/poplog](https://github.com/IoTone/poplog) with its history

@@ -638,6 +638,106 @@ lp_period_sessions() -> (sn, smin);
 check('two sittings', sn, 2);
 check('ten minutes between them all', smin, 10);
 
+;;; ------------------------------------------------------ passing a rung
+;;; The criteria were measured and printed and nothing read the answer.
+;;; These tests are about the reading: what counts as met, what is
+;;; excused and why, and that a student moves exactly once.
+
+define t_row(kind, a, b, c, d, e, f, g);
+    ;;; a status row as lp_status_rows builds it:
+    ;;;   {crit kind  ...  need settled}
+    lvars kind, a, b, c, d, e, f, g;
+    {% 'test', kind, a, b, c, d, e, f, g %};
+enddefine;
+
+;;; A procedure and not an inline [% ... %]: the list brackets would
+;;; return a LIST holding the answer, and a non-empty list is true
+;;; whatever is in it -- so every one of these checks passed before this
+;;; was written as a procedure, including the ones that should not have.
+define t_met(r) -> m;
+    lvars r, m, x;
+    lp_criterion_met(r) -> (m, x);
+    m and true -> m;
+enddefine;
+
+define t_excused(r) -> x;
+    lvars r, m, x;
+    lp_criterion_met(r) -> (m, x);
+    x and true -> x;
+enddefine;
+
+;;; measured: {kind acc% fast% ms answers th% need settled}
+check('both halves over the floor is met',
+      t_met(t_row("measured", 95, 92, 3000, 70, 90, 69, 0)), true);
+check('accuracy alone is not enough -- speed is the other half',
+      t_met(t_row("measured", 95, 80, 3000, 70, 90, 69, 0)), false);
+check('and neither is a percentage over too small a sample',
+      t_met(t_row("measured", 100, 100, 3000, 3, 90, 69, 0)), false);
+
+;;; A SETTLED ITEM COUNTS TOWARDS THE FLOOR.  Otherwise burning the whole
+;;; set would make the criterion permanently unreadable: nothing comes
+;;; back, so nothing can be counted, so the rung could never be passed
+;;; again by the student who knows it best.
+check('reviews plus settled clear the floor',
+      t_met(t_row("measured", 95, 92, 3000, 10, 90, 69, 60)), true);
+
+;;; counted: {kind have want in_graph kind}
+check('a count is met when it is reached',
+      t_met(t_row("counted", 50, 50, 50, "word", false, false, false)), true);
+check('and unmet when it is not',
+      t_met(t_row("counted", 12, 50, 50, "word", false, false, false)), false);
+
+;;; EXCUSED IS NOT A KINDNESS.  A criterion nothing on this machine can
+;;; measure is reporting the TOOL'S limit, and holding the door shut on
+;;; it would mean a student with no voice configured could never leave
+;;; pre-school however well they read.  Same argument as lp_ungateable.
+check('audio nobody can check is excused, not failed',
+      t_excused(t_row("audio", 0, 800, 50, "word", false, false, false)), true);
+check('and so is a criterion whose content is not built',
+      t_excused(t_row("unbuilt", 0, 0, 0, false, false, false, false)), true);
+check('an excused criterion is not also counted as met',
+      t_met(t_row("audio", 0, 800, 50, "word", false, false, false)), false);
+
+;;; The ladder, and the top of it.
+"ja" -> lp_lang;
+"preschool" -> lp_level;
+check('preschool is followed by n5', lp_level_next(), "n5");
+"n1" -> lp_level;
+check('and n1 by nothing', lp_level_next(), false);
+"preschool" -> lp_level;
+
+;;; A level with no criteria at all is not passed, it is unmeasured --
+;;; advancing through it would walk a student up the whole ladder on the
+;;; strength of criteria nobody has written yet.
+"climber" -> lp_user;
+[] -> lp_journal;
+clearproperty(lp_reviews);
+[] -> lp_passed;
+lvars saved_exits = lp_exits;
+[] -> lp_exits;
+lvars npassed, nmet, nunmet, nexc;
+lp_level_state() -> (npassed, nmet, nunmet, nexc);
+check('nothing declared, nothing met', nmet, []);
+check('and nothing unmet', nunmet, []);
+check('so the rung is not passed', npassed and true, false);
+check('and nobody moves', lp_advance(), false);
+check('the level is where it was', lp_level, "preschool");
+
+;;; One criterion, met: the student moves, once, and it is recorded.
+[[% "ja", "preschool", "unmeasurable", 0.9, 3000 %]] -> lp_exits;
+check('the rung now has one criterion', length(lp_status_rows()), 1);
+lp_level_state() -> (npassed, nmet, nunmet, nexc);
+;;; A MEASURED CRITERION WITH NO ITEMS is excused rather than failed:
+;;; nothing measures it, so it says what the curation has got to and not
+;;; what the student has.  Left as unmet it would wedge the rung shut
+;;; for good, silently, on content nobody has written yet.
+check('a criterion with nothing to ask is excused', nexc, ['unmeasurable']);
+check('and so not counted against the student', nunmet, []);
+;;; Excused is the only thing there is, so the rung is unmeasured and
+;;; nobody moves on it: `passed` needs something actually met.
+check('an entirely excused rung does not pass', npassed and true, false);
+saved_exits -> lp_exits;
+
 ;;; --------------------------------------------------------- the questions
 check('a grapheme is typed',
       [% lvars sh; lp_question("hi_a", lp_primary("hi_a")) -> (sh, , , ); sh %], [type]);
@@ -1087,6 +1187,49 @@ if lp_ilang("k_65e5") then
 else
     printf(';;; imported content not built -- inference not checked\n');
 endif;
+
+;;; A CAP IS A CEILING, NOT A LEVEL IT DRAGS A BELIEF TO.  Every capped
+;;; tier was a plain min(), so positive evidence about an item that was
+;;; already better known than the cap DEMOTED it: an inference took a
+;;; mastered item to 0.75 and "I did the homework" took it to 0.50.
+;;; Found by the review ladder, which schedules on mastery and so saw
+;;; items being reviewed at exactly the two caps.
+"capped" -> lp_user;
+[] -> lp_journal;
+lvars i;
+for i from 1 to 8 do lp_record("hi_a", "read", 1, "right", 100) endfor;
+lvars high = lp_bel("hi_a", "read");
+check_true('a checked item is well above every cap', high > TIER2_CAP);
+lp_record("hi_a", "read", 4, "right", 0);
+check('an inference does not demote it', lp_bel("hi_a", "read"), high);
+lp_record("hi_a", "read", 2, "right", 0);
+check('nor does a reported score', lp_bel("hi_a", "read"), high);
+lp_record("hi_a", "read", 3, "right", 0);
+check('nor does saying the homework was done', lp_bel("hi_a", "read"), high);
+lp_record("hi_a", "read", 5, "right", 0);
+check('nor does a machine verdict', lp_bel("hi_a", "read"), high);
+check_true('and it is still mastered', lp_mastered_on("hi_a", "read"));
+
+;;; The ceiling still holds in the direction it was written for: an item
+;;; BELOW a cap cannot be carried past it, so one verified check is
+;;; always what tips it over.
+"capped2" -> lp_user;
+for i from 1 to 12 do lp_record("hi_i", "read", 3, "right", 0) endfor;
+check_true('compliance cannot pass its cap',
+           lp_bel("hi_i", "read") <= TIER3_CAP);
+for i from 1 to 12 do lp_record("hi_u", "read", 2, "right", 0) endfor;
+check_true('a reported score cannot pass its cap',
+           lp_bel("hi_u", "read") <= TIER2_CAP);
+check_false('and so cannot master on its own', lp_mastered_on("hi_u", "read"));
+
+;;; A wrong answer at a capped tier still costs, which is the asymmetry
+;;; the tiers are for: weak positive evidence, ordinary negative.
+"capped3" -> lp_user;
+for i from 1 to 8 do lp_record("hi_e", "read", 1, "right", 100) endfor;
+lvars high3 = lp_bel("hi_e", "read");
+lp_record("hi_e", "read", 5, "wrong", 0);
+check_true('a machine saying no still costs',
+           lp_bel("hi_e", "read") < high3);
 
 ;;; The caps are the evidence policy and belong in one place.
 check_true('inferred evidence cannot reach mastery', INFERRED_CAP < MASTERY);

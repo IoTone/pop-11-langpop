@@ -366,6 +366,20 @@ check('on the channel it was asked on', lp_journal(1)(2), "read");
 check('and still as a review', lp_jphase(lp_journal(1)), "review");
 check('so the rung moved', lp_review_of("w_neko", "read")(1), 2);
 
+;;; THE CHANNEL THE ANSWER WAS ABOUT.  `belief` is the gate channel's,
+;;; which answers "is this item known"; a listening answer moves a
+;;; different number, and without `channel_belief` nothing outside the
+;;; server could tell that a heard item had fallen out of mastery.
+vars cb = result('langpop/answer',
+                 jsonrpc_obj([% 'session_id', ssid, 'item', 'w_neko',
+                                'answer', 'neko' %]));
+check('the channel is named', cb('channel'), 'read');
+check_true('and its belief is reported', isreal(cb('channel_belief')));
+
+;;; A rung is passed by the engine, not announced by the client, so the
+;;; reply has to carry it -- and it is null on an ordinary answer.
+check('no rung was passed by that', cb('level_passed'), json_null);
+
 ;;; What a client is told about the period: the numbers it needs to say
 ;;; which month a score belongs to, and advice only when there is any.
 vars pst = result('langpop/status', jsonrpc_obj([% 'session_id', ssid %]));
@@ -373,6 +387,10 @@ check('the period is reported', pst('period'), 1);
 check_true('with an end to it', pst('period_ends') /== json_null);
 check_true('reviews owed are counted', isinteger(pst('reviews_due')));
 check_true('consistency is reported', pst('consistency') and true);
+check_true('the verdict on the rung is reported',
+           pst('level_finished') == false or pst('level_finished') == true);
+check('with the next rung named', pst('next_level'), 'n5');
+check_true('and what is still unmet', pst('unmet') and true);
 check_true('including the days',
            isinteger(pst('consistency')('days_worked')));
 check('and no advice on the first day',

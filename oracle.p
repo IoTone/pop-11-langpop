@@ -84,6 +84,8 @@ vars
     ;;; scheduled again -- which this side can see and the server, from
     ;;; inside, cannot.
     ora_passed = newproperty([], 256, 0, "perm"),
+    ora_level = false,              ;;; the level this side last saw
+    ora_levels = [],                ;;; the rungs it watched go by
     ora_violations = [],
     ora_stats = newproperty([], 16, 0, "perm"),
 ;
@@ -557,6 +559,23 @@ define ora_turn() -> more;
     endunless;
     ora_count(consword(outcome));
 
+    ;;; A RUNG PASSED MOVES THE STUDENT, and only a rung passed does.
+    ;;; The level is the ceiling the plan is drawn from, so a level that
+    ;;; moved without the server saying so would change what is being
+    ;;; taught behind the harness's back -- and a level that went DOWN
+    ;;; would take work away from a student who had earned it.
+    lvars lmoved = ora_p(res, 'level_passed');
+    if lmoved then
+        lvars lw = consword(lmoved sys_>< '');
+        if ora_level and lp_level_index(lw) <= lp_level_index(ora_level) then
+            ora_note('the level moved from ' <> (ora_level sys_>< '')
+                     <> ' to ' <> (lw sys_>< '') <> ', which is not up');
+        endif;
+        lw -> ora_level;
+        ora_levels <> [% lw %] -> ora_levels;
+        ora_count("advance");
+    endif;
+
     (ora_p(res, 'belief') or 0) * 1.0 -> post;
     ora_p(res, 'mastered') -> mastered;
     if gate then ora_check_arith(itemw, outcome, pre, post, mastered) endif;
@@ -571,7 +590,14 @@ define ora_turn() -> more;
     if phase = 'review' and outcome = 'right' then
         ora_passed(ora_rkey(itemw, chw)) + 1 -> ora_passed(ora_rkey(itemw, chw));
     endif;
-    if gate and post < MASTERY then 0 -> ora_passed(ora_rkey(itemw, chw)) endif;
+    ;;; On the channel the answer was ABOUT, which for a listening
+    ;;; question is not the gate channel: `belief` answers "is this item
+    ;;; known" and `channel_belief` answers "how is this channel going".
+    ;;; Reading the gate belief here left the hear ladder unpoliced, and
+    ;;; the harness reported burned items coming back when what had
+    ;;; happened was an honest fall out of mastery by ear.
+    lvars chbel = (ora_p(res, 'channel_belief') or post) * 1.0;
+    if chbel < MASTERY then 0 -> ora_passed(ora_rkey(itemw, chw)) endif;
 
     ;;; learning: being shown the answer teaches more than being right
     ora_comp(itemw) -> c;
@@ -722,16 +748,36 @@ define ora_report();
         printf('\nlevel %p, %p ready, period %p, %p reviews owed\n',
                [% ora_p(res, 'level'), ora_p(res, 'ready_count'),
                   ora_p(res, 'period'), ora_p(res, 'reviews_due') %]);
+        ;;; The level the status reports has to be the one this side
+        ;;; watched the student move to.  They are computed at opposite
+        ;;; ends of the wire from the same graph, so a disagreement is a
+        ;;; bug in one of them.
+        if ora_level and (ora_p(res, 'level') sys_>< '') /= (ora_level sys_>< '')
+        then
+            ora_note('the status says level ' <> (ora_p(res, 'level') sys_>< '')
+                     <> ' and the answers said ' <> (ora_level sys_>< ''));
+        endif;
+        if ora_levels /== [] then
+            printf('  moved up to: %p\n', [% ora_levels %]);
+        endif;
+        if ora_p(res, 'unmet') then
+            printf('  still to finish: %p\n',
+                   [% datalist(ora_p(res, 'unmet')) %]);
+        endif;
+        if ora_p(res, 'excused') and datalist(ora_p(res, 'excused')) /== [] then
+            printf('  not checkable here: %p\n',
+                   [% datalist(ora_p(res, 'excused')) %]);
+        endif;
         for c in datalist(ora_p(res, 'criteria') or {}) do
             if ora_p(c, 'kind') = 'count' then
                 printf('  %p: %p of %p (graph holds %p)\n',
                        [% ora_p(c, 'criterion'), ora_p(c, 'have'),
                           ora_p(c, 'want'), ora_p(c, 'in_graph') %]);
             elseif ora_p(c, 'kind') = 'measured' then
-                printf('  %p: accuracy %p, within latency %p, over %p of %p reviews\n',
+                printf('  %p: accuracy %p, within latency %p, over %p reviews and %p settled of %p\n',
                        [% ora_p(c, 'criterion'), ora_p(c, 'accuracy'),
                           ora_p(c, 'within_latency'), ora_p(c, 'answers'),
-                          ora_p(c, 'need') %]);
+                          ora_p(c, 'settled'), ora_p(c, 'need') %]);
             endif;
         endfor;
     endif;

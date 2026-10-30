@@ -601,6 +601,10 @@ define lp_m_answer(msg) -> res;
                     item, ach, 1, outcome, used);
     lp_undo_stop();
     lp_answered(item);
+    ;;; A rung finished by this answer moves the student now, and the
+    ;;; reply says so -- the rule lives in the engine so both doors
+    ;;; behave the same way, exactly as the hear interleave does.
+    lvars moved = lp_advance();
     lp_q_out(s);
     lp_save();
     jsonrpc_obj([% 'item', lp_jkey(item),
@@ -631,12 +635,22 @@ define lp_m_answer(msg) -> res;
                    'mistook_for', if other then lp_jkey(other) else json_null endif,
                    ;;; the katakana whose beats they counted, so a client
                    ;;; can show the two side by side
+                   'level_passed', if moved then lp_jkey(moved) else json_null endif,
                    'counted_instead', if kslip then lp_jkey(kslip)
                                       else json_null endif,
                    'mistook_form', if other then lp_jkey(lp_any_form(other))
                                    else json_null endif,
                    'belief', lp_bel(item, lp_primary(item)),
                    'mastered', lp_mastered(item),
+                   ;;; AND THE CHANNEL THIS ANSWER WAS ABOUT.  `belief`
+                   ;;; is the gate channel's, which answers "is this item
+                   ;;; known" -- but a listening answer moved a different
+                   ;;; number, and without this a client that asked by
+                   ;;; ear could not show how the listening was going,
+                   ;;; and nothing outside the server could tell that a
+                   ;;; heard item had fallen out of mastery.
+                   'channel', lp_jkey(ach),
+                   'channel_belief', lp_bel(item, ach),
                    'latency_ms', used,
                    'latency_source', if timed then 'server' else 'client' endif,
                    'tier', 1 %]) -> res;
@@ -734,16 +748,27 @@ define lp_m_status(msg) -> res;
                ;;; a sample, not a skill.
                lp_measure_in(items, ms, lp_period_start, "review")
                    -> (acc, fast, n);
+               lvars settled = lp_settled_count(items);
+               ;;; Blended with the settled items -- see lp_blend.  Both
+               ;;; counts stay in the reply, so a client can show what
+               ;;; the percentage is made of.
+               lp_blend(acc, fast, n, settled) -> (acc, fast);
                jsonrpc_obj([% 'criterion', lp_term_str(c),
                               'kind', 'measured',
                               'accuracy', acc,
                               'within_latency', fast,
                               'answers', n,
                               'need', length(items),
+                              ;;; Burned for good, and so counted
+                              ;;; towards the floor rather than towards
+                              ;;; the percentage -- see lp_settled_count
+                              'settled', settled,
                               'threshold', th,
                               'latency_ms', ms %])
            endif;
        endfor %] -> crits;
+    lvars lfin, lmet, lunmet, lexc;
+    lp_level_state() -> (lfin, lmet, lunmet, lexc);
     jsonrpc_obj([% 'display_name', lp_display,
                    'language', lp_jkey(lp_lang),
                    'level', lp_jkey(lp_level),
@@ -763,6 +788,16 @@ define lp_m_status(msg) -> res;
                    ;;; and `advice` is null whenever the student is
                    ;;; keeping up -- there is nothing to say then.
                    'consistency', lp_m_consistency(),
+                   ;;; The verdict, and the reasons for it.  `excused`
+                   ;;; is named rather than folded into `met`, because a
+                   ;;; criterion nothing here can measure is the tool's
+                   ;;; limit and a client should be able to say so.
+                   'level_finished', lfin,
+                   'met', lp_vec([% lvars q; for q in lmet do q endfor %]),
+                   'unmet', lp_vec([% lvars q; for q in lunmet do q endfor %]),
+                   'excused', lp_vec([% lvars q; for q in lexc do q endfor %]),
+                   'next_level', if lp_level_next() then lp_jkey(lp_level_next())
+                                 else json_null endif,
                    'criteria', lp_vec(crits) %]) -> res;
 enddefine;
 

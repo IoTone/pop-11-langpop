@@ -1050,14 +1050,20 @@ enddefine;
 ;;; the belief update has already taken the item under MASTERY.
 define lp_review_note(item, ch, tier, outcome);
     lvars item, ch, tier, outcome, k = lp_bkey(lp_user, item, ch), r, stage;
-    returnunless(tier == 1);
     if lp_undo_watch then
         lp_undo_rev <> [[% k, lp_reviews(k) %]] -> lp_undo_rev;
     endif;
+    ;;; Falling off the ladder is checked for EVERY tier and not just
+    ;;; for a check, because any record can in principle leave an item
+    ;;; under mastery -- see lp_cap for the one that used to.
     unless lp_mastered_on(item, ch) then
         false -> lp_reviews(k);
         return;
     endunless;
+    ;;; Only a check moves an item ALONG the ladder, though.  A
+    ;;; self-report cannot advance a rung, for the same reason it cannot
+    ;;; reach mastery.
+    returnunless(tier == 1);
     lp_reviews(k) -> r;
     if not(r) then
         {% 1, lp_now_ms() + lp_review_gap(1) %} -> lp_reviews(k);
@@ -1079,6 +1085,10 @@ define lp_review_due() -> due;
         for ch in [% lp_primary(item), "hear" %] do
             lp_review_of(item, ch) -> r;
             nextunless(r and r(2) and r(2) <= lp_now_ms());
+            ;;; A belt: only something still known is reviewed.  Anything
+            ;;; that has fallen under mastery belongs in the plan, being
+            ;;; taught, not in the review queue being tested.
+            nextunless(lp_mastered_on(item, ch));
             nextunless(lp_drillable_on(item, ch));
             due <> [{% item, ch, r(2) %}] -> due;
         endfor;
@@ -1102,6 +1112,49 @@ define lp_review_count() -> n;
     lvars n = length(lp_review_due());
 enddefine;
 
+;;; How many of a set are SETTLED: burned on their gate channel, which
+;;; takes four successful reviews spread over four weeks.
+;;;
+;;; THE FLOOR AND THE BURN WOULD OTHERWISE FIGHT.  A criterion measured
+;;; over this period's reviews needs enough of them to mean anything --
+;;; but a burned item produces no more reviews, so a student who had
+;;; settled the whole set would generate nothing to count and could
+;;; never satisfy the floor again.  Burning is the stronger evidence of
+;;; the two, so it counts towards the floor and not towards accuracy:
+;;; four consecutive rights over four weeks is how an item gets burned
+;;; in the first place.
+;;; Accuracy over the reviews this period AND the items already settled.
+;;;
+;;; WHY THEY BLEND RATHER THAN BEING KEPT APART.  An item is burned by
+;;; answering it right four times running over four weeks, so a settled
+;;; item is stronger evidence than any single review -- counting it once
+;;; as `right` understates it, and not counting it at all reads 0% for a
+;;; student who has settled the entire set and so has nothing left to be
+;;; asked.  That was the state the oracle reached on skill(mora_count),
+;;; which has one item: settled, perfect, and scoring nought.
+;;;
+;;; It is also what makes the measurement survive one bad day.  A set of
+;;; sixty-nine with sixty-eight settled and a single fluffed review
+;;; reads 98.5% rather than 0%, which is the truth about the student.
+;;; Both numbers stay visible in the row, so nothing is hidden in the
+;;; average: `over N reviews and M settled of K`.
+define lp_blend(acc, fast, n, settled) -> (acc2, fast2);
+    lvars acc, fast, n, settled, acc2, fast2, tot = n + settled;
+    if tot == 0 then (0.0, 0.0) -> (acc2, fast2); return endif;
+    ((acc * n) + settled) / tot -> acc2;
+    ;;; The speed half the same way: an item does not get burned by
+    ;;; being right slowly four times, because a slow right never
+    ;;; reached mastery to be scheduled from.
+    ((fast * n) + settled) / tot -> fast2;
+enddefine;
+
+define lp_settled_count(items) -> n;
+    lvars items, i, n = 0;
+    for i in items do
+        if lp_burned(i, lp_primary(i)) then n + 1 -> n endif;
+    endfor;
+enddefine;
+
 ;;; lp_record, in a named phase.  The server chooses the question in one
 ;;; method and records the answer in another, so it cannot hold the
 ;;; phase in a dlocal across the two the way the TUI does.
@@ -1117,6 +1170,26 @@ define lp_review_next() -> (item, ch);
     if d == [] then (false, false) -> (item, ch)
     else (hd(d)(1), hd(d)(2)) -> (item, ch)
     endif;
+enddefine;
+
+;;; A CAP IS A CEILING ON WHAT EVIDENCE CAN REACH, NOT A LEVEL IT DRAGS
+;;; A BELIEF TO.  Written as a plain min(), every capped tier demoted an
+;;; item that was already better known than the cap: a student with
+;;; 誕生日 at 0.99 who then read it again had 日 inferred, and
+;;; min(0.99 + ..., INFERRED_CAP) handed back 0.75 -- an item fell out
+;;; of mastery because something POSITIVE was observed about it.  The
+;;; self-report was worse: min(b + 0.05, TIER3_CAP) took a mastered item
+;;; to 0.50 for saying "I did the homework".
+;;;
+;;; The oracle found this by way of the review ladder, which schedules
+;;; on mastery and so noticed items being reviewed at exactly 0.75 and
+;;; exactly 0.50 -- the two caps, named in the violation.
+;;;
+;;; The caps still do their job: an item BELOW the cap cannot be carried
+;;; past it by inference, a machine or a self-report, so one verified
+;;; check is always what tips it over.  Nothing above the cap moves.
+define lp_cap(b, raised, cap) -> nb;
+    lvars b, raised, cap, nb = max(b, min(raised, cap));
 enddefine;
 
 define lp_record(item, ch, tier, outcome, latency_ms);
@@ -1144,7 +1217,7 @@ define lp_record(item, ch, tier, outcome, latency_ms);
         ;;; floor, the verdict that says `I could not tell`, and it must
         ;;; move the belief in neither direction.
         if     outcome == "near"  then b
-        elseif outcome == "right" then min(b + (1.0 - b) * 0.45, MACHINE_CAP)
+        elseif outcome == "right" then lp_cap(b, b + (1.0 - b) * 0.45, MACHINE_CAP)
         elseif outcome == "wrong" then b * 0.30
         else                           b * 0.20      ;;; skip
         endif
@@ -1152,12 +1225,12 @@ define lp_record(item, ch, tier, outcome, latency_ms);
         ;;; moves like a check, because something was observed -- and
         ;;; stops short of mastery, because what was observed was a
         ;;; different item
-        min(b + (1.0 - b) * 0.45, INFERRED_CAP)
+        lp_cap(b, b + (1.0 - b) * 0.45, INFERRED_CAP)
     elseif tier == 2 then
-        min(b + (1.0 - b) * 0.20
-              * (if outcome == "right" then 1.0 else 0.3 endif), TIER2_CAP)
+        lp_cap(b, b + (1.0 - b) * 0.20
+                    * (if outcome == "right" then 1.0 else 0.3 endif), TIER2_CAP)
     else
-        min(b + 0.05, TIER3_CAP)
+        lp_cap(b, b + 0.05, TIER3_CAP)
     endif -> nb;
     if lp_undo_watch then
         ;;; every belief this answer moves, so the undo is complete
@@ -1453,6 +1526,9 @@ define lp_save();
     ;;; month started, and when each mastered item is next owed.
     if lp_period_start then lp_period_start -> o('period_start') endif;
     lp_period_n -> o('period_n');
+    consvector(#| lvars pp; for pp in lp_passed do
+                      {% hd(pp) sys_>< '', hd(tl(pp)) %}
+                  endfor |#) -> o('passed');
     lvars rv = newmapping([], 32, false, true);
     appproperty(lp_reviews,
         procedure(k, v);
@@ -1498,6 +1574,7 @@ define lp_load_profile(user) -> found;
     ;;; long-lived, and another student's reviews must not be owed by
     ;;; whoever binds next.
     false -> lp_period_start; 1 -> lp_period_n;
+    [] -> lp_passed;
     clearproperty(lp_reviews);
     lp_aids_reset(); lp_queue_reset();
     returnunless(s);
@@ -1533,6 +1610,12 @@ define lp_load_profile(user) -> found;
             o('assignments')(i) -> e;
             lp_assigns <> [{% e(1), consword(e(2)), consword(e(3)),
                               e(4), e(5) %}] -> lp_assigns;
+        endfor;
+    endif;
+    if o('passed') then
+        for i from 1 to length(o('passed')) do
+            o('passed')(i) -> e;
+            lp_passed <> [[% consword(e(1) sys_>< ''), e(2) %]] -> lp_passed;
         endfor;
     endif;
     if o('period_start') then o('period_start') -> lp_period_start endif;
@@ -3447,8 +3530,11 @@ define lp_status_rows() -> rows;
             ;;; lp_measure_in for why that number cannot be passed.
             lp_measure_in(items, ms, lp_period_start, "review")
                 -> (acc, fast, n);
+            lvars settled = lp_settled_count(items);
+            lp_blend(acc, fast, n, settled) -> (acc, fast);
             {% "measured", round(acc * 100), round(fast * 100), ms, n,
-               round(th * 100), length(items) %} -> row;
+               round(th * 100), length(items), settled %}
+                -> row;
         endif;
         rows <> [{% lp_term_str(c), row(1), row(2), row(3), row(4), row(5),
                     if length(row) > 5 then row(6) else false endif,
@@ -3457,7 +3543,10 @@ define lp_status_rows() -> rows;
                     ;;; and got them all right reads as 100%, which is
                     ;;; the gaming the lifetime denominator was guarding
                     ;;; against.  The window is only honest with a floor.
-                    if length(row) > 6 then row(7) else false endif %}]
+                    if length(row) > 6 then row(7) else false endif,
+                    ;;; and how many are settled for good, which counts
+                    ;;; towards the floor -- see lp_settled_count
+                    if length(row) > 7 then row(8) else false endif %}]
             -> rows;
     endfor;
 enddefine;
@@ -3477,15 +3566,128 @@ define lp_status_text(r) -> txt;
                 [% r(3), r(5), r(6), r(4) %])
     elseif r(2) == "unbuilt" then
         'needs the content build (not measured yet)'
-    elseif r(6) == 0 then
+    elseif r(6) == 0 and r(9) == 0 then
         ;;; Nothing to read yet rather than nought per cent.  A student
         ;;; who has not been asked anything this period has not failed
         ;;; it, and 0% on screen says they have.
         sprintf('no reviews yet this period (needs %p)', [% r(8) %])
+    elseif r(6) == 0 then
+        sprintf('all %p settled, nothing owed this period', [% r(9) %])
     else
-        sprintf('%p%% right, %p%% within %pms, over %p of %p reviews (need %p)',
-                [% r(3), r(4), r(5), r(6), r(8), r(7) %])
+        sprintf('%p%% right, %p%% within %pms, over %p reviews and %p settled of %p (need %p)',
+                [% r(3), r(4), r(5), r(6), r(9), r(8), r(7) %])
     endif -> txt;
+enddefine;
+
+;;; ------------------------------------------------------ passing a rung
+;;; WHAT THE CRITERIA WERE FOR.  Thirty-nine of them were declared,
+;;; measured and printed, and nothing read the answer: a student could
+;;; satisfy every criterion at a level and stay there, because the level
+;;; was only ever set at login or by hand with :level.  This is the other
+;;; half.
+;;;
+;;; A criterion is MET, UNMET, or EXCUSED, and the third one is not a
+;;; kindness -- it is the lp_ungateable argument again.  A criterion that
+;;; nothing on this machine can measure is reporting the TOOL'S limit,
+;;; and holding the door shut on it would mean a student without a voice
+;;; configured could never leave pre-school however well they read.  So
+;;; an unmeasurable criterion is excused and SAID, by name, every time
+;;; the level is reported: excusing something quietly would be the
+;;; comfortable averaging the whole tier system exists to prevent.
+
+define lp_criterion_met(r) -> (met, excused);
+    lvars r, met = false, excused = false;
+    if     r(2) == "measured" and r(8) == 0 then
+        ;;; A measured criterion with NO ITEMS IN THE GRAPH.  Nothing
+        ;;; measures it, so it is the curation's state and not the
+        ;;; student's -- the same argument as "unbuilt" below, reached
+        ;;; by a different door.  Left as unmet it would wedge the rung
+        ;;; shut for good, silently, on content nobody has written yet.
+        true -> excused;
+    elseif r(2) == "measured" then
+        ;;; Both halves.  `within_latency` counts the answers that were
+        ;;; right AND quick, so it already implies the accuracy, and
+        ;;; asking for both says what the criterion means: a student who
+        ;;; is right slowly has not learned to read.
+        ;;;
+        ;;; And the floor: enough of the set has to have been reviewed
+        ;;; this period, or settled for good, before a percentage of it
+        ;;; is a reading of anything.
+        r(6) + r(9) >= r(8) and r(3) >= r(7) and r(4) >= r(7) -> met;
+    elseif r(2) == "counted" or r(2) == "covered" then
+        r(3) >= r(4) -> met;
+    else
+        ;;; "audio" -- nothing here can hear.
+        ;;; "unbuilt" -- the content it would measure is not generated.
+        ;;; Neither is a fact about the student.
+        true -> excused;
+    endif;
+enddefine;
+
+;;; The level as a whole: passed, and what each criterion said.
+define lp_level_state() -> (passed, met, unmet, excused);
+    lvars r, m, x, passed = true, met = [], unmet = [], excused = [];
+    for r in lp_status_rows() do
+        lp_criterion_met(r) -> (m, x);
+        if     x then excused <> [% r(1) %] -> excused;
+        elseif m then met <> [% r(1) %] -> met;
+        else        unmet <> [% r(1) %] -> unmet; false -> passed;
+        endif;
+    endfor;
+    ;;; A level with nothing declared is not passed, it is unmeasured.
+    ;;; Advancing through it would walk a student up the whole ladder on
+    ;;; the strength of criteria nobody has written yet.
+    if met == [] and unmet == [] then false -> passed endif;
+enddefine;
+
+;;; The next rung, or false at the top.
+define lp_level_next() -> nxt;
+    lvars nxt = false, ls = lp_levels(lp_lang), l, prev = false;
+    for l in ls do
+        if prev == lp_level then l -> nxt; return endif;
+        l -> prev;
+    endfor;
+enddefine;
+
+;;; Rungs passed, as [[level when] ...].  Kept because "when did they
+;;; pass pre-school" is a question the journal cannot answer -- the
+;;; journal holds answers, not verdicts -- and because a student should
+;;; be able to see the thing they finished.
+vars lp_passed = [];
+
+define lp_passed_when(level) -> when;
+    lvars level, p, when = false;
+    for p in lp_passed do
+        if hd(p) == level then hd(tl(p)) -> when; return endif;
+    endfor;
+enddefine;
+
+;;; Up a rung, if the rung is finished and there is another.  Returns the
+;;; level moved to, or false -- so a caller can SAY it, which both doors
+;;; do rather than moving a student silently.
+define lp_advance() -> moved;
+    lvars moved = false, passed, nxt;
+    lp_level_state() -> (passed, , , );
+    returnunless(passed);
+    lp_level_next() -> nxt;
+    unless lp_passed_when(lp_level) then
+        lp_passed <> [[% lp_level, lp_now_ms() %]] -> lp_passed;
+    endunless;
+    ;;; The top of the ladder is passed and stayed at.  There is nothing
+    ;;; above n1, and a student who finishes it has not run out of
+    ;;; language -- they have run out of rungs.
+    returnunless(nxt);
+    nxt -> lp_level;
+    nxt -> moved;
+enddefine;
+
+;;; Said rather than done quietly, and said once.  A student who has
+;;; just finished a rung should be told by the teacher, not discover it
+;;; from a status screen three sessions later.
+define lp_announce_advance();
+    lvars was = lp_level, moved = lp_advance();
+    returnunless(moved);
+    printf('\n  That is %p finished.  We go on to %p.\n', [% was, moved %]);
 enddefine;
 
 define lp_status();
@@ -3496,6 +3698,23 @@ define lp_status();
     for r in lp_status_rows() do
         printf('    %p: %p\n', [% r(1), lp_status_text(r) %]);
     endfor;
+    lvars lpassed, lmet, lunmet, lexcused;
+    lp_level_state() -> (lpassed, lmet, lunmet, lexcused);
+    if lexcused /== [] then
+        ;;; By name, every time.  Excusing something quietly would be
+        ;;; the comfortable averaging the tiers exist to prevent.
+        printf('    not checkable here, so not holding you up: %p\n',
+               [^lexcused]);
+    endif;
+    if lpassed then
+        printf('    %p is finished%p\n',
+               [% lp_level,
+                  if lp_level_next() then
+                      ' -- ' sys_>< (lp_level_next() sys_>< '') sys_>< ' is next'
+                  else ' -- and it is the top of the ladder' endif %]);
+    elseif lunmet /== [] then
+        printf('    still to finish %p: %p\n', [% lp_level, lunmet %]);
+    endif;
     printf('    %p items ready to teach now', [% length(lp_plan()) %]);
 ;;; `owed` and not `rev`, which is a procedure in this language.
     lvars owed = lp_review_count();
@@ -4584,6 +4803,9 @@ define lp_session();
         lp_trim(line) -> line;
         if line = '' then
             lp_next();
+            ;;; After the answer, not before the question: a rung
+            ;;; finished by the answer just given should be said now.
+            lp_announce_advance();
         elseif line(1) == `:` then
             lp_split2(allbutfirst(1, line)) -> (cmd, arg);
             if cmd = 'quit' or cmd = 'q' then quitloop;

@@ -79,7 +79,13 @@ case "$1" in
     test|tests)
         failed=0
         for t in "$here"/tests/test_*.p; do
-            last=$("$run" basepop11 "$t" </dev/null 2>&1 | tail -1)
+            # The SUMMARY line, not the last line: the compiler writes
+            # its own chatter to the same stream and has been seen to
+            # interleave a line of it AFTER the summary, which read as a
+            # failure in a suite that had passed.
+            out=$("$run" basepop11 "$t" </dev/null 2>&1)
+            last=$(printf '%s\n' "$out" | grep '\*\* SUMMARY' | tail -1)
+            [ -n "$last" ] || last=$(printf '%s\n' "$out" | tail -1)
             printf '%s: %s\n' "$(basename "$t" .p)" "$last"
             case "$last" in *'ALL PASS'*) ;; *) failed=1 ;; esac
         done

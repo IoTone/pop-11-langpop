@@ -462,7 +462,23 @@ did what the section above predicted, in order:
    gate channel and the learning phase. The channel half of that
    predates phases and was live. Pinned in the server suite.
 
-6. **Smaller observations, not yet acted on:** a reported-but-never-
+6. **A cap demoted what it was meant to limit.** Every capped tier was
+   a plain `min()`, so positive evidence about an item already better
+   known than the cap *lowered* it: an inference took a mastered item to
+   `INFERRED_CAP` (0.75), and a compliance report took one to
+   `TIER3_CAP` (0.50). Found by the review ladder, which schedules on
+   mastery and so saw items being reviewed at exactly the two caps.
+   `lp_cap` is now `max(b, min(raised, cap))`, pinned in the suite.
+
+7. **ja pre-school passes, and n5 is reachable.** With reviews and
+   `lp_criterion_met`, the ladder is climbed end to end for the first
+   time: pre-school finished, n5 at 103 of 103 kanji and 220 of 800
+   words, blocked on curation and saying so (the graph holds 170). en
+   pre-school correctly does not pass -- its criteria have items but
+   every one is hear-gated and unaskable, which is the pronunciation
+   gap, not the student.
+
+8. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can

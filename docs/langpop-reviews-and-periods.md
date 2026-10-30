@@ -137,13 +137,106 @@ come due. It scales the clock and nothing else — no outcome, no
 threshold, no interval order. The scratch server the oracle provisions
 uses 200ms.
 
+## Passing the rung
+
+Thirty-nine criteria were declared, measured and printed, and nothing
+read the answer: a student could satisfy every one of them and stay
+where they were, because the level was only ever set at login or by hand
+with `:level`. `lp_criterion_met` is the other half, and a criterion is
+one of three things:
+
+- **met** — a measured one needs *both* halves over the threshold
+  (`within_latency` counts the answers that were right *and* quick, so
+  asking for both says what the criterion means) *and* the floor:
+  `answers + settled >= need`. A counting one needs `have >= want`.
+- **unmet** — plainly short.
+- **excused** — and this is not a kindness. It is the `lp_ungateable`
+  argument again: a criterion nothing on this machine can measure is
+  reporting the *tool's* limit, so holding the door shut on it would
+  mean a student with no voice configured could never leave pre-school
+  however well they read. Three cases are excused: `vocabulary(n, hear)`
+  where nothing can hear, a criterion whose content is not generated,
+  and a measured criterion with **no items in the graph at all** — that
+  last one would otherwise wedge a rung shut for good, silently, on
+  content nobody has written yet.
+
+Excused criteria are *named* every time the level is reported, in both
+doors. Excusing something quietly would be the comfortable averaging the
+tier system exists to prevent. And a rung with nothing but excuses does
+not pass: `passed` needs something actually met, or advancing would walk
+a student up the whole ladder on the strength of criteria nobody has
+written.
+
+**Settled items count towards the floor, and towards the percentage.**
+An item is burned by answering it right four times running over four
+weeks, so a settled item is stronger evidence than any single review.
+Counting it once as `right` understates it; not counting it at all
+reads 0% for a student who has settled the whole set and so has nothing
+left to be asked — which is the state the oracle reached on
+`skill(mora_count)`, a one-item criterion: settled, perfect, scoring
+nought. `lp_blend` folds them in, and both counts stay visible in the
+row (`over N reviews and M settled of K`) so nothing hides in the
+average. It is also what makes the measurement survive one bad day:
+sixty-eight settled and one fluffed review reads 98.5%, not 0%.
+
+A pass moves the student immediately, in whichever door they came
+through, and the move is *said* — `langpop/answer` carries
+`level_passed`, the TUI prints it. A student should be told by the
+teacher, not discover it from a status screen three sessions later. The
+top of the ladder is passed and stayed at: somebody who finishes `n1`
+has run out of rungs, not out of language. `lp_passed` keeps the dates,
+because the journal holds answers and not verdicts.
+
+### What it then found
+
+ja pre-school passes and the student climbs to n5, which is the first
+time the ladder has been climbed end to end:
+
+```
+level n5, moved up to: [n5]
+  kanji(103, read):     103 of 103
+  vocabulary(800, read): 220 of 800   (graph holds 170)
+  vocabulary(800, hear):  52 of 800   (graph holds 170)
+  still to finish: [vocabulary(800, read) vocabulary(800, hear)]
+```
+
+The rung is now blocked by *curation* and says so precisely: 170 words
+exist where 800 are wanted. That is phase 5, and the audit said the same
+thing from the other end.
+
+English pre-school correctly does **not** pass. Its three criteria have
+items (12, 12, 1) but every one is hear-gated and unaskable until
+minimal-pair listening questions exist, so there are no reviews and
+nothing settled. A student genuinely has not demonstrated the sound
+contrasts, and the criteria are not excused — the items are there, the
+questions are not. See `langpop-pronunciation.md`.
+
+### And one bug underneath all of it
+
+Every capped tier was a plain `min()`, which made a cap a level it
+dragged a belief *to* rather than a ceiling it could not pass. Positive
+evidence about an item already better known than the cap demoted it: a
+student with 誕生日 at 0.99 who read it again had 日 inferred, and
+`min(0.99 + …, INFERRED_CAP)` handed back **0.75** — an item fell out of
+mastery because something good was observed about it. `TIER3_CAP` was
+worse: saying "I did the homework" took a mastered item to **0.50**.
+
+`lp_cap(b, raised, cap)` is `max(b, min(raised, cap))`, and the ceiling
+still does its job in the direction it was written for — an item *below*
+a cap cannot be carried past it, so one verified check is always what
+tips it over. The oracle found it through the ladder, which schedules on
+mastery and so reported items being reviewed at exactly 0.75 and exactly
+0.50: the two caps, named in the violation.
+
 ## Still arguable
 
 | # | thing | current | why it is arguable |
 |---|---|---|---|
 | 1 | `REVIEW_GAPS` | `[1 3 7 28]` days | four rungs to burn is a pacing decision, not a measurement; a real SRS would fit the curve to the student |
 | 2 | `PERIOD_DAYS` | 28 | whole weeks beat a calendar month, but 28 against 21 or 35 is taste |
-| 3 | the floor | `need` is reported, nothing enforces it | no code decides a rung is *passed* yet; when something does, it has to read `answers >= need` as well as the threshold |
+| 3 | ~~the floor~~ | enforced by `lp_criterion_met` as `answers + settled >= need` | settled |
 | 4 | burning | permanent | an item burned a year ago is not evidence about today; a second, much longer rung (a year) may be the honest answer |
 | 5 | placement | reads everything, unwindowed | right for a fresh student; for a returning one, a window would place them on who they are now |
 | 6 | goals | the rung's criteria *are* the goals | deliberately no second scoring system; if a period wants a target it should be drawn from the gap to the criteria, not invented |
+| 7 | advancement | automatic, and immediate | WaniKani levels you up; a tutor that waited to be asked would be hiding the thing the student is working for. But it means a rung can be passed mid-session, which nobody has watched a real student react to yet |
+| 8 | excusing a criterion with no items | excused | right while a graph is being built; once `--audit` says a rung is complete, an empty criterion is a *bug* and excusing it hides one |
