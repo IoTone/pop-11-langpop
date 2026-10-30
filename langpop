@@ -33,6 +33,35 @@ fi
 case "$1" in
     server|client|dump|import)
         f="$1.p"; shift ;;
+    oracle)
+        shift
+        for a in "$@"; do
+            [ "$a" = --port ] && exec "$run" basepop11 "$here/oracle.p" "$@"
+        done
+        # No server named: provision a scratch one, so that every oracle
+        # run starts from an empty profile and leaves nothing behind.
+        port=$(( ($$ % 2000) + 7800 ))
+        data=$(mktemp -d "${TMPDIR:-/tmp}/langpop-oracle.XXXXXX")
+        "$run" basepop11 "$here/server.p" --port "$port" --data "$data/" \
+            >"$data/server.log" 2>&1 &
+        srv=$!
+        i=0
+        until grep -q serving "$data/server.log" 2>/dev/null; do
+            i=$((i+1))
+            if [ $i -gt 100 ]; then
+                echo "langpop: the server never came up -- see $data/server.log" >&2
+                kill "$srv" 2>/dev/null
+                exit 3
+            fi
+            sleep 0.1
+        done
+        "$run" basepop11 "$here/oracle.p" --port "$port" "$@"
+        code=$?
+        kill "$srv" 2>/dev/null
+        if [ "$code" -eq 0 ]; then rm -rf "$data"
+        else echo "langpop: the run is kept at $data" >&2
+        fi
+        exit "$code" ;;
     test|tests)
         failed=0
         for t in "$here"/tests/test_*.p; do
