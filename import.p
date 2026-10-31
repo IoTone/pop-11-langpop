@@ -750,6 +750,41 @@ define imp_sig(s) -> n;
     if s = '' then 0 -> n else length(s) fi_* 256 fi_+ subscrs(1, s) -> n endif;
 enddefine;
 
+;;; IS THIS SPELLING ONE TO TEACH?  JMdict tags a kanji headword it does
+;;; not recommend, and those tags are the one thing upstream knows about a
+;;; spelling that we could not work out for ourselves: &rK; rarely used,
+;;; &ateji; a phonetic borrowing, &oK; out-dated, &iK; irregular, &sK;
+;;; search-only.
+;;;
+;;; It matters because the importer takes the FIRST kanji headword as the
+;;; written form, and the written form becomes the question.  JMdict gives
+;;; コーヒー the headword 珈琲 and とても the headword 迚も -- both real,
+;;; both tagged, and neither one any beginner should be shown.  Without
+;;; this the tutor asked a student to read 珈琲 and filed it as N5
+;;; vocabulary.
+;;;
+;;; A word whose every kanji spelling is tagged therefore has NO kanji
+;;; form here, which is the right answer: コーヒー is written in katakana
+;;; and the kana is the whole of its orthography.
+;;;
+;;; Matching is on the key spelling AND on the expansion, because the
+;;; entity arrives raw or expanded depending on how the DTD was read.
+lconstant RARE_KANJI =
+    ['&rK;'     'rarely used kanji'
+     '&ateji;'  'ateji (phonetic) reading'
+     '&oK;'     'out-dated kanji'
+     '&iK;'     'irregular kanji'
+     '&sK;'     'search-only kanji'];
+
+define imp_rare_kanji(t) -> yes;
+    lvars t, m, yes = false;
+    returnunless(t);
+    t sys_>< '' -> t;
+    for m in RARE_KANJI do
+        if issubstring(m, t) then true -> yes; return endif;
+    endfor;
+enddefine;
+
 define imp_jmdict(path, picks, preqs) -> (es, unresolved);
     lvars path, picks, preqs, es = [], unresolved = [], p,
           ;;; Keyed by WORDS and not by strings.  A Pop-11 property
@@ -767,6 +802,7 @@ define imp_jmdict(path, picks, preqs) -> (es, unresolved);
           cands  = newproperty([], 64, [], "perm"),
           want_sig = newproperty([], 512, false, "perm"),
           nm = false, at = [], seq = false, kebs = [], rebs = [],
+          keb_ok = [], cur_keb = false, cur_rare = false,
           sense = 0, glosses = [], plain = [], created = false, seen = 0;
 
     dlocal xml_on_comment = procedure(s);
@@ -796,8 +832,10 @@ define imp_jmdict(path, picks, preqs) -> (es, unresolved);
             n -> nm; a -> at;
             if n == "entry" then
                 seen fi_+ 1 -> seen;
-                false -> seq; [] -> kebs; [] -> rebs;
+                false -> seq; [] -> kebs; [] -> rebs; [] -> keb_ok;
                 0 -> sense; [] -> glosses; [] -> plain;
+            elseif n == "k_ele" then
+                false -> cur_keb; false -> cur_rare;
             elseif n == "sense" then
                 sense fi_+ 1 -> sense
             endif;
@@ -806,7 +844,8 @@ define imp_jmdict(path, picks, preqs) -> (es, unresolved);
         procedure(s);
             lvars s, t = imp_trim(s);
             if     nm == "ent_seq" then t -> seq
-            elseif nm == "keb"     then kebs <> [^t] -> kebs
+            elseif nm == "keb"     then kebs <> [^t] -> kebs; t -> cur_keb
+            elseif nm == "ke_inf" and imp_rare_kanji(t) then true -> cur_rare
             elseif nm == "reb"     then rebs <> [^t] -> rebs
             elseif nm == "gloss" and sense == 1 then
                 glosses <> [^t] -> glosses;
@@ -819,6 +858,12 @@ define imp_jmdict(path, picks, preqs) -> (es, unresolved);
 
         procedure(n);
             lvars n, matched = [], p, k;
+            if n == "k_ele" then
+                if cur_keb and not(cur_rare) then
+                    keb_ok <> [^cur_keb] -> keb_ok
+                endif;
+                return;
+            endif;
             returnunless(n == "entry");
             returnunless(seq);
             ;;; consword interns, and interning every headword of 219k
@@ -839,7 +884,8 @@ define imp_jmdict(path, picks, preqs) -> (es, unresolved);
             ;;; the only thing that tells a curator which はし they meant.
             for p in matched do
                 cands(p(1)) <> [% {% seq, kebs, rebs,
-                                    if plain == [] then glosses else plain endif %} %]
+                                    if plain == [] then glosses else plain endif,
+                                    keb_ok %} %]
                     -> cands(p(1));
             endfor;
         endprocedure);
@@ -866,7 +912,8 @@ define imp_jmdict(path, picks, preqs) -> (es, unresolved);
         ;;; it is written 橋 or 梁, and a student learns a word, not a
         ;;; spelling table.
         [] -> forms;
-        unless e(2) == [] then forms <> [[kanji ^(hd(e(2)))]] -> forms endunless;
+        ;;; e(5) and not e(2): the teachable spellings.  See imp_rare_kanji.
+        unless e(5) == [] then forms <> [[kanji ^(hd(e(5)))]] -> forms endunless;
         unless e(3) == [] then
             forms <> [[% imp_kana_script(hd(e(3))), hd(e(3)) %]] -> forms
         endunless;
@@ -876,8 +923,8 @@ define imp_jmdict(path, picks, preqs) -> (es, unresolved);
         ;;; already has; then whatever the pick file said by hand.
         [hiragana_all] -> reqs;
         lvars kr, pr;
-        unless e(2) == [] then
-            for kr in imp_kanji_reqs(hd(e(2))) do
+        unless e(5) == [] then
+            for kr in imp_kanji_reqs(hd(e(5))) do
                 unless member(kr, reqs) then reqs <> [^kr] -> reqs endunless;
             endfor;
         endunless;
@@ -1105,6 +1152,38 @@ define imp_collisions(es) -> bad;
     endfor;
 enddefine;
 
+;;; TWO PICKS ON ONE ENTRY.  A different collision from the one above, and
+;;; one that needs upstream to have been read before it can be seen: not
+;;; two picks with the same id, but two ids resolving to the same source
+;;; entry.
+;;;
+;;; It happened with 早い and 速い.  Both are はやい and a curator may
+;;; reasonably expect two items -- the first is *early* and the second is
+;;; *fast* -- but JMdict holds them as ONE entry, 1404975, with two kanji
+;;; headwords.  So both picks resolved there, and since the emitter writes
+;;; the first headword, the import produced two items with identical
+;;; forms and an identical gloss.  A student would have been asked the
+;;; same question under two names and both would have counted toward
+;;; vocabulary(800).
+;;;
+;;; The same shape catches a curator who writes one word twice under two
+;;; keys -- jmdict_kanji('山') and jmdict('1302680') are the same entry --
+;;; which nothing else would notice, because neither id is taken and
+;;; neither key is ambiguous.
+define imp_shared_entries(es) -> bad;
+    lvars es, e, seen = newproperty([], 64, false, "perm"), bad = [], prov;
+    for e in es do
+        nextunless(imp_e_kind(e));
+        imp_e_prov(e) -> prov;
+        nextunless(isstring(prov) or isword(prov));
+        consword(prov sys_>< '') -> prov;
+        if seen(prov) then
+            bad <> [[% seen(prov), imp_e_id(e), prov %]] -> bad
+        else imp_e_id(e) -> seen(prov)
+        endif;
+    endfor;
+enddefine;
+
 ;;; --------------------------------------------------------- verification
 ;;; Read back what was just written and check it arrived.  Not paranoia: a
 ;;; Prolog syntax error in a consulted file is non-fatal, so a badly
@@ -1298,6 +1377,16 @@ define imp_main();
             printf('COLLISION %p is already an item at level %p\n', [% hd(b), hd(tl(b)) %]);
         endfor;
         mishap(length(bad), 1, 'import: pick ids already in the graph');
+    endunless;
+
+    imp_shared_entries(es) -> bad;
+    unless bad == [] then
+        for b in bad do
+            printf('SHARED %p and %p are both %p -- one entry, so one item.\n',
+                   [% hd(b), hd(tl(b)), hd(tl(tl(b))) %]);
+        endfor;
+        mishap(length(bad), 1,
+               'import: two picks name one upstream entry');
     endunless;
 
     if imp_check then

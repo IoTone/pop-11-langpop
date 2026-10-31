@@ -718,4 +718,64 @@ procedure();
 endprocedure();
 sysdelete(FIX <> 'freq-ja-tmp.txt').erase;
 
+;;; ------------------------------------- a spelling upstream warns about
+;;; JMdict tags a kanji headword it does not recommend, and the importer
+;;; takes the FIRST headword as the written form -- which is the form the
+;;; question shows.  珈琲 is a real spelling of コーヒー and 迚も of
+;;; とても, both tagged, and the tutor was asking beginners to read them.
+check_true('a rarely-used spelling is refused',
+           imp_rare_kanji('&rK;'));
+check_true('and so is an ateji',
+           imp_rare_kanji('&ateji;'));
+check_true('an out-dated one too',
+           imp_rare_kanji('&oK;'));
+check_true('and a search-only one, which is not a spelling at all',
+           imp_rare_kanji('&sK;'));
+check_true('the expansion is matched as well as the entity, because which '
+           <> 'one arrives depends on how the DTD was read',
+           imp_rare_kanji('rarely used kanji form'));
+check_false('an untagged headword is kept', imp_rare_kanji(false));
+check_false('and so is a tag about something else',
+           imp_rare_kanji('&uk;'));
+
+;;; End to end: the words whose every kanji spelling is tagged come out
+;;; written in kana, and the ones with a plain spelling keep it.
+if lp_ilang("w_koohii") then
+    check_false('コーヒー has no kanji form, because 珈琲 is ateji',
+                lp_form_of("w_koohii", "kanji"));
+    check('and is written in katakana',
+          lp_form_of("w_koohii", "katakana") sys_>< '', 'コーヒー');
+    check_false('とても has none either, because 迚も is rarely used',
+                lp_form_of("w_totemo", "kanji"));
+    check('while 誕生日 is untagged and is still the form shown',
+          lp_form_of("w_tanjoubi", "kanji") sys_>< '', '誕生日');
+    check('and a word with a tagged SECOND spelling keeps its first',
+          lp_form_of("w_amari", "kanji") sys_>< '', '余り');
+else
+    printf(';;; imported content not built -- the spelling tags not checked\n');
+endif;
+
+;;; ------------------------------------- two picks naming one entry
+;;; 早い and 速い are both はやい, and a curator may reasonably expect two
+;;; items -- but JMdict holds them as one entry with two kanji headwords.
+;;; Both picks resolve there, the emitter writes the first headword, and
+;;; the import produces two items with identical forms and an identical
+;;; gloss, each one counting toward vocabulary(800).
+lvars shared = imp_shared_entries(
+    [% imp_entry("w_a", "word", 'jmdict(\'1404975\')', [], 'fast', []),
+       imp_entry("w_b", "word", 'jmdict(\'1404975\')', [], 'fast', []),
+       imp_entry("w_c", "word", 'jmdict(\'1302680\')', [], 'mountain', []) %]);
+check('two ids on one entry are reported', length(shared), 1);
+check('naming the first id', hd(hd(shared)) sys_>< '', 'w_a');
+check('and the second', hd(tl(hd(shared))) sys_>< '', 'w_b');
+check_true('while a distinct entry is left alone',
+           not(member("w_c", [% applist(shared, hd) %])));
+
+;;; An enrichment entry names an item on purpose, so it is not a
+;;; collision -- the same exemption imp_collisions makes.
+check('an enrichment entry is exempt',
+      length(imp_shared_entries(
+          [% imp_entry("w_a", false, 'cmudict', [], false, []),
+             imp_entry("w_b", false, 'cmudict', [], false, []) %])), 0);
+
 test_summary();

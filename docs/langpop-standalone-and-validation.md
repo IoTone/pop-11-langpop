@@ -75,7 +75,7 @@ and no commit in the new repo is broken at its own revision.
 
 `jsonrpc.p` and `json.p` are not incidental: `jsonrpc` was finished to
 make `server.p` possible, and `json_generate`'s dropped `false` is one
-of the traps in langpop's own README. A standalone langpop needs a
+of the traps in DESIGN_NOTES.md. A standalone langpop needs a
 Poplog that has them.
 
 Three ways, and I would not vendor:
@@ -316,7 +316,7 @@ restate a decision the project has already made, which is the point:
   student can never learn, and the count-based criteria make that look
   like the student's failure;
 - **no crash, and no unhandled mishap, over the whole run**, with the
-  file not being edited underneath it (see the README on that).
+  file not being edited underneath it (see DESIGN_NOTES.md on that).
 
 ---
 
@@ -582,7 +582,70 @@ did what the section above predicted, in order:
    cluster, CMUdict shows it, and `pants` is the word at A1 that
    exercises it.
 
-13. **Smaller observations, not yet acted on:** a reported-but-never-
+13. **N5 Japanese, 170 words to 773, and a question nobody should have
+   been asked.** The rung wanted 800 and held 220 counting pre-school, so
+   it was unfinishable and `ja` never left N5. It is 823 held and 804
+   askable now, and `vocabulary(800, read)` is `ok`. Four things the
+   content exposed, all of them in DESIGN_NOTES.md at length:
+
+   - **The question was a spelling no beginner should see.** JMdict gives
+     コーヒー the headword 珈琲 and とても the headword 迚も, both tagged
+     `&ateji;` and `&rK;`, and the importer took the first headword as the
+     written form. The tags are read now, and a word whose every kanji
+     spelling is tagged has no kanji form at all -- which is right, since
+     コーヒー is written in katakana.
+   - **A word written only in kana has no reading question**, and 61 of
+     them were silently outside the measurement: `801 have, 740 askable`.
+     The katakana loanwords are asked now, prompted as katakana and
+     answered in romaji, which takes it to 805; the nineteen kana-only
+     expressions are deliberately left unasked, because prompting とても
+     for `totemo` at N5 tests hiragana and pads the criterion.
+   - **Four voice-test disagreements, none of them the scorer's.** The
+     suite's fake voice greps for the hiragana っ, so every katakana
+     geminate was handed the dropped-beat recording. Measured against the
+     real voice the four sit at 1.24-1.46, where the native words are.
+   - **Two picks resolved to one dictionary entry**, and both counted.
+     早い and 速い are one JMdict entry with two headwords, so
+     `w_hayai` and `w_hayai_fast` came out as two items with identical
+     forms and an identical gloss. No existing check could see it: both
+     ids were free, neither key was ambiguous, and `imp_verify` confirmed
+     the emitter wrote what it meant to. `imp_shared_entries` asks the
+     question now.
+   - **The Japanese frequency list cannot attest a word.** See finding 14.
+
+14. **The Japanese frequency corpus is not usable for shares, and this
+   invalidates numbers already written down.** hermitdave's 2018 Japanese
+   list is missing 私, 僕, 君, 俺 and 誰 in every spelling, while holding
+   、, 。, あなた and お前. It was found by trying to attest the N5
+   tranche the way `graph/en/a1.pl` is attested: the check reported 僕 and
+   誰 as absent from Japanese, which is false, so the check was wrong and
+   the reason is upstream. The file is the genuine
+   `content/2018/ja/ja_full.txt`.
+
+   Consequences, each one a claim withdrawn rather than a thing to fix:
+   the N5 words are curation and **not** corpus-attested; every *share of
+   the corpus* in `docs/langpop-japanese-tranche.md` is unsound, the 14.6%
+   headline included; and the ja `coverage(reading)` criterion the owner
+   deferred should stay deferred for a concrete reason, which is that its
+   denominator is missing its most frequent words. The `--gap` report's
+   annotations are computed from the graph and still stand; its `share`
+   and `if-added` columns do not. English is unaffected -- `en_50k.txt`
+   has `you`, `i` and `the` at the top, where they belong.
+
+15. **A long run exhausted the heap, and the reason is the save.** 9,000
+   answers produced 1,559 `langpop/answer: internal error` violations --
+   a mishap, reported as -32603. `lp_save` writes the whole profile on
+   every answer and the journal is never trimmed, so at ~7,600 entries
+   the profile is 450KB and `consstring` inside `json_generate` runs past
+   Poplog's default `popmemlim` of 1.5M words. Raised to 24M words, and
+   seed 1 then passes at 9,000. **The design question is open and
+   recorded in DESIGN_NOTES.md:** a whole-profile write per answer is
+   O(n²) in journal length, and the right fix is to append journal
+   entries to a file of their own, which is a storage migration rather
+   than part of a content tranche. It had never mattered because no rung
+   held enough content for a run to get this long.
+
+16. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
@@ -594,7 +657,10 @@ reviews existed; ~2650 with them, which is the ladder being climbed four
 rungs deep on every item and then burned; ~5700 with advancement. The
 English runs went ~100 to ~1900 once there was something on the rung a
 learner could finish and the harness would come back the next day for
-it, and ~1900 to ~7800 once A1 held 519 words rather than 100.
+it, and ~1900 to ~7800 once A1 held 519 words rather than 100. The
+Japanese runs make the same move for the same reason now N5 holds 773
+words rather than 170: a rung that can be finished is a rung the harness
+spends answers on.
 
 ---
 
@@ -610,7 +676,7 @@ later one.
 | 2 | the carve; verify 44 commits; delete from Poplog with a pointer | new repo's suites pass from a fresh clone |
 | 3 | ~~a ceiling report~~ already built: it is `--audit` | nothing to do |
 | 4 | the oracle student over JSON-RPC, and the invariant assertions | `ja preschool` climbs from empty, reproducibly, from a seed |
-| 5 | the okurigana fix and the n5 word tranche to 800 | `ja n5` climbs; the disagreement log is a curation queue |
+| 5 | the okurigana fix and the n5 word tranche to 800 | ~~`ja n5` climbs~~ the reading half does (2026-10-31, 773 picks, 823 words, 804 askable); the listening half wants `--audio n5` |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
 | 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |
 

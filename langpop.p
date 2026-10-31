@@ -25,6 +25,28 @@ uses prolog;
 uses define_prolog;
 uses utf8;
 
+;;; ------------------------------------------------------------- the heap
+;;; Poplog's default popmemlim is 1,500,000 words, about 12MB, and that is
+;;; not enough for this program for two reasons that compound.
+;;;
+;;; The graph is resident: 1,635 items once the imported content is built,
+;;; with their forms, glosses and edges.  And lp_save writes the student's
+;;; whole profile on EVERY answer -- json_generate pushes the characters
+;;; and consstring takes them off the stack -- so the cost of a save grows
+;;; with the journal, which grows with every answer and is never trimmed,
+;;; because the reading resets and the record does not.
+;;;
+;;; At about 7,600 journal entries the profile is 450KB and a save fails
+;;; with MEMORY LIMIT (popmemlim) EXCEEDED, which the server reports to
+;;; the client as an internal error.  An oracle run long enough to climb
+;;; N5 now reaches that, where before the word list was large enough to
+;;; make the climb long, it did not.
+;;;
+;;; 24,000,000 words is about 190MB: generous for a tutor, and still a
+;;; guard rather than no limit at all.  It does not make the save cheap
+;;; -- see DESIGN_NOTES.md, which records the growth itself as open.
+24000000 -> popmemlim;
+
 ;;; ------------------------------------------------------------- locating
 ;;; The directory this file is in, read from the compiler WHILE it is
 ;;; reading this file.  popfilename is only right now, at compile time;
@@ -2620,6 +2642,37 @@ define lp_question(item, ch) -> (shape, prompt, answer, options);
         unless reads == [] then
             ("type", kanji sys_>< '', reads, [])
                 -> (shape, prompt, answer, options);
+        endunless;
+    elseif k == "word" and lp_ilang(item) == "ja"
+    and lp_form_of(item, "katakana") then
+        ;;; A LOANWORD, written in katakana and in nothing else.  It has
+        ;;; no kanji -- see import.p's imp_rare_kanji, which is why 珈琲
+        ;;; is not offered as the spelling of コーヒー -- and no
+        ;;; hand-written romaji, so neither branch above finds a probe,
+        ;;; and 50 of the N5 words sat unaskable.
+        ;;;
+        ;;; The katakana IS the exercise.  Reading コーヒー as koohii is
+        ;;; what the katakana half of pre-school teaches and what a
+        ;;; learner has to do with a loanword they half-recognise: the
+        ;;; long vowel, the ー and the small ッ are exactly where it goes
+        ;;; wrong, and テレビ is not television until it is read.
+        ;;;
+        ;;; The answer is built here rather than taken from lp_readings,
+        ;;; which would put the katakana itself at the head of the list --
+        ;;; and a question whose answer is its own prompt asks nothing.
+        ;;; So the romaji comes first and the kana folded to hiragana
+        ;;; second.  The order matters because hd(answer) is what the
+        ;;; tutor says when the student is wrong: こーひー is not a
+        ;;; spelling of anything, though it is accepted, since a learner
+        ;;; who types the reading in the other syllabary has read the
+        ;;; word.
+        lvars kata = lp_form_of(item, "katakana") sys_>< '', keep = [], x;
+        for x in lp_romaji_variants(kata) do
+            lp_push_str(keep, x) -> keep;
+        endfor;
+        lp_push_str(keep, lp_kata_to_hira(kata)) -> keep;
+        unless keep == [] then
+            ("type", kata, keep, []) -> (shape, prompt, answer, options);
         endunless;
     elseif k == "skill" and lp_probe_of(item) then
         ;;; "How many beats is this?", or "how many syllables?"  The

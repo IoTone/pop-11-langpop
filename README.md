@@ -1,135 +1,111 @@
-# langpop — a knowledge graph of a language, and a teacher who uses it
+# langpop — a language curriculum as a knowledge graph
 
-A language tutor whose knowledge is a Prolog graph and whose student
-record is a Pop-11 overlay. Two languages are built together from the
-start: **Japanese** for a Western learner and **English** for a Japanese
-test-taker. Both begin at a level below the bottom of the official
-ladder, because that is where learners actually begin.
+langpop is a tutor for two languages: **Japanese** for a Western learner,
+and **English** for a Japanese test-taker. What it knows about each
+language is a Prolog graph of items and the order they have to be taught
+in. What it knows about a student is a separate set of numbers that
+changes every time they answer a question.
 
-Two programs, from the [design](https://claude.ai/code/artifact/7c9aa285-6747-4ec8-927a-a25c94f89919)'s
-first two proposals:
+Both languages begin at a level below the bottom of the official ladder,
+because that is where learners begin. A learner with no hiragana is not a
+beginner at N5; they are below it.
 
-**A — one heap, three languages.** `langpop.p`: the graph is Prolog, the
-overlay and the TUI are Pop-11, and nothing leaves the process. No
-server, no model, no network. When A is wrong it is wrong in one address
-space, which is why it was built first.
+This README describes the curriculum and how to run it. The record of how
+it was built — what the measurements found, what had to be corrected and
+why — is in [DESIGN_NOTES.md](DESIGN_NOTES.md).
 
-**B — one protocol is the door.** `server.p` + `client.p`: the same
-engine, unchanged, behind JSON-RPC. The TUI becomes a client with no
-privileges a phone app would not have.
+There are two front ends over one engine:
+
+**A — one process.** `langpop.p`: the graph is Prolog, the student record
+and the terminal interface are Pop-11, and nothing leaves the process. No
+server, no model, no network.
+
+**B — one protocol.** `server.p` and `client.p`: the same engine behind
+JSON-RPC. The terminal interface becomes a client with no privileges a
+phone app would not have.
 
 ```sh
 # A: the whole thing in one process
-./langpop                   # Japanese, with Aoi
+./langpop                    # Japanese, with Aoi
 ./langpop --lang en          # English, with Mr Hill
 ./langpop --check            # integrity-check the graph
 ./langpop --audit            # which rungs can be climbed
 ./langpop --chart hiragana   # a page to print
 ./langpop --zine --user bob  # a booklet to fold
 ./langpop --audio preschool  # make the sound files
-./langpop --audio preschool --rate slow
-./langpop --voicetest        # the voice tests the scorer
+./langpop --voicetest        # check the voice against the scorer
 
 # B: the same session, over a protocol
 ./langpop server --port 7801 &
 ./langpop client --port 7801 --user bob
 
-./langpop test               # every suite, nonzero exit if any fails
-
-# the oracle student: a seeded harness that climbs the ladder over
-# JSON-RPC, asserting the engine's invariants at every answer --
-# a failing run prints its seed, and the seed is the bug report
+./langpop test               # every suite; nonzero exit if any fails
 ./langpop oracle --seed 42 --answers 3000
-./langpop oracle --place --skill 0.9   # the placement interview instead
-
-# a day, in milliseconds.  The review ladder and the scoring period are
-# measured in wall-clock days, so a test needs a short one -- it scales
-# the clock and nothing else
-./langpop server --port 7801 --day-ms 200
 ```
 
-A mastered item is scheduled, not shelved: it comes back after a day,
-three days, a week and four weeks, and is then burned. Scores reset
-every 28 days, on the student's own clock -- the *reading* resets, never
-the record -- and the exit criteria are measured over the reviews in the
-current period, because measured over a lifetime they read what it cost
-somebody to learn rather than what they know. A rung is finished when
-every criterion for it is met -- or excused, by name, when nothing on
-this machine can measure it -- and the student moves up there and then.
-With nothing owed today it says which day the next review falls on,
-rather than that it has run out. The numbers that settled all this are
-in `docs/langpop-reviews-and-periods.md`.
+---
 
-The English rung needed one more thing before any of that could be
-finished: **the words that sound the same**. Two of its three criteria
-wanted a voice, so a student with no microphone could not leave
-pre-school however well they read. A written confusion -- `mix/4`:
-`rice` against `lice`, `presents` against `presence`, `coffee` against
-`copy` -- is the reading half of a merge, asked by showing what one of
-them means and offering both spellings. It needs no speaker and no
-cache, and it is deliberately not another channel of the sound contrast
-that causes it: a contrast is measured by playing a sound, and a reading
-answer is no evidence of hearing. See `docs/langpop-pronunciation.md`.
+## Contents
 
-This repository was carved out of
-[IoTone/poplog](https://github.com/IoTone/poplog) with its history
-intact: it grew past what an example is, and it is a program that USES
-Poplog rather than part of the language. What it needs from Poplog is
-listed below, and probed for at startup.
+- [Installing](#installing)
+- [A session](#a-session)
+- [How the curriculum is built](#how-the-curriculum-is-built)
+  - [An item is not its spelling](#an-item-is-not-its-spelling)
+  - [What is in the graph](#what-is-in-the-graph)
+  - [Prerequisites do the teaching](#prerequisites-do-the-teaching)
+  - [Channels: reading a word is not knowing it](#channels-reading-a-word-is-not-knowing-it)
+  - [Evidence has tiers](#evidence-has-tiers)
+  - [Review, and the 28-day period](#review-and-the-28-day-period)
+  - [Exit criteria, and the audit](#exit-criteria-and-the-audit)
+  - [Provenance](#provenance)
+- [The two pre-schools](#the-two-pre-schools)
+- [The Japanese content](#the-japanese-content)
+- [The English content](#the-english-content)
+- [Adding content from a reference source](#adding-content-from-a-reference-source)
+- [Coverage, and the gap report](#coverage-and-the-gap-report)
+- [Teaching aids the student controls](#teaching-aids-the-student-controls)
+- [Placement](#placement)
+- [Things to print](#things-to-print)
+- [Sound](#sound)
+- [The protocol](#the-protocol)
+- [Looking at the graph](#looking-at-the-graph)
+- [Commands](#commands)
+- [Repository layout](#repository-layout)
+- [Limits](#limits)
 
-`./langpop` is a thin wrapper over `poplog basepop11 <file>`, and the
-working directory does not matter: every `.p` file here locates its
-neighbours from its own path, read off `popfilename` while the compiler
-is still inside the file (the only moment it is right). The wrapper
-finds a Poplog by `$LANGPOP_POPLOG`, then an enclosing Poplog source
-tree's `./poplog`, then `poplog` on `PATH`.
+---
 
-## Installing a Poplog
+## Installing
 
-The easy way is the main project's binary one-liner -- see
-[IoTone/poplog](https://github.com/IoTone/poplog#install) for the
-details and the uninstall line:
+langpop runs on [Poplog](https://github.com/IoTone/poplog). `./langpop` is
+a wrapper over `poplog basepop11 <file>`; it finds a Poplog by
+`$LANGPOP_POPLOG`, then by an enclosing Poplog source tree's `./poplog`,
+then by `poplog` on `PATH`. The working directory does not matter.
+
+The quickest way to get a Poplog is the main project's installer:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/IoTone/poplog/master/tools/install-skill.sh | sh
-```
-
-That unpacks a relocatable runtime to `~/.local/share/pop11-skill` with
-a `poplog` driver inside, which is exactly what the wrapper wants:
-
-```sh
 LANGPOP_POPLOG="$HOME/.local/share/pop11-skill/poplog" ./langpop
 ```
 
-One honest date to check: the tutor itself needs `lib/json`
-(2026-10-01), which the current release carries -- but the JSON-RPC
-pieces (`server`, `client`, `oracle`) need `lib/jsonrpc` (2026-10-20),
-and as of this writing the newest tarball (`skill-2026.10.1`) was built
-three days before that library landed. Until a newer release ships,
+One version check to be aware of. The tutor needs Poplog's `lib/json`
+(2026-10-01), which the current release carries. The JSON-RPC pieces —
+`server`, `client`, `oracle` — need `lib/jsonrpc` (2026-10-20), which is
+newer than the most recent binary release. Until a newer release ships,
 those three need a Poplog [built from
-source](https://github.com/IoTone/poplog/blob/master/INSTALL) (`git
-clone`, seed `corepop`, `./configure && make all`, then point
-`LANGPOP_POPLOG` at the tree's `./poplog`). langpop checks at startup
-and names the release it needs rather than dying mid-compile.
+source](https://github.com/IoTone/poplog/blob/master/INSTALL). langpop
+probes for both libraries at startup and names the release it needs
+rather than failing part-way through compiling.
 
-## What a fresh clone holds
+A fresh clone holds 759 items. The content imported from reference
+sources is not kept in git — it is regenerated on demand (see [Adding
+content from a reference source](#adding-content-from-a-reference-source))
+— and every test suite passes with it and without it.
 
-A fresh clone holds 326 items: the imported content under
-`graph/*/generated/` is deliberately not kept in git — it is regenerated
-from upstream (`tools/fetch-upstream.sh`, then `./langpop import`), and
-every suite passes with it and without it.
+---
 
-What it finds has to be young enough. langpop leans on two libraries
-newer than most installed Poplogs — `lib/json` (with `json_object`,
-2026-10-01) and `lib/jsonrpc` (2026-10-20) — so it probes for them at
-startup (`lp_need_lib`) and stops with the release to fetch, rather than
-dying mid-compile with `LIBRARY NOT FOUND`, which names the symptom and
-not the cure. One trap inside the probe: `syslibcompile` must be handed
-`popuseslist` explicitly, because its one-argument form searches the
-autoload list, which does not include `pop/lib/lib` — it would answer
-false for a library that `uses` finds without complaint.
-
-A session, in full:
+## A session
 
 ```
 はじめまして。I am Aoi, and I will be your teacher.
@@ -150,38 +126,57 @@ Aoi> :why hi_ka
     belief 0.0 on channel read (mastery is 0.8)
 ```
 
-## What is in the graph
+An empty line asks for the next thing to learn: the item with the weakest
+belief that the student is ready for, breaking ties by whichever has been
+asked about least. `:why` shows the derivation — what the item requires,
+where the fact came from, and where the student stands on it.
 
-`graph/schema.pl` states every relation the graph may contain, and
-nothing else is allowed in a graph file. An item's identity is a flat
-atom and **never its spelling**: `hi_a` is the item, `あ` is one of its
-forms, `a` is another. That one decision is what lets the same engine
-teach a syllabary, a sound contrast and a sentence pattern.
+Student records live in `~/.langpop/`, one JSON file per student. There is
+no password; this is a local tool.
+
+---
+
+## How the curriculum is built
+
+### An item is not its spelling
+
+Every item's identity is a flat atom, and it is never the written form.
+`hi_a` is the item; `あ` is one of its forms and `a` is another. The same
+is true one rung up: `みず` and `水` are one word, `w_mizu`, met twice.
+
+This is the decision that lets one engine teach a syllabary, a sound
+contrast and a sentence pattern, and it is the decision that keeps a
+student's record intact when a spelling is corrected or a second script
+is added. An id minted from a reference source would change when that
+source renumbered, and every belief recorded against it would quietly
+detach.
+
+`graph/schema.pl` states every relation a graph file may contain. Nothing
+outside that list is allowed in.
+
+### What is in the graph
 
 | File | Holds | Facts |
 | --- | --- | --- |
 | `graph/schema.pl` | the relations, the teaching rule, the integrity checks | — |
 | `graph/ja/ladder.pl` | pre-school → N5 → N1, with exit criteria | 6 levels |
 | `graph/ja/kana.pl` | both syllabaries, voiced included, confusable pairs, mora skills | 138 kana |
-| `graph/ja/items.pl` | 50 starter words, kana-only, 3 patterns | 53 |
+| `graph/ja/items.pl` | 50 starter words, kana-only, 3 sentence patterns | 53 |
+| `graph/ja/picks/n5.pl` | which words are N5, by reference key — the curation | 773 picks |
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
 | `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
-| `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
 | `graph/en/a1.pl` | 519 A1 words with Japanese glosses, hand-written | 519 |
-| `graph/ja/picks/n5.pl` | which words are N5, by upstream key — the curation | 148 picks |
-| `graph/*/generated/*.pl` | imported content, a build product, never committed | 273 items (ja), and for English facts only: 555 pronunciations, 519 frequencies |
+| `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
+| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 876 items (ja); for English, facts only: 555 pronunciations, 519 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
 
-759 committed items, 1032 once the content is built; 12 ladder levels,
-40 exit criteria, no integrity violations either way. (Both counts are
-what `./langpop --check` prints with and without
-`graph/*/generated/`, measured rather than remembered -- they had
-drifted before.)
+759 committed items, 1,635 once the imported content is built; 12 ladder
+levels, 40 exit criteria, no integrity violations either way. Those are
+the figures `./langpop --check` prints.
 
-Four things make it a graph rather than a table with arrows drawn on it:
+### Prerequisites do the teaching
 
-**The prerequisite DAG is explicit and does the teaching.** The whole of
-the tutor's choice of what to teach next is one clause:
+The whole of the tutor's choice of what to teach next is one clause:
 
 ```prolog
 ready(S, Lang, Level, I) :-
@@ -191,29 +186,52 @@ ready(S, Lang, Level, I) :-
     all_hold(requires(I, Pre), gate_ok(S, Pre)).
 ```
 
-`at_or_below` and not `Level` exactly, because every other count in the
-design is cumulative and this clause was the one that was not. An item
-the student *forgot* after moving up was orphaned: `ready/4` did not
-reach down to it, and the review ladder drops an item the moment it
-falls under `MASTERY`, so it sat in neither the plan nor the queue while
-still being counted against the rung's criterion. English A2 is where
-that stopped being theoretical — A2 declares no items of its own, so its
-plan was empty by construction.
+An item is ready when it sits at or below the student's level, is not
+already known, and every prerequisite is satisfied. `at_or_below` rather
+than the level exactly, because everything else in the design is
+cumulative: a student who moves up and then forgets a word from the level
+below must be able to meet it again.
 
-**Forms are derived, not enumerated.** 138 `kana/5` facts produce 138
-items and 276 forms; the katakana-after-hiragana edges, the vowels-first
-edges, が-after-か and the か/が confusable pairs are rules, not data. A glyph can only be wrong in one
-place — and the kana table is generated from Unicode codepoints
-(`tools/mkkana.py`), so it is not wrong at all.
+Edges are derived wherever a rule can state them. The 138 `kana/5` facts
+produce 138 items and 276 forms; the katakana-after-hiragana edges, the
+vowels-first edges, が-after-か and the か/が confusable pairs are all
+rules rather than typed data. A glyph can only be wrong in one place —
+and the kana table itself is generated from Unicode codepoints by
+`tools/mkkana.py`, so it is not wrong at all.
 
-**Uncertainty lives in the overlay, not the graph.** A belief is a number
-between 0 and 1 per item per channel, in Pop-11, where it can change
-every turn. The graph holds no student state.
+Two kinds of edge get drawn automatically when content is imported:
 
-**A word is not known because you can read it.** An item is judged on a
-list of channels — a character is `[read]`, a word is `[read hear]`, a
-sound contrast is `[hear]`, a pattern is `[produce]` — and the exit
-criteria name the channel they measure:
+- **A word needs the kana.** Every imported Japanese word requires
+  `hiragana_all`.
+- **A word needs the characters written in it**, where the graph holds
+  them. 本 is in 日本, which is a fact rather than a teaching opinion.
+
+What is never derived is teaching order *between words*. KANJIDIC2 has
+radical and stroke data that would support a deeper ordering, but which
+radicals come before which characters is a claim the source does not
+make, and a hundred edges nobody chose is not a graph anyone can reason
+about. The orderings that matter are stated by hand as `pick_requires/2` —
+antonym pairs, mostly, where the second word is introduced as the
+negation of the first and means little before it.
+
+**Beliefs live outside the graph.** A belief is a number between 0 and 1,
+per item per channel, held in Pop-11. The graph holds no student state at
+all, which is why `--check`, `--audit`, the charts and the viewer need no
+student.
+
+### Channels: reading a word is not knowing it
+
+Each item is judged on a list of channels:
+
+| Item kind | Channels |
+| --- | --- |
+| character | `read` |
+| word | `read hear speak` |
+| sound contrast | `hear speak` |
+| written confusion | `read hear` |
+| sentence pattern | `produce` |
+
+And the exit criteria name the channel they measure:
 
 ```prolog
 exit(ja, n5, vocabulary(800, read), 0.80, 4000).
@@ -221,23 +239,39 @@ exit(ja, n5, vocabulary(800, hear), 0.80, 4000).
 exit(ja, n5, kanji(103, read),      0.80, 4000).
 ```
 
-This is the one axis that enumerates, so it is the one that gets ground:
-a vocabulary count goes up while listening rots, and every JLPT level has
-a 聴解 section the count does not touch. The belief store was always per
-channel; what was wrong was that **one** channel decided whether a word
-was known, which made *can read it* the engine's definition of knowing a
-word.
+Vocabulary is the one axis in language learning that enumerates, so it is
+the one that gets ground: a word count rises while listening rots. Every
+JLPT level has a 聴解 section that a word count does not touch, so asking
+for the same vocabulary on two channels is not an invention — it is what
+the exam already asks.
 
-Unlocking and passing stay separate questions. `lp_primary/1` is the
-**gate** — the head of the channel list, and what opens the prerequisite
-graph — because for reading something built on reading, reading is
-enough. If the gate demanded every channel then, with no way to verify
-`hear`, nothing would ever unlock and the ladder could not be climbed.
-Passing a level is what the exit criteria are for, and they now report
-two numbers instead of averaging them into a comfortable one.
+Characters take no `hear` channel. A character is not heard; its
+*reading* is, and that is the word's channel rather than the character's.
 
-**And the tool says what it cannot check.** `hear` is not in
-`VERIFIABLE`, because there is no audio anywhere in langpop:
+**Unlocking and passing are separate questions.** `lp_primary/1` is the
+**gate** — the head of an item's channel list, and the thing that opens
+the prerequisite graph. For reading something built on reading, reading is
+enough. If the gate demanded every channel, then on a machine that cannot
+check `hear`, nothing would unlock and the ladder could not be climbed.
+Passing a level is what the exit criteria are for, and they report each
+channel separately rather than averaging two numbers into a comfortable
+one.
+
+A prerequisite the tutor has no way to check does not hold the door shut:
+
+```prolog
+gate_ok(S, Pre) :- lp_known(S, Pre).
+gate_ok(_, Pre) :- lp_ungateable(Pre).
+```
+
+The edge is still true and still teaches order; it simply cannot be a
+*condition*, because nothing could satisfy it. This does not let anybody
+pass anything — an unmeasurable criterion is still reported as
+unmeasurable.
+
+**And the tool says what it cannot check.** `hear` is verifiable only
+where a voice is installed and the sound is already cached; `speak` needs
+a microphone and a scorer:
 
 ```
 vocabulary(50, read): 0 of 50 words mastered (40 in the graph)
@@ -245,565 +279,68 @@ vocabulary(50, hear): cannot be checked here -- needs audio (40 in the graph)
 ```
 
 Reporting *0 of 50* would read as a student who has learned nothing, when
-what is true is that nothing here can measure it; `langpop/status`
-carries `"verifiable": false` so a client cannot show the tool's limit as
-the student's ability. A self-report cannot buy the score either — it is
-tier 2, capped below `MASTERY` by arithmetic. The consequence is that
-langpop can say *your reading is at N2 and I cannot certify your
-listening*, which is true.
+what is true is that nothing here can measure it. `langpop/status` carries
+`"verifiable": false` so a client cannot present the tool's limit as the
+student's ability. The consequence is that langpop can say *your reading
+is at N2 and I cannot certify your listening*, which is true.
 
-That gap is widest exactly where it matters most, and it is written up
-rather than left implicit:
-[`docs/langpop-pronunciation.md`](docs/langpop-pronunciation.md)
-— for a Japanese speaker learning English, all twelve sound contrasts are
-unprobeable, so `sound_contrasts` can never be mastered and
-`exit(en, preschool, sound_contrasts, ...)` can never be met. That chain
-was already true; the channel split stopped it being quiet.
+### Evidence has tiers
 
-**Every fact carries its provenance.** `own(kana)`, `own(starter_list)`,
-`estimate(community)`, `ets(cefr_mapping)`, `jmdict('1302680')`,
-`kanjidic2(ucs('65e5'), jlpt(4))`. `--check` fails any item whose source
-is `unknown`.
+The tutor assigns work it cannot watch, and the student reports back.
+Five kinds of evidence, five ceilings, set in one place in `langpop.p`:
 
-## Filling a level from upstream
-
-The graph above had **one rung**. All 170 items sat at pre-school while
-both ladders declared exit criteria — `kanji(100)`, `vocabulary(800)`,
-four reading-coverage criteria — that nothing in the graph could satisfy.
-A student who finished pre-school walked off the end of it.
-
-`import.p` fills the rungs from upstream reference data. Two things make
-that safe to do, and they are the whole design.
-
-**The repo holds curation, never content.** JMdict and KANJIDIC2 are CC
-BY-SA 4.0 (EDRDG). Share-alike is fine for a dictionary and poison for a
-tutor, which is exactly why the project's decision was *importer in the
-tree, decks never*. So what the importer emits is a **build product**:
-`graph/<lang>/generated/` is gitignored, regenerated on demand, and
-carries upstream's notice in its own header. What *is* committed is
-`graph/<lang>/picks/*.pl` — which entries, at which level, under which
-identity — because that is the teaching judgment, and it is ours.
-
-**An identity is never generated.** An item is its identity and not its
-spelling, so an id minted from upstream would change when upstream
-renumbered, and every belief a student had recorded against it would
-quietly detach. Word ids are written by the curator. The one exception is
-a kanji, whose id is `k_<codepoint>` — and a codepoint is not upstream's
-opinion, which is the same argument `tools/mkkana.py` makes for
-generating the kana table rather than typing it.
-
-The two sources need different treatment, because they differ in what
-they know:
-
-```
-tools/fetch-upstream.sh ~/langpop-upstream
-
-# KANJIDIC2 carries the level, so the selection is a RULE
-./langpop import --source kanjidic \
-    --file ~/langpop-upstream/kanjidic2.xml --level n5 --jlpt 4
-
-# JMdict does not, so the selection is a PICK LIST
-./langpop import --source jmdict \
-    --file ~/langpop-upstream/JMdict_e --picks graph/ja/picks/n5.pl
-```
-
-KANJIDIC2's `<jlpt>` is the **pre-2010** four-level JLPT, and old level 4
-is exactly what became N5 — official and exact at this end of the ladder,
-unlike old level 3, which split into N4 and N3 with no clean answer. So
-N5's kanji come from upstream wholesale: 103 of them, against the
-ladder's `kanji(100)`, which is as close as a withdrawn syllabus gets.
-N4's cannot, and the importer is not asked to pretend otherwise.
-
-JMdict has no level marking at all, so a pick names an entry one of three
-ways:
-
-```prolog
-pick(w_neko,  ja, n5, word, jmdict_kana('ねこ')).
-pick(w_yomu,  ja, n5, word, jmdict_kanji('読む')).
-pick(w_yama,  ja, n5, word, jmdict('1302680')).
-```
-
-The first two are what a person can write; the third is the escape hatch,
-and it is needed more often than it looks. **An ambiguous key is an error
-with the candidates listed, never a guess:**
-
-```
-AMBIGUOUS w_otoko: jmdict_kanji(男) matches 5 entries --
-    jmdict('1419990')  男  おとこ/おっこ  man, male
-    jmdict('2742850')  男/男の子  おのこ  man, boy
-    jmdict('2742870')  雄/男/夫/牡  お  male
-    jmdict('2742890')  男  なん  son
-    jmdict('2843485')  男  だん  masculine noun
-    -- say which, with pick(w_otoko, ..., jmdict('NNNNNNN')).
-```
-
-28 of the 148 picks came back like that, and the report is what resolved
-them. A tutor that silently taught *chopsticks* for a pick meaning
-*bridge* would be wrong in a way nothing downstream could detect.
-
-**The importer draws one kind of edge by itself.** A word written with a
-kanji the graph already holds requires that kanji — 本 is in 日本, and
-that is not an opinion. 73 of the 148 words gained such an edge:
-
-```prolog
-item(w_tanjoubi, word, ja, n5, jmdict('1419110')).
-form(w_tanjoubi, kanji, '誕生日').
-form(w_tanjoubi, hiragana, 'たんじょうび').
-gloss(w_tanjoubi, en, 'birthday').
-requires(w_tanjoubi, hiragana_all).
-requires(w_tanjoubi, k_751f).          % 生
-requires(w_tanjoubi, k_65e5).          % 日
-```
-
-誕 gets no edge, because it is not an N5 character — the word is then
-taught in kana, which is what a learner does before they meet it. What
-the importer will *not* invent is teaching order between words, even
-though KANJIDIC2 has the radical and stroke data to support a deeper
-prerequisite ordering: which radicals come before which kanji is a claim
-upstream does not make, and 100 edges nobody chose is not a graph anyone
-can reason about. Those few that matter are stated by hand, in the pick
-file, as `pick_requires/2`.
-
-**A level with no content and a level that was never built are not the
-same thing.** Both have no items, and `ready/4` cannot tell them apart,
-so each generated file stamps itself:
-
-```prolog
-generated(kanjidic2, ja, n5, 103, '2026-10-20T17:41:56Z').
-```
-
-`content_built/2` reads that, and `langpop.p`'s `GRAPH_GENERATED` treats
-a missing file as an unbuilt level rather than an error — the one way the
-imported manifest differs from the committed one. Every suite passes both
-with the content and without it.
-
-What the tutor says afterwards, at N5:
-
-```
-David, ja -- level n5
-  vocabulary(800): 0 of 800 words mastered (148 in the graph)
-  kanji(100): 0 of 100 kanji mastered (103 in the graph)
-  0 items ready to teach now
-```
-
-`kanji(100)` is measurable for the first time; until there were kanji in
-the graph it fell through to the measured branch and reported *0% over 0
-answers*, which reads like a student who got everything wrong rather than
-a criterion nothing was counting. `148 in the graph` is the honest state
-of the curation, stated separately from the student's own count so that a
-client cannot report one as the other. And **0 ready** is correct: every
-imported item requires `hiragana_all`, so the ladder is refusing to start
-N5 before pre-school.
-
-### Three import modes, because the sources differ in what they know
-
-| Source | Licence | Knows | So the selection is |
-| --- | --- | --- | --- |
-| KANJIDIC2 | CC BY-SA 4.0 | the JLPT level of a character | a **rule** — `--jlpt 4` |
-| JMdict | CC BY-SA 4.0 | readings and meanings, no level | a **pick list** |
-| CMUdict | 2-clause BSD | how an English word is pronounced | **nothing** — it enriches |
-
-The third is a different kind of import. It creates no items at all: it
-adds a pronunciation, and the prerequisite edges that pronunciation
-implies, to English words a committed graph file already declared.
-
-```sh
-./langpop import --source cmudict \
-    --file ~/langpop-upstream/cmudict.dict --lang en --level a1
-```
-
-**The sound contrast an English word exercises is derivable from how it
-is said.** This is the kanji edge again — 本 is in 日本, so a student who
-cannot read 本 cannot read 日本 — applied to sounds instead of characters.
-`library` has an R and an L in it, so it *is* the /r/–/l/ exercise, and
-that is a fact about the word rather than an opinion about teaching:
-
-```prolog
-form(e_world, ipa, '/wɜrld/').
-requires(e_world, s_r_l).
-
-form(e_street, ipa, '/strit/').
-requires(e_street, s_cluster).
-
-form(e_mother, ipa, '/mˈʌðər/').
-requires(e_mother, s_th_v).
-```
-
-The rules are **selective, and that was measured rather than guessed.** A
-rule for `s_final` — "ends in a consonant", the contrast about not adding
-a vowel after it — was true of 67 of the first 100 words, and an edge two
-items in three carry tells a reader nothing and a planner nothing either.
-It is left out, with `s_stress` (which needs the stress-shifting *pair*,
-and one CMUdict entry cannot show one) and `s_rhythm` (a property of a
-sentence). `s_ts` was in that list and has since left it: a word-final
-/ts/ is exactly the cluster the contrast is about, CMUdict shows it, and
-`pants` is the word at A1 that exercises it. What remains fires on 2% to 14% of the list. The minimal-pair
-rules want *both* phonemes present, since a word with an R and no L is
-not the r/l exercise, just a word with an R in it — and `ER` counts as
-carrying the R, because it is a rhotic vowel and `world` is one of the
-hardest words on the list for a Japanese speaker.
-
-The importer then reports what the list is missing, which is the question
-a curator filling a level actually has — and distinguishes the two
-answers, because one is fixable by curation and the other is not:
-
-```
-contrasts exercised at a1: 7 of 12
-  no word at a1 exercises these -- a gap in the word list:
-    s_v_b  vote and boat
-    s_f_h  food and hood
-  not derivable from a pronunciation, so never emitted:
-    s_final  need, not need-o
-    s_stress  PREsent and preSENT
-    s_rhythm  stress-timed, not mora-timed
-```
-
-### Why English words are committed and Japanese ones are not
-
-The asymmetry is not an inconsistency; it is what the sources know.
-JMdict can be read **backwards** — find the entries whose English gloss
-is `water`, take their Japanese headwords — and that was the obvious way
-to get the Japanese glosses for free. It was measured before it was
-built, and it does not work:
-
-| English | what the reverse lookup returns |
-| --- | --- |
-| water | 水分, お水, ウォーター — and never 水 |
-| think | シンク, the katakana loanword |
-| mountain | ベルグ, マウンテン, 山 — the first is German |
-| very | 迚も, an archaic spelling |
-| remember | 銘記 |
-
-Filtering to JMdict's priority-tagged entries and dropping the
-katakana-only ones cleans up the worst of it (`mountain` → 山) and still
-leaves `water` → 水分, which means *moisture*. An exact match on a gloss
-is not a translation: a bilingual dictionary is organised to explain
-Japanese words in English, and read the other way it finds whichever
-Japanese word happens to carry the bare English word as a gloss — which
-favours archaisms and transliterated loanwords, the latter being exactly
-what the pre-school level warns about. Teaching `water` as 水分 is worse
-than not glossing it at all.
-
-So the Japanese glosses in `graph/en/a1.pl` are ours, typed by hand. No
-licence reaches them, nothing upstream has an opinion about which English
-words are A1, and the importer's job for English is the one thing no
-person should type five hundred times: the pronunciation.
-
-Five hundred, now, and that is what the corpus *is* used for. The second
-tranche took the list from 100 words to 519, and the frequency list
-decided none of them: it was the **attestation** check. Every word in the
-file appears in `en_50k.txt` and in CMUdict, which is a mechanical way of
-catching a spelling that is archaic, mistyped or invented. Selection
-stayed a curation question, and the worst rank in the file says why —
-`insect` at 8551, `pencil` at 5821, `vegetable` at 7532, all three in
-every A1 syllabus ever written. Characters in films do not say
-*vegetable*; learners do.
-
-### Asking about what was imported
-
-The import had a hole in it. `lp_question/1` could only build a probe for
-an item carrying a **romaji** form, and the importer emits kanji,
-hiragana and katakana forms and no romaji — so every imported Japanese
-item returned `shape = "none"`:
-
-```
-ja n5 grapheme  103 items, 103 unprobeable
-ja n5 word      148 items, 148 unprobeable
-```
-
-251 of 521, and it failed silently. No violation, because nothing checked
-that an item could be *answered*; the tutor simply said *"nothing here
-can be checked by typing."*
-
-The fix is not to emit romaji into the graph. `form(k_5c71, kanji, '山')`
-together with `form(k_5c71, hiragana, 'やま')` **already is** a probe —
-prompt one, answer the other. What was missing is the ability to accept
-that answer typed in Latin letters, which is a fact about the writing
-system rather than about any item, so it lives beside the answer checking
-and not in the graph.
-
-```
-一  ->  ひと          そうです。
-山  ->  yama          そうです。
-日  ->  nichi         そうです。
-電車 -> densya        そうです。
-山  ->  kawa          Not yet.  It is やま.
-```
-
-An answer is now a **list** of acceptable spellings, head first and
-canonical — so `hd(answer)` is what the tutor says when you are wrong,
-and that is the kana: *It is やま*, not *It is yama*. Roughly four
-spellings per item, from the kana as written, the same folded to
-hiragana, and the romaji of each.
-
-The transliteration is Hepburn with two concessions, both of which a
-learner will actually type. **A long vowel may be written once** —
-がっこう is `gakkou`, and a student who types `gakko` has answered the
-question that was asked. **Kunrei is accepted**, because it is what a
-Japanese primary school teaches: `tukue`, `densya`, `tosyokan`. The youon
-rows are not optional there — a table that only knew `shi → si` rejected
-`densya` while accepting nothing, and でんしゃ is the commonest row in the
-syllabary.
-
-The youon rule is where a one-liner gets it wrong. Dropping the trailing
-`i` and adding the small kana's vowel turns きょ into `ko`; the stem needs
-a `y` *unless* it already palatalises. And "ends in h" is not that test:
-
-| | stem | | |
-| --- | --- | --- | --- |
-| き + ょ | `k` | → `kyo` | needs the y |
-| し + ゃ | `sh` | → `sha` | already palatalises |
-| ち + ゃ | `ch` | → `cha` | already palatalises |
-| ひ + ゃ | `h` | → `hya` | **needs the y** |
-
-Two skills, two strictnesses, and the difference is deliberate. がっこう
-at pre-school is a reading-the-*kana* exercise, so `gakko` has skipped the
-う and is wrong. The same word met as 学校 at N5 is a reading-the-*kanji*
-exercise, where the length of the vowel is not what is being asked.
-
-Not multiple choice, incidentally, even though the confusable pairs would
-make good distractors: typing is a stronger probe than picking, there is
-no one-in-four guess in it, and accepting romaji means no Japanese input
-method is needed — which is the bargain the pre-school kana probe already
-strikes.
-
-**26 items remain unprobeable, and that is the right number.** They are
-the eight skills (roll-ups over what they require), the three patterns
-(produced, not typed) and the fifteen sound contrasts (which need audio —
-see the pronunciation note). The suite asserts that shape rather than a
-count: *every item that cannot be typed is a skill, a pattern or a
-sound*, which is the invariant the original bug broke.
-
-Two displays were wrong for the same stale reason. `lp_any_form/1` and
-the card's `TERM_ORDER` both preferred hiragana over kanji — right while
-every item was a kana or a kana-only starter word, wrong the moment the
-import brought in characters. `:why k_4e00` headed itself ひと rather than
-一, and the card for 山 came out as a card reading やま with no reading
-line at all. A flashcard for 山 is 山 on the front and やま underneath.
-
-## A typing slip is not a wrong answer
-
-A Japanese learner is typing romaji, or fighting an input method they do
-not know well, and a slip of the fingers is not a gap in their
-knowledge. Recorded as *wrong* it costs them 0.70 of a belief and
-teaches the tutor something false — the probe ends up measuring typing
-rather than reading, which is the same validity problem as asking about
-grammar in vocabulary the student does not have.
-
-**Offered, not forgiven.** The first near miss on an item is not
-recorded at all; the student gets one more go.
-
-```
-一    ->   hto
-Typing, I think, not reading.  Once more:
-一    ->   hito
-そうです。
-```
-
-Taking `hto` *as* やま would credit an answer they never produced. The
-point is to let them fix it, not to score it for them — so what gets
-recorded is something they actually typed.
-
-**And nothing is revealed, because the tolerance is proportional with no
-floor:**
-
-| answer | length | slips allowed |
+| Tier | What it is | Ceiling |
 | --- | --- | --- |
-| `ka` | 2 | **0** |
-| `yama` | 4 | 1 |
-| `yuubinkyoku` | 11 | 2 |
+| 1 | verified here — we saw the answer and timed it | mastery (0.80) |
+| 2 | a reported result — "17 out of 20" | 0.78 |
+| 3 | reported compliance — "I did it" | 0.50 |
+| 4 | inferred — watched them do something that required it | 0.75 |
+| 5 | a machine verdict — they spoke, something measured it | 0.77 |
 
-That zero is the important one. For a two-character answer any edit is a
-*different answer* — `ke` is not a slip for `ka`, it is the wrong kana —
-so short answers get no tolerance, and with it no hint that they were
-close. This is deliberately the opposite of the tolerance used for
-recognising a name, where one letter out is always forgiven.
+So compliance cannot reach mastery by arithmetic rather than by good
+intentions: twenty "I did it"s leave an item below 0.5. A reported result
+carries an item to just below mastery, so one verified check here is
+always what settles it. Only tier-1 evidence is measured against a
+level's exit criteria.
 
-An exact match wins first, and so does a confusable partner: typing the
-other half of a pair the graph records is a knowledge error however few
-letters apart the two are. The clock runs from the **first** attempt, so
-a deliberate slip cannot buy thinking time.
+Accuracy and speed are reported separately and never averaged. A student
+who is right slowly has not learned to read a syllabary — recognition is
+the thing being taught, and the clock is the only way to tell recognition
+from working it out. Every pre-school exit criterion carries a
+millisecond budget as well as a threshold.
 
-**`:oops`** is for what the detector cannot catch — an input method that
-ate the line, enter hit a word early. It takes back the last answer and
-puts the question back in the queue, and it restores *every* belief that
-answer moved, which is more than one: a correct check also credits
-whatever it contained, so undoing it has to undo those too.
+### Review, and the 28-day period
 
-```
-before:        誕生日=0.0   生=0.0   日=0.0   journal=0
-after answer:  誕生日=0.45  生=0.45  日=0.45  journal=3
-after :oops    誕生日=0.0   生=0.0   日=0.0   journal=0
-```
+A mastered item is scheduled, not shelved. It comes back after a day,
+three days, a week and four weeks, and is then burned — four consecutive
+correct answers across that ladder and the item is done.
 
-One answer deep, and only within the session.
+Scores reset every 28 days on the student's own clock. The *reading*
+resets; the record never does. Exit criteria are measured over the reviews
+in the current period, because measured over a lifetime they report what
+it cost somebody to learn rather than what they know now.
 
-On the wire the same thing is a reply rather than a reprompt:
-`langpop/answer` returns `"outcome": "slip"` with `"recorded": false`
-and an `expected` of `null`, and the client asks again. Sending the same
-near miss twice records it — the retry is offered once, not forever.
-`{"action": "oops"}` is the button version of `:oops`.
+With nothing owed today the tutor says which day the next review falls
+on, rather than that it has run out of work.
 
-## Putting a question off, and taking an answer back
+`--day-ms` scales the length of a day for testing. It scales the clock and
+nothing else.
 
-Spaced-repetition services have worked this out already. WaniKani lets a
-student say they mistyped — the answer does not count and the item comes
-back later — and lets them skip a question without it counting as a
-failure, where it returns in the same session. Both can be **switched
-off**, so a student who suspects they are leaning on them can find out.
-That is the right shape, and langpop adopts it with two differences.
+The numbers behind all of this, and which of them are still arguable, are
+in [docs/langpop-reviews-and-periods.md](docs/langpop-reviews-and-periods.md).
 
-**The difference from a skip.** langpop already has four outcomes, so it
-does not have to guess what a student meant by declining:
-
-| at a question | means | recorded? |
-| --- | --- | --- |
-| *enter* | "I do not know" | **yes** — `skip`, and it counts in the denominator |
-| `later` | "not this one, not now" | no |
-
-Pressing enter is the most informative thing a beginner does: it is what
-stops a placement descent, and a student who could raise their accuracy
-by answering only what they knew would be measuring the wrong thing. So
-it stays recorded. `later` is the other gesture, and it records nothing.
-
-**The gap is what makes `:oops` honest.** Both routes put the item back
-in the queue, and neither re-asks it immediately:
-
-```
-あ   ->  later
-後で。Put it aside -- I will bring it back.
-い   ->  i        そうです。
-う   ->  u        そうです。
-え   ->  e        そうです。
-  Back to this one.
-あ   ->
-```
-
-Three questions, counted in answers actually recorded. `:oops` is used
-*after* the tutor has said what the answer was, so asking again straight
-away would measure the echo rather than the memory — it would hand a free
-correct answer to anything got wrong. (The first version did exactly
-that: the deferred item had the lowest belief of anything ready, which is
-precisely what `lp_choose` picks, so it came back as the very next
-question. Only running it showed that.)
-
-Twice per item, and then it has to be answered. Without a limit, `later`
-is a way never to be wrong about anything.
-
-**The switches.** `:aids` lists them; `:aids later off` takes one away.
-
-```
-    on  slip   one more go when a typed answer looks mistyped
-    on  oops   :oops takes back the answer you just gave
-    off later  puts a question off until later today -- type it at a question
-```
-
-An aid that cannot be refused is indistinguishable from a lower
-standard, and a learner who suspects they are leaning on one has no way
-to find out except to take it away. So they are the student's to switch,
-not the tutor's.
-
-They are **recorded rather than policed**. Turning one off and on again
-around a hard item would otherwise be invisible; instead every change is
-logged with its time, every journal entry already carries one, so what
-was available at any given answer is reconstructible exactly — at the
-cost of one record per change rather than a wider field on every answer.
-`:status` names anything switched off, so a number is never read without
-knowing which standard produced it.
-
-On the wire: `langpop/aids` reads and sets them, and `langpop/answer`
-takes `{"action": "later"}` and `{"action": "oops"}`. `langpop/next`
-reports `"requeued": true` when it is handing back something owed, so a
-client can say so rather than showing it as a fresh question. The queue
-dies with the session, which is what "comes back in the same session"
-means; `langpop/session.close` reports how much was still owed.
-
-Both are stored by **name** rather than as a map of booleans — on disk as
-`aids_off`, on the wire as `{"off": ["slip"]}` — because an absent JSON
-field and a field set to `false` arrive indistinguishable, so a map could
-not tell a profile written before an aid existed from one that switched
-it off, and reading the first as the second would silently take an aid
-away.
-
-## Placement: find out where they are, rather than ask
-
-> *"A teacher will jump right into 'go ahead and introduce yourself.' A
-> true beginner will freeze. If they answer properly, the teacher keeps
-> going — 'what day is it today?' — until they work out which section
-> this person belongs in."*
-
-The point is not the questions. It is that the teacher **starts above**
-where they expect and lets failure locate the student, and that a freeze
-ends that line of questioning.
-
-`:place` in the TUI, `langpop/placement.next` on the wire.
-
-**Placement is not a teaching mode.** It is a fast way to populate the
-belief overlay, and everything downstream already works off beliefs —
-`lp_choose` takes the lowest belief first, so a correctly placed student
-gets their weak spots immediately and skims what they know. Which means
-there is **no placement state anywhere**: `lp_place_next/0` is a pure
-function of the evidence already recorded, so a client asks what to ask,
-answers it through the ordinary `langpop/answer`, and asks again. A
-dropped connection costs the one question in flight.
-
-**One scalar would be the wrong answer.** A learner who knows 500 kanji
-and keeps forgetting katakana is not *at* any single level, and placing
-them by one number would either drown them or bore them. So the search
-runs per **axis**, and the axes are the exit criteria — a ladder that
-adds a criterion gets an axis for free. Simulating exactly that learner:
-
-```
-kanji              : up to n5           <- knows kanji
-vocabulary         : up to preschool    <- thin at N5
-recognise katakana : below the ladder   <- froze on シ/ツ, ソ/ン
-recognise hiragana : up to preschool
-skill mora_sokuon  : nothing here I can ask about
-
-teach at: preschool
-```
-
-Twenty questions. And the level is **derived**, not chosen: the lowest
-rung that still has an axis the student has not passed. The N5 kanji
-they proved they can read sit near mastery in the overlay, so they are
-not taught again.
-
-Four things make it cheap, and each one came out of the graph rather
-than out of a parameter:
-
-**It samples across a difficulty scale.** Probing 103 kanji one at a
-time to find out whether somebody reads kanji is absurd; four spread
-along `rank(_, freq, _)` locate them — 日, 上, 話, 聞.
-
-**Where there is no scale, confusable items come first.** A katakana
-test made of ア and ヲ certifies everybody. シ against ツ and ソ against
-ン is where forgetting actually shows, and the graph already records
-which 18 pairs those are.
-
-**A freeze ends an axis**, after two. That is the behaviour the whole
-thing is modelled on, so the loop asks **one** question and looks again
-— a driver handed a whole batch would keep asking past the freeze.
-
-**Passing high means nothing below gets asked.** Failing drops one rung
-and asks again. That is the descent.
-
-One correction worth recording, because it looked right and was not.
-`recognise(hiragana)` was first implemented as "every grapheme carrying
-a hiragana form" — which pulls in all 103 imported kanji, because a
-kanji carries its kun reading as a hiragana form. The schema already
-answers this properly through `criterion_item/2`, so the axis asks it
-rather than guessing from the forms.
-
-## Can the ladder actually be climbed?
+### Exit criteria, and the audit
 
 `--check` proves the graph is **consistent**: no cycle, no dangling
-prerequisite, every item on a rung that exists. A ladder can pass that
-and still be unclimbable, because consistency says nothing about whether
-there is enough to learn. `exit(ja, n1, kanji(2230, read), 0.80, 2000)`
-is perfectly consistent against 103 kanji. It is simply unreachable, and
-nothing said so.
+prerequisite, every item on a rung that exists, every item's source
+known, every level carrying at least one exit criterion.
 
-```
+A ladder can pass that and still be unclimbable, because consistency says
+nothing about whether there is enough to learn.
+`exit(ja, n1, kanji(2230, read), 0.80, 2000)` is perfectly consistent
+against a graph holding 103 characters. It is simply unreachable.
+
+```sh
 ./langpop --audit
 ```
 
@@ -813,9 +350,9 @@ nothing said so.
   lang  level      criterion                 have  askable  verdict
   ja    preschool  recognise(hiragana)       69    69       ok
   ja    preschool  skill(mora_count)         1     51       ok
-  ja    preschool  skill(dakuten)            46    46       ok
   ja    preschool  vocabulary(50, read)      50    50       ok
-  ja    n5         vocabulary(800, read)     220   220      short by 580
+  ja    n5         vocabulary(800, read)     823   804      ok
+  ja    n5         vocabulary(800, hear)     823   63       short by 737
   ja    n5         kanji(103, read)          103   103      ok
   ja    n1         kanji(2230, read)         103   103      short by 2127
   en    preschool  sound_contrasts           13    0        needs_audio -- 13 of 13 cannot be asked
@@ -832,47 +369,28 @@ Six verdicts, because they mean different things to whoever reads them:
 | `thin` | passes on fewer than 3 askable items | the graph's |
 | `short` | measurable, content is thin | curation |
 | `no probe` | the item set exists and nothing in it can be asked | a bug |
-| `needs audio` | the channel is outside `VERIFIABLE` | this build's |
+| `needs audio` | every item in the set is on a channel this build cannot check | this build's |
 | `unmeasured` | nothing measures it at all | the design's |
 
 Only `short` is allowed to be large. The others are each a claim the
 ladder makes and cannot cash.
 
-**`thin` exists because of Goodhart.** A criterion measured over one item
-is not a measurement, it is an anecdote, and it passes. Three is the
-smallest number that can disagree with itself.
+`thin` exists because of Goodhart's law. A criterion measured over one
+item is not a measurement, it is an anecdote, and it passes. Three is the
+smallest number of items that can disagree with itself.
 
-**`needs audio` is distinguished from `no probe` deliberately.** The
-first run of this reported `sound_contrasts` as a bug, which is wrong:
-the probe is not missing, the microphone is. An item-set criterion whose
-every item sits on a channel outside `VERIFIABLE` is the audio limit
-([the pronunciation note](docs/langpop-pronunciation.md)),
-not a defect.
+The `askable` column counts **distinct questions**, not items, because a
+skill with a generated probe is one item that can be asked about fifty
+words. That cuts both ways, and the second way matters more: when the
+material for a skill runs to a single word, the criterion *is* thin, and
+counting items would not have said so.
 
-Counts are **cumulative**, because the criteria are: `kanji(2230)` at N1
-means every kanji through N1, not 2,230 more of them. So the pool is that
-level and below — and `:status` says it the same way now, which it did
-not. The mastered count had no level bound at all and the graph's total
-had an exact one, so the two numbers on one line were counted three
-different ways. English A2 made it absurd rather than merely wrong: A2
-declares no words of its own and inherits every one of them, so a
-student with 499 words read `499 of 1000 (graph holds 0)`.
+Counts are cumulative, because the criteria are: `kanji(2230)` at N1 means
+every character through N1, not 2,230 more of them. So the pool for any
+criterion is that level and below.
 
-`langpop/audit` is the same thing on the wire, with `"short_by"` computed
-so a client need not subtract, and `"wanted": null` on a criterion that
-is not a count. No session is needed — this is a property of the graph,
-not of anybody's progress. A client that draws a ladder wants it: showing
-a student `kanji(2230)` as a goal they are 0.05% of the way to, when the
-graph holds 103 kanji, reports the tool's emptiness as the student's
-failure. That is the same mistake `"verifiable": false` exists to prevent
-on `langpop/status`.
-
-### Rung by rung, because a criterion at a time is not enough
-
-`--audit` walks `lp_exits`, so **a rung that declares no criterion
-produces no rows** and is invisible in that table. That is how `en/a1`
-came to be a room with no door and had to be found by hand — and how
-`en/c1` still was, two sections later, in the same file.
+A second view asks the question a rung at a time, because a rung is left
+by meeting **every** criterion on it:
 
 ```
   lang  level      criteria  can it be left?
@@ -886,192 +404,856 @@ came to be a room with no door and had to be found by hand — and how
   something nothing here can measure.
 ```
 
-A rung is left by meeting **every** criterion on it, so it is exitable
-only if every one is reachable. The verdict names the **worst** blocker,
-in the order of whose problem it is: no exit is a bug in the ladder,
-`unmeasured` is a hole in the design, `short` is curation, and
-`needs audio` is a limit of this build that is written down elsewhere.
+The verdict names the **worst** blocker, ordered by whose problem it is:
+no exit criterion at all is a bug in the ladder, `unmeasured` is a hole in
+the design, `short` is curation, and `needs audio` is a limit of this
+build.
 
-**It was zero of twelve** when this was written, and that number is the
-history of the two sections above. A criterion nothing on this machine
-can measure is now *excused* by the engine, which moves the student up
-and says which criterion it could not ask — so `--audit` stopped saying
-`not yet` of a rung the engine will pass, and says both things instead:
-the rung can be left, and part of it will not have been measured when
-it is. Three can be left now. The rest are short of content, which is
-curation and is the only one of these verdicts allowed to be large.
+**A criterion nothing on this machine can measure is excused by name.** The
+student moves up, and the tutor says which criterion it could not ask
+about. A rung of nothing but excuses does not pass.
 
-`check(graph)` now refuses a rung with no exit criterion outright, so
-the next level anyone adds cannot repeat it:
+`langpop/audit` is the same report on the wire, with `"short_by"`
+pre-computed and `"wanted": null` on a criterion that is not a count. No
+session is needed — this is a property of the graph, not of anybody's
+progress. A client that draws a ladder wants it: showing a student
+`kanji(2230)` as a goal they are 0.05% of the way to, when the graph holds
+103 characters, reports the tool's emptiness as the student's failure.
 
-```prolog
-violation(level_without_exit(Lang, Level)) :-
-    ladder(Lang, _, Level), \+ exit(Lang, Level, _, _, _).
-```
+### Provenance
 
-### Two holes it found in the English ladder
+Every fact carries where it came from: `own(kana)`, `own(starter_list)`,
+`estimate(community)`, `ets(cefr_mapping)`, `jmdict('1302680')`,
+`kanjidic2(ucs('65e5'), jlpt(4))`. `--check` fails any item whose source
+is `unknown`.
 
-**B1 declared one criterion**, `coverage(reading, 0.95)` — and nothing
-measures coverage, so B1 was the same missing door A1 had, differently
-disguised. The counts also jumped **1000 to 5000** with nothing between,
-which is two CEFR bands of silence. B1 now carries 2500 reading and 2000
-listening, estimates like every other number on that ladder.
+This matters most where a number is an estimate. JLPT has published no
+content list since 2010 — the Test Content Specifications were withdrawn,
+and the official FAQ says vocabulary and character lists are no longer
+released — so the N5 word count is a community estimate and says so. The
+*character* counts are not: KANJIDIC2 carries a `<jlpt>` field holding
+the pre-2010 four-level exam, and old level 4 is exactly what became N5,
+so four of the five character counts are counted from the source and only
+N3's is an estimate.
 
-**C1 declared nothing at all.** The top rung needs an exit criterion as
-much as any other — *what does it mean to have finished?* is the
-question a ladder exists to answer, and `ja/n1` answers it. C1 now
-carries 8000 reading, 6000 listening and a listening coverage floor.
+---
 
-### What is left, and why
+## The two pre-schools
 
-Coverage **was** the last `unmeasured`, and it is measured now — see the
-section above. What is left on every rung is content.
+Both ladders have a rung below their first official level, and the two
+exist for opposite reasons.
 
+**Japanese.** N5 assumes hiragana, some katakana and several hundred
+words. So pre-school is index 0, and it teaches the two syllabaries, the
+pairs beginners actually confuse (`あ/お`, `シ/ツ`, `ね/れ/わ`), and mora —
+because a student who reads every kana and still hears きって as two
+beats has not finished.
 
-### What the first run found
+**English.** A Japanese speaker starts with several thousand words
+already half-known, in katakana, and some of them are *wrong*. Those are
+not vocabulary to learn but vocabulary to unlearn, which is a different
+exercise and gets its own items: マンション is not a mansion, サービス is
+not a service, クレーム is not a claim. The same katakana layer that makes
+English easier to read makes it harder to hear and harder to use. Beside
+those sit the sound contrasts Japanese does not make.
 
-**A skill was measured over itself.** `criterion_item(skill(S), S)`
-answered with the skill item, which has no written form and so no probe —
-so `skill(dakuten)` was measured over a set of one unaskable thing,
-reported *0% right over 0 answers* for ever, and could never be met.
-**Three of the five Japanese pre-school criteria were in that state.** A
-skill is now measured over what it rolls up over, transitively and
-skipping skills on the way down, because `mora_sokuon` requires
-`mora_count`, which is itself a skill: one level of expansion would have
-swapped one unaskable item for another.
+---
 
-That is the third rung-with-no-door in this project, after `en/a1` having
-no exit criterion at all and the twelve sound contrasts returning
-`shape = "none"`. The first two were found by hand. Found by hand means
-found by luck, which is the argument for the audit existing.
+## The Japanese content
 
-**One `thin` verdict was a criterion measuring the wrong thing, and the
-voiced kana are the answer.** `skill(dakuten)` required only `hi_ka`,
-and the table held base kana only — so passing it demonstrated reading
-か, which says nothing whatever about か/が. The criterion named a
-contrast the graph did not contain. See the next section.
-
-Two `thin` verdicts remain, and they are content the audit can only
-report: `skill(mora_count)` and `skill(mora_sokuon)` both reduce to あ,
-the same single item. And `vocabulary(50, read)` at pre-school is short
-by 10 — 40 kana-only starter words against a criterion of 50 — so the
-first rung of the Japanese ladder still cannot be exited.
-
-## The voiced kana, and a criterion that named a contrast the graph did not hold
-
-`--audit` said `skill(dakuten)` passed on one item. The skill's gloss is
-*か/が, は/ば/ぱ — one mark changes the sound*; it required `hi_ka`, and
-the kana table held base kana only. So the criterion was answerable by
-reading か — an **unvoiced** kana, the one thing that cannot possibly
-demonstrate the contrast the skill is named for. It would have passed,
-and it would have meant nothing.
-
-The fix is the glyphs. Dakuten is the base codepoint **+ 1** and
-handakuten the base **+ 2**, which is the second systematic thing about
-the syllabaries after katakana being hiragana + 0x60 — so these are
-generated by `tools/mkkana.py` like the other 92, and a glyph cannot be
-subtly wrong.
+**The syllabaries.** 138 `kana/5` facts: 46 base kana per script plus 23
+voiced ones per script. Dakuten is the base codepoint + 1 and handakuten
+the base + 2, which is the second systematic thing about the syllabaries
+after katakana being hiragana + 0x60, so these are generated along with
+the rest.
 
 ```prolog
 kana(hi_ga, hiragana, 'が', ga, g).
-kana(hi_pa, hiragana, 'ぱ', pa, p).
-
 voiced(hi_ga, hi_ka, dakuten).
-voiced(hi_pa, hi_ha, handakuten).
 ```
 
-`voiced/3` is stated once and **both** consequences are derived from it,
-which is the same discipline `kana/5` already follows:
+`voiced/3` is stated once and both consequences are derived from it:
 
 ```prolog
 requires(V, B) :- voiced(V, B, _).
 confusable(B, V, mark(Mark)) :- voiced(V, B, Mark).
 ```
 
-One mark is one new thing to notice, so the base kana is the
-prerequisite and nothing else is. And the pair is confusable because one
-mark apart is exactly how a beginner misreads it: か for が is not a
-wild guess, it is the mark going unseen. So the tutor diagnoses it as
-`near` rather than `wrong`, and can offer the partner as a distractor —
-which is the whole reason `confusable/3` exists.
+One mark is one new thing to notice, so the base kana is the prerequisite
+and nothing else is. And the pair is confusable because one mark apart is
+exactly how a beginner misreads it — か for が is not a wild guess, it is
+the mark going unseen — so the tutor diagnoses it as a near miss rather
+than as wrong, and can offer the partner as a distractor.
 
 **ぢ and づ are deliberately absent, and it is the only judgement in the
 table.** They are not a third and fourth sound: they are alternative
 spellings of じ and ず, used where a base kana is reduplicated or
 compounded (つづく, ちぢむ), and Hepburn spells each pair identically
-**because they are the same sound**. Two consequences, and both matter:
+because they are the same sound. Two consequences follow. `skill(dakuten)`
+is *one mark changes the sound*, and these are the one place where it does
+not, so they are not instances of the skill. And `kana.pl` joins katakana
+to hiragana on the romaji, so two kana spelled `ji` would make ヂ require
+both じ and ぢ — and ジ require ぢ — gating a common character behind a
+vanishingly rare one. The charts print the two gaps and the footer says
+why, rather than leaving a reader to wonder whether the chart is broken.
 
-- `skill(dakuten)` is *one mark changes the sound*, and these are the one
-  place where it does not — so they are not instances of the skill the
-  criterion names;
-- `kana.pl` joins katakana to hiragana on the **romaji**, so two kana
-  spelled `ji` would make ヂ require both じ and ぢ, **and ジ require
-  ぢ** — gating a common kana behind a vanishingly rare one. `import.p`
-  refuses to guess at an ambiguous JMdict key for exactly this reason;
-  so does this.
+**The characters that are not syllables.** っ, ゃ, ゅ, ょ, the small vowels
+and ー stand for no mora of their own, so they are not in `kana/5` and
+never will be: a gojūon grid has no cell for them, and `type the romaji`
+cannot ask about ゃ, because ゃ and や are both `ya`. They are instead
+*declared*, and each is covered by a skill about what it does:
 
-23 per script, 46 in all. The aggregates fan out by rule
-(`requires(hiragana_all, Id) :- kana(Id, hiragana, _, _, _).`), so the
-voiced kana joined them with no edit — which closed a gap nobody had
-noticed: **がっこう needs が**, and until now the starter words required a
-`hiragana_all` that did not contain it.
+```prolog
+modifier('ゃ', hiragana, youon).
+modifier('っ', hiragana, mora_sokuon).
+modifier('ー', katakana, mora_long_vowel).
+modifier('_', any,       placeholder).
+```
 
-| | before | after |
+Together with `kana/5` they account for every character of the script,
+and checkably so: beside the graph-shape check there is a check that
+walks every written form in the graph and reports any character that is
+neither a kana nor a declared modifier.
+
+**Mora are asked about by typing.** Producing correct timing needs a
+microphone. *Knowing* how many beats a word has is a reading question
+with a number for an answer, and the number is computable from the kana:
+
+```
+every kana       one beat
+small ゃゅょ      no beat -- it joins the kana before it
+small っ         one beat, of silence
+ん               one beat, which is why it is moraic
+ー               one beat
+```
+
+The first two are what make it worth asking. **きょう looks like three
+characters and is two beats; きって looks like three and is three.**
+
+```
+Aoi>
+  きょう
+  何拍ですか。How many beats?  ->  3
+  Not yet. We will come back to it.  It is 2.
+```
+
+`probe(Skill, morae(Feature))` says a skill carries a generated question
+and names the material the feature picks out — `sokuon`, `youon`,
+`moraic_n`, `long_vowel`, `any`. The material is drawn from the graph and
+the answer is counted from the kana, so neither is written down anywhere,
+and a content build that adds a thousand N5 words adds a thousand mora
+questions.
+
+**A skill with a probe is measured over itself; one without is measured
+over what it rolls up over:**
+
+```prolog
+criterion_item(skill(S), S) :- probe(S, _).
+criterion_item(skill(S), I) :- \+ probe(S, _), skill_leaf(S, I).
+```
+
+The difference is which thing the question is about. `skill(dakuten)` is
+*read the voiced kana*, so reading them is the evidence and the criterion
+is measured over the 46 of them. `skill(mora_count)` is *count the
+beats*, and reading あ is no evidence of that at all. The roll-up is
+transitive and skips skills on the way down, because `mora_sokuon`
+requires `mora_count`, which is itself a skill.
+
+**The 50 starter words are kana-only by design**, and they are chosen as
+words normally *written* in kana — ちょっと, たくさん — rather than as
+common words that happen to be short. A learner meets ちょっと constantly
+and will never meet it as 一寸, so teaching it here costs nothing later.
+Teaching でんしゃ in kana would be teaching a word that has to be
+relearned as 電車 two rungs up.
+
+**N5** holds 103 characters taken from KANJIDIC2 by rule, and 773 words
+named in `graph/ja/picks/n5.pl` by hand — 823 counting the fifty at
+pre-school, which is what the rung's criterion measures. See [Adding
+content from a reference source](#adding-content-from-a-reference-source).
+
+Nineteen of those words are written only in kana — はい, こんにちは,
+とても — and have no reading question, because a reading question holds
+one form up and asks for another and they have one form. They are counted
+in the audit's `have` and not in its `askable`, which is the honest place
+for them: a student needs them, and by N5 prompting とても for `totemo`
+would test hiragana rather than vocabulary. A katakana loanword is the
+opposite case and *is* asked, prompted as the katakana and answered in
+romaji, because reading コーヒー as koohii is a genuine exercise that
+learners get wrong.
+
+**Answers may be typed in Latin letters.** An answer is a *list* of
+acceptable spellings, canonical first — about four per item, from the kana
+as written, the same folded to hiragana, and the romaji of each. So
+`hd(answer)` is what the tutor says when the student is wrong, and that is
+the kana: *It is やま*, not *It is yama*.
+
+```
+一  ->  ひと          そうです。
+山  ->  yama          そうです。
+電車 -> densya        そうです。
+山  ->  kawa          Not yet.  It is やま.
+```
+
+The transliteration is Hepburn with two concessions, both of which a
+learner will actually type. **A long vowel may be written once** — がっこう
+is `gakkou`, and a student who types `gakko` has answered the question
+that was asked. **Kunrei is accepted**, because it is what a Japanese
+primary school teaches: `tukue`, `densya`, `tosyokan`.
+
+Two skills, two strictnesses, and the difference is deliberate. がっこう at
+pre-school is a reading-the-*kana* exercise, so `gakko` has skipped the う
+and is wrong. The same word met as 学校 at N5 is a reading-the-*kanji*
+exercise, where the length of the vowel is not what is being asked.
+
+Questions are typed rather than picked, even though the confusable pairs
+would make good distractors: typing is a stronger probe, there is no
+one-in-four guess in it, and accepting romaji means no Japanese input
+method is needed.
+
+---
+
+## The English content
+
+**519 A1 words** in `graph/en/a1.pl`, with Japanese glosses, written by
+hand. The glosses are hand-written for a reason worth stating, because the
+obvious shortcut does not work: JMdict read backwards — find the entries
+whose English gloss is `water`, take their Japanese headwords — returns
+水分, お水 and ウォーター and never 水. An exact match on a gloss is not a
+translation. A bilingual dictionary is organised to explain Japanese words
+in English, and read the other way it finds whichever Japanese word
+happens to carry the bare English word as a gloss, which favours archaisms
+and transliterated loanwords. Teaching `water` as 水分, which means
+*moisture*, is worse than not glossing it at all.
+
+**13 sound contrasts** — the distinctions Japanese does not make, and so
+the ones a Japanese speaker has to be taught to hear rather than left to
+absorb. `/r/`–`/l/`, `/v/`–`/b/`, `/f/`–`/h/`, `/θ/`–`/s/`, the
+consonant-cluster one, final consonants, stress placement, and so on.
+
+A contrast is drilled through a **pair**:
+
+```prolog
+pair(s_v_b, 'vote', 'boat').
+pair(s_cluster, 'sport', 'support').
+```
+
+29 pairs over 8 of the 13 contrasts. The relation is `pair`, not
+`minimal_pair`, and the name is the point. `right`/`light` differ in one
+phoneme; `sport`/`support` do not — they differ by a whole schwa. They are
+a pair *here* because the vowel a Japanese speaker inserts into a
+consonant cluster turns the first into the second. A relation called
+`minimal_pair` would be a claim about English; this one is a claim about
+the learner, which is what the graph is for.
+
+Four contrasts have no pair and are deliberately absent: `s_final`
+(*need* against *need-o* is not two words), `s_stress` (**PRE**sent and
+pre**SENT** are one spelling, so the question would offer the same option
+twice), `s_schwa` and `s_rhythm` (properties of an utterance, not a word).
+The audit says so rather than pretending.
+
+**12 written confusions**, which are the reading half of a merge:
+
+```prolog
+mix(m_rice,     'rice',     'lice',     s_r_l).
+mix(m_presents, 'presents', 'presence', s_ts).
+mix(m_coffee,   'coffee',   'copy',     katakana_near).
+sense(m_rice, 'rice', 'cooked rice',  '米').
+sense(m_rice, 'lice', 'the insects',  'シラミ').
+```
+
+The question shows what one of the two words means and offers both
+spellings; either side is asked in turn. It needs no speaker and no cached
+sound, so a learner with no microphone can finish the rung.
+
+A written confusion is deliberately **not another channel of the contrast
+that causes it**. The fourth argument of `mix/4` records the cause and is
+not a `requires` edge to it. A contrast is measured by playing a sound,
+and a reading answer is no evidence of hearing. Keeping them separate is
+what lets the English pre-school rung be finished honestly on a machine
+with no voice.
+
+**12 loanword traps** — English words a Japanese speaker already
+half-knows in katakana, where the katakana meaning is wrong:
+
+```prolog
+trap(t_mansion, 'mansion', 'マンション',
+     'a very large house -- the katakana means an apartment building',
+     '大邸宅').
+```
+
+The English gloss carries the contrast, because a contrast belongs in the
+language being learned; the Japanese slot holds Japanese. So the trap is
+one card: `mansion`, with マンション above it and 大邸宅 below.
+
+**Syllable counting** is the English mirror of the mora skill. A Japanese
+speaker says ドッグ for *dog* — three beats where English has one syllable
+— because Japanese cannot end a syllable in a consonant and puts a vowel
+there instead. `skill(final_consonants)` is named for that: *ends a word
+without adding a vowel*.
+
+```
+mansion    2 syllables   vs  マンション     4 beats
+slim       1             vs  スマート       4
+part-time  2             vs  アルバイト     5
+excited    3             vs  ハイテンション 6
+```
+
+One syllable per vowel nucleus, counted from the pronunciation. The five
+diphthongs are two symbols and one nucleus — counting vowel *symbols*
+makes `child` two syllables — and the pairs are exactly the five diphthongs
+the importer maps, so this is the inverse of a table that already exists
+rather than a guess about English.
+
+The material picks itself: an item with both an English pronunciation and a
+katakana one, where the katakana takes more beats. The twelve loanword
+traps are exactly that set, which follows from what they were curated for.
+
+A learner who answers four has not guessed. They have read the katakana,
+honestly, which is the whole of the katakana problem. So it is recorded as
+a near miss rather than as wrong, and the tutor says which count they gave:
+
+```
+  mansion
+  How many syllables? English, not the katakana.  ->  4
+  Almost.  That is the beats in マンション.  The English word has 2.
+```
+
+A verdict that only says *no* teaches nothing, because the student already
+knows they got it wrong and not why.
+
+---
+
+## Adding content from a reference source
+
+`import.p` fills the rungs above pre-school from published reference data.
+Two rules make that safe, and they are the whole arrangement.
+
+**The repository holds curation, never content.** JMdict and KANJIDIC2 are
+CC BY-SA 4.0 (EDRDG). Share-alike is reasonable for a dictionary and
+unworkable for a tutor, so what the importer writes is a **build
+product**: `graph/<lang>/generated/` is gitignored, regenerated on demand,
+and carries the source's notice in its own header. What *is* committed is
+`graph/<lang>/picks/*.pl` — which entries, at which level, under which
+identity — because that is the teaching judgement.
+
+**An identity is never generated.** Word ids are written by the curator,
+for the reason given in [An item is not its
+spelling](#an-item-is-not-its-spelling). The one exception is a character,
+whose id is `k_<codepoint>`, and a codepoint is not anybody's opinion.
+
+```sh
+tools/fetch-upstream.sh ~/langpop-upstream
+
+# KANJIDIC2 carries the level, so the selection is a RULE
+./langpop import --source kanjidic \
+    --file ~/langpop-upstream/kanjidic2.xml --level n5 --jlpt 4
+
+# JMdict does not, so the selection is a PICK LIST
+./langpop import --source jmdict \
+    --file ~/langpop-upstream/JMdict_e --picks graph/ja/picks/n5.pl
+
+# CMUdict creates no items; it enriches English words already declared
+./langpop import --source cmudict \
+    --file ~/langpop-upstream/cmudict.dict --lang en --level a1
+```
+
+| Source | Licence | Knows | So the selection is |
+| --- | --- | --- | --- |
+| KANJIDIC2 | CC BY-SA 4.0 | the JLPT level of a character | a **rule** — `--jlpt 4` |
+| JMdict | CC BY-SA 4.0 | readings and meanings, no level | a **pick list** |
+| CMUdict | 2-clause BSD | how an English word is pronounced | **nothing** — it enriches |
+
+### Writing a pick
+
+A pick names an entry one of three ways:
+
+```prolog
+pick(w_neko,  ja, n5, word, jmdict_kana('ねこ')).
+pick(w_yomu,  ja, n5, word, jmdict_kanji('読む')).
+pick(w_yama,  ja, n5, word, jmdict('1302680')).
+```
+
+The first two are what a person can write; the third is the escape hatch,
+and it is needed more often than it looks. 空 is そら and から and くう, and
+a key that names three entries names none of them. **An ambiguous key is an
+error with the candidates listed, never a guess:**
+
+```
+AMBIGUOUS w_otoko: jmdict_kanji(男) matches 5 entries --
+    jmdict('1419990')  男  おとこ/おっこ  man, male
+    jmdict('2742850')  男/男の子  おのこ  man, boy
+    jmdict('2742870')  雄/男/夫/牡  お  male
+    jmdict('2742890')  男  なん  son
+    jmdict('2843485')  男  だん  masculine noun
+    -- say which, with pick(w_otoko, ..., jmdict('NNNNNNN')).
+```
+
+Expect to resolve a good share of a tranche this way; 28 of the first 148
+picks came back like that. A tutor that silently taught *chopsticks* for a
+pick meaning *bridge* would be wrong in a way nothing downstream could
+detect.
+
+Ids are romaji, and Japanese is rich in homophones, so sooner or later a
+pick wants an id that is taken. The convention is a short English sense tag
+after the romaji: 気 is `w_ki_mind`, because `w_ki` is 木. It is readable in
+a journal without a lookup, and the tag is the curator's one word for which
+word this is rather than a translation.
+
+**A pre-school word is not re-picked at N5.** みず and 水 are one item,
+`w_mizu`, which already exists — and the N5 work for that word is the
+character 水, which the character import already made an item in its own
+right. Picking it again would mint a second identity for one word and
+split a student's record in half. The importer refuses it.
+
+What one import produces:
+
+```prolog
+item(w_tanjoubi, word, ja, n5, jmdict('1419110')).
+form(w_tanjoubi, kanji, '誕生日').
+form(w_tanjoubi, hiragana, 'たんじょうび').
+gloss(w_tanjoubi, en, 'birthday').
+requires(w_tanjoubi, hiragana_all).
+requires(w_tanjoubi, k_751f).          % 生
+requires(w_tanjoubi, k_65e5).          % 日
+```
+
+誕 gets no edge, because it is not an N5 character — the word is then
+taught in kana, which is what a learner does before they meet it.
+
+### What the importer reports
+
+**A level with no content and a level that was never built are not the
+same thing.** Both have no items, so each generated file stamps itself,
+and the engine treats a missing file as an unbuilt level rather than as an
+error:
+
+```prolog
+generated(kanjidic2, ja, n5, 103, '2026-10-20T17:41:56Z').
+```
+
+**It reads back what it wrote.** `imp_verify` compares what the emitter
+meant to emit against what the graph actually holds, and refuses to be
+quiet about a difference. A syntax error in a consulted Prolog file is not
+fatal — the clause is skipped and loading continues — so without this
+check a quoting bug loses facts silently.
+
+**It names what the word list is missing**, which is the question a curator
+filling a level actually has, and distinguishes the two answers, because
+one is fixable by curation and the other is not:
+
+```
+contrasts exercised at a1: 10 of 13
+  no word at a1 exercises these -- a gap in the word list:
+    s_v_b  vote and boat
+  not derivable from a pronunciation, so never emitted:
+    s_final  need, not need-o
+    s_stress  PREsent and preSENT
+    s_rhythm  stress-timed, not mora-timed
+```
+
+### Pronunciation implies a contrast
+
+The character edge again, applied to sounds. `library` has an R and an L in
+it, so it *is* the /r/–/l/ exercise, and that is a fact about the word
+rather than an opinion about teaching:
+
+```prolog
+form(e_world, ipa, '/wɜrld/').
+requires(e_world, s_r_l).
+
+form(e_street, ipa, '/strit/').
+requires(e_street, s_cluster).
+```
+
+The rules are deliberately **selective**. A rule for `s_final` — "ends in a
+consonant" — was true of 67 of the first 100 words, and an edge that two
+items in three carry tells a reader nothing and a planner nothing either.
+It is left out, along with `s_stress` (which needs the stress-shifting
+*pair*, and one dictionary entry cannot show one) and `s_rhythm` (a
+property of a sentence). What remains fires on 2% to 14% of the list.
+
+The minimal-pair rules want *both* phonemes present, since a word with an R
+and no L is not the r/l exercise, just a word with an R in it. `ER` counts
+as carrying the R, because it is a rhotic vowel and `world` is one of the
+hardest words on the list for a Japanese speaker.
+
+No contrast edge is drawn for a written confusion. `requires(m_think,
+s_th_un)` would be true of the word and wrong about the teaching order: it
+would put the whole written rung behind the listening one, which is the
+separation the confusion items exist to maintain.
+
+### Where a frequency corpus is and is not used
+
+The English word list is attested against
+[hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords)
+(OpenSubtitles). **Attested, not selected.** Every word in `a1.pl` appears
+in the frequency list and in CMUdict, which is a mechanical way of catching
+a spelling that is archaic, mistyped or invented.
+
+Selection stays a curation question, and the ranks say why: `insect` is
+8,551st in film dialogue, `pencil` 5,821st, `vegetable` 7,532nd, and all
+three are in every A1 syllabus ever written. Characters in films do not say
+*vegetable*; learners do.
+
+**The Japanese words are not attested, and cannot be.** The same corpus
+family has a Japanese list, and it is missing 私, 僕, 君, 俺 and 誰 — the
+commonest first and second person pronouns and the word for *who* — in
+every spelling, while holding 、, 。, あなた and お前. Run as an
+attestation check it reports 僕 and 誰 as absent from Japanese. So the N5
+words in `graph/ja/picks/n5.pl` are curation and nothing else, the file
+says so, and no Japanese coverage figure here should be believed.
+
+---
+
+## Coverage, and the gap report
+
+`coverage(reading, 0.95)` is Nation's measure: *the words you know account
+for 95% of the words on the page*. It is arithmetic once the frequency data
+exists — sum what the mastered words account for, divide by what the corpus
+accounts for. No model, no interpolation, no published table.
+
+A rank cannot do this job. `rank/3` says *where* a word sits; `freq/3` says
+*how much of the text it is*, and they are not the same thing. `the` and
+the fifty-thousandth word are one rank apart from their neighbours and four
+orders of magnitude apart in how much text they cover. So the count comes
+across with the rank, the corpus total comes across once, and the engine
+divides:
+
+```prolog
+rank(e_people, opensubtitles_en, 118).
+freq(e_people, opensubtitles_en, 885915).
+corpus(opensubtitles_en, 50000, 725119374).
+```
+
+**The denominator is the whole corpus**, not the words we happen to teach.
+Dividing by our own vocabulary would give a figure that only ever goes up
+and would read as progress rather than as coverage.
+
+The scale is named in every fact — `opensubtitles_en`, not `frequency` —
+because OpenSubtitles is **dialogue**. Its frequency profile is a good
+basis for `coverage(listening, _)` and a proxy for `coverage(reading, _)`,
+whose published thresholds come from written corpora. `:status` prints the
+scale so the difference is visible rather than averaged away:
+
+```
+coverage(reading, 0.95): 14% of running text, over 519 words
+                         (opensubtitles_en, need 95%)
+```
+
+**What that number says about a word list.** The top 100 words of English
+cover 59% of running text. Our 519 A1 words cover 14%. The difference is
+that the A1 list is nouns, verbs and adjectives — *people, family, water,
+mother* — and coverage lives in function words: `the`, `to`, `a`, `of`,
+`and`. That is not a defect in the list, which was curated to be teachable
+on day one. It is a fact about what coverage measures. Going from 100 words
+to 519 moved coverage from 5.60% to 13.57%: eight points for four hundred
+content words, against thirteen pronouns worth fifteen points on their own.
+The queue of those is
+[docs/langpop-function-words.md](docs/langpop-function-words.md).
+
+### The gap report
+
+"The graph is short 1,800 words" is true and useless. `--gap` inverts the
+frequency import: walk the list, drop every word the graph already teaches
+**at any level**, and print what is missing ranked by what each word buys —
+its share of the corpus, and the coverage the graph would reach if
+everything down to that row were added.
+
+```sh
+./langpop import --source frequency \
+     --gap --file ~/langpop-upstream/en_50k.txt --lang en [--top 40]
+```
+
+```
+gap: the graph answers 530 of the list's words, and they carry
+gap: 13.57% of the corpus
+
+   rank  share   if-added  word
+  1      3.97%   17.54%    you
+  2      3.74%   21.28%    i
+  3      3.14%   24.42%    the
+
+not in the queue, because there is nothing to teach:
+  23 tokeniser shards, 6.39% of the corpus -- 's 't 'm don 're 'll ...
+```
+
+Each row is annotated with what a curator needs in order to judge it.
+English rows say when a token is probably an inflection of a word already
+taught (`drinking` → *may be a form of e_drink*); Japanese rows carry the
+price tag (`大丈夫` — *needs 2 kanji not in the graph*).
+
+Contraction halves are taken out of the queue and counted under the table,
+because *don't* tokenised into `don` and `'t` is two things nobody can
+teach and they would otherwise hold the top of the report for ever. The
+rule is two closed lists rather than "has an apostrophe": the broader rule
+caught `'em`, `'cause` and `'bout`, which are real spoken words at a rank a
+curator should see.
+
+**It is a report, not an import.** Adding a word is curation — an id, a
+level, a gloss — and nothing here mints any of those. Nothing is written.
+
+Japanese rows need one more thing. The corpus is tokenised, so a verb
+arrives without its ending — 話す appears as 話, 分かる as 分か — while the
+graph holds the dictionary form. Without stemming, the report lists the
+stem of every verb already taught as a gap. Measured on the Japanese list:
+3.90% of the corpus credited, 5.16% held by a stem and wrongly called
+missing, 9.06% genuinely absent.
+
+**For Japanese, read the annotations and ignore the shares.** The
+annotation — *needs 2 kanji not in the graph* — is computed from the graph
+and is sound. The `share` and `if-added` columns are computed from a list
+that is missing its most frequent words (see above), so they are inflated
+by an unknown amount and their ordering is unreliable. The English side is
+unaffected.
+
+---
+
+## Teaching aids the student controls
+
+Four aids, each one switchable:
+
+```
+Aoi> :aids
+    on  slip   one more go when a typed answer looks mistyped
+    on  oops   :oops takes back the answer you just gave
+    off later  puts a question off until later today
+    on  glyph  draw a complicated character big the first time
+```
+
+`:aids later off` takes one away. **An aid that cannot be refused is
+indistinguishable from a lower standard**, and a learner who suspects they
+are leaning on one has no way to find out except to take it away. So they
+are the student's to switch, not the tutor's.
+
+They are recorded rather than policed. Every change is logged with its
+time, and every journal entry already carries one, so what was available at
+any given answer is reconstructible exactly. `:status` names anything
+switched off, so a number is never read without knowing which standard
+produced it.
+
+### A typing slip is not a wrong answer
+
+A Japanese learner is typing romaji, or fighting an input method they do not
+know well, and a slip of the fingers is not a gap in their knowledge.
+Recorded as wrong it costs them 0.70 of a belief and teaches the tutor
+something false — the probe ends up measuring typing rather than reading.
+
+**Offered, not forgiven.** The first near miss on an item is not recorded at
+all; the student gets one more go.
+
+```
+一    ->   hto
+Typing, I think, not reading.  Once more:
+一    ->   hito
+そうです。
+```
+
+Taking `hto` *as* ひと would credit an answer they never produced. The point
+is to let them fix it, not to score it for them.
+
+**Nothing is revealed, because the tolerance is proportional with no floor:**
+
+| answer | length | slips allowed |
 | --- | --- | --- |
-| `kana/5` facts | 92 | 138 |
-| `recognise(hiragana)` | 46 | 69 |
-| `skill(dakuten)` | 1 item, `thin` | 46 items, `ok` |
-| graph | 521 items | 567 items |
+| `ka` | 2 | **0** |
+| `yama` | 4 | 1 |
+| `yuubinkyoku` | 11 | 2 |
 
+That zero is the important one. For a two-character answer any edit is a
+*different answer* — `ke` is not a slip for `ka`, it is the wrong kana — so
+short answers get no tolerance, and with it no hint that they were close.
 
-## Something to take off the screen
+An exact match wins first, and so does a confusable partner: typing the
+other half of a pair the graph records is a knowledge error however few
+letters apart the two are. The clock runs from the **first** attempt, so a
+deliberate slip cannot buy thinking time.
+
+### Taking an answer back, and putting one off
+
+`:oops` is for what the slip detector cannot catch — an input method that
+ate the line, enter hit a word early. It takes back the last answer, puts
+the question back in the queue, and restores *every* belief that answer
+moved, which is more than one: a correct answer also credits the characters
+written inside the word, so undoing it has to undo those too.
 
 ```
-./langpop --chart hiragana
-./langpop --sheet --user bob
+before:        誕生日=0.0   生=0.0   日=0.0   journal=0
+after answer:  誕生日=0.45  生=0.45  日=0.45  journal=3
+after :oops    誕生日=0.0   生=0.0   日=0.0   journal=0
 ```
 
-and `:chart katakana` / `:sheet` inside a session. A4 SVG — `width="210mm"
-height="297mm"` with a viewBox in tenths of a millimetre — so a browser's
-print lands on real paper rather than on a 96dpi guess.
+One answer deep, and only within the session.
 
-**Three charts and one record.** `hiragana` and `katakana` are the
-syllabary on a page; `youon` is the 33 combinations; `today` is what the
-student actually did, which is the only one that needs a student.
+`later`, typed at a question, puts it aside. The difference from a skip
+matters:
 
-### The charts are generated, which is the point and not a convenience
+| at a question | means | recorded? |
+| --- | --- | --- |
+| *enter* | "I do not know" | **yes** — a skip, and it counts in the denominator |
+| `later` | "not this one, not now" | no |
 
-A kana chart downloaded from somewhere is a picture of **somebody else's
-table**. It can disagree with ours and nothing would notice, it carries
+Pressing enter is the most informative thing a beginner does. It is what
+stops a placement descent, and a student who could raise their accuracy by
+answering only what they knew would be measuring the wrong thing. So it
+stays recorded.
+
+Neither route re-asks the item immediately:
+
+```
+あ   ->  later
+後で。Put it aside -- I will bring it back.
+い   ->  i        そうです。
+う   ->  u        そうです。
+え   ->  e        そうです。
+  Back to this one.
+あ   ->
+```
+
+Three questions in between. `:oops` is used *after* the tutor has said what
+the answer was, so asking again straight away would measure the echo rather
+than the memory. `later` is allowed twice per item, and then the question
+has to be answered — without a limit, it is a way never to be wrong about
+anything.
+
+### Drawing a complicated character
+
+A terminal cell gives a glyph about twenty pixels of height, and it gives
+the same twenty to あ and to 聞. あ is a handful of strokes in the em box;
+聞 is fourteen, and at that size the gaps inside 門 fall below one pixel and
+are not drawn small but dropped. That makes a wrong answer ambiguous: the
+student may not have known the character, or the terminal may not have
+drawn it.
+
+So a complicated character is drawn as a picture the first time it is met,
+and the rule comes out of the graph rather than out of a list:
+
+- **The stroke count is already there.** KANJIDIC2 carries it and the
+  importer keeps it, so "is this too detailed for a terminal cell?" is
+  answered from an imported fact.
+- **A word takes the worst character written in it.** 電話 is two
+  thirteen-stroke characters, and the hardest glyph on the card is what
+  decides whether the card is legible.
+- **Eight strokes is the line**, which takes in 29 of the 103 N5
+  characters and leaves 日, 山 and 口 in the terminal where they are
+  perfectly legible.
+- **The first meeting only.** Reading 聞 at terminal size is itself a
+  skill, and a tutor that draws it big every time is one the student never
+  has to learn it from. This is the first time *ever*, counted from the
+  journal, not the first time today.
+- **The picture goes up before the clock starts**, because every criterion
+  carries a response-time floor.
+
+It uses the `glyph` card style — the character alone on a square — rather
+than the word card, which carries the reading and the gloss and would give
+the answer away.
+
+---
+
+## Placement
+
+> *"A teacher will jump right into 'go ahead and introduce yourself.' A
+> true beginner will freeze. If they answer properly, the teacher keeps
+> going — 'what day is it today?' — until they work out which section this
+> person belongs in."*
+
+The point is not the questions. It is that the teacher **starts above**
+where they expect and lets failure locate the student, and that a freeze
+ends that line of questioning.
+
+`:place` in the terminal, `langpop/placement.next` on the wire.
+
+**Placement is not a teaching mode.** It is a fast way to populate the
+student record, and everything downstream already works off that record:
+the chooser takes the lowest belief first, so a correctly placed student
+gets their weak spots immediately and skims what they know. Which means
+there is no placement state anywhere — `lp_place_next/0` is a pure function
+of the evidence already recorded, so a client asks what to ask, answers it
+through the ordinary `langpop/answer`, and asks again. A dropped connection
+costs the one question in flight.
+
+**One scalar would be the wrong answer.** A learner who knows 500
+characters and keeps forgetting katakana is not *at* any single level, and
+placing them by one number would either drown them or bore them. So the
+search runs per **axis**, and the axes are the exit criteria — a ladder that
+adds a criterion gets an axis for free:
+
+```
+kanji              : up to n5           <- knows kanji
+vocabulary         : up to preschool    <- thin at N5
+recognise katakana : below the ladder   <- froze on シ/ツ, ソ/ン
+recognise hiragana : up to preschool
+skill mora_sokuon  : nothing here I can ask about
+
+teach at: preschool
+```
+
+Twenty questions. The level is **derived**, not chosen: the lowest rung
+that still has an axis the student has not passed. The characters they
+proved they can read sit near mastery in the record, so they are not taught
+again.
+
+Four things make it cheap, and each one comes out of the graph rather than
+out of a parameter:
+
+- **It samples across a difficulty scale.** Probing 103 characters one at a
+  time to find out whether somebody reads characters is absurd; four spread
+  along frequency rank locate them — 日, 上, 話, 聞.
+- **Where there is no scale, confusable items come first.** A katakana test
+  made of ア and ヲ certifies everybody. シ against ツ and ソ against ン is
+  where forgetting actually shows, and the graph already records which 18
+  pairs those are.
+- **A freeze ends an axis**, after two. That is the behaviour the whole
+  thing is modelled on, so the loop asks **one** question and looks again.
+- **Passing high means nothing below gets asked.** Failing drops one rung
+  and asks again. That is the descent.
+
+---
+
+## Things to print
+
+```sh
+./langpop --chart hiragana      # also katakana, youon
+./langpop --sheet --user bob    # today's work
+./langpop --zine --user bob     # the study plan, as a booklet
+```
+
+and `:chart`, `:sheet`, `:zine` inside a session. Everything is A4 SVG —
+`width="210mm" height="297mm"` with a viewBox in tenths of a millimetre —
+so a browser's print comes out on real paper rather than on a 96dpi guess.
+
+### The charts are generated from the graph
+
+A kana chart downloaded from somewhere is a picture of somebody else's
+table. It can disagree with ours and nothing would notice, it carries
 whatever licence it carries, and it goes stale the moment the graph
-changes — as it just did, when 46 voiced kana arrived. A chart drawn from
-`kana/5` cannot disagree with the tutor, because it is the same 138 facts
-the tutor reads. Same argument `import.p` makes about content: hold the
-curation, derive the rest.
+changes. A chart drawn from `kana/5` cannot disagree with the tutor,
+because it is the same 138 facts the tutor reads.
 
-**And the grid is derived too.** A cell's **column** is the last vowel
-letter of its romaji — `ka`→a, `shi`→i, `tsu`→u, `fu`→u — and its **row**
-is the row named in the fact. A hand-placed grid would be a second copy
-of the table, free to disagree with the first.
-
-Which is how the sheet tells the truth about the holes:
-
-```
-  d    だ          で    ど
-       da          de    do
-```
-
-Two gaps, because `kana.pl` does not hold ぢ and づ — and the footer says
-why rather than leaving a reader to wonder whether the chart is broken. A
-hand-placed grid would have quietly filled them in.
+The grid is derived too. A cell's **column** is the last vowel letter of
+its romaji — `ka`→a, `shi`→i, `tsu`→u, `fu`→u — and its **row** is the row
+named in the fact. A hand-placed grid would be a second copy of the table,
+free to disagree with the first, and it would have quietly filled in the ぢ
+and づ cells that are supposed to be empty.
 
 The youon sheet derives its 33 combinations the same way: every kana whose
 romaji ends in `i`, bar い itself, crossed with small ゃゅょ. The romaji
-comes from `lp_romaji`, so the sheet says `sha` and not `shya`, and `ja`
-and not `jya`, **because the engine's rule said so** — not because a
-second table was typed out and might disagree.
+comes from the engine's own rule, so the sheet says `sha` and not `shya`.
 
-### The day's sheet reads the journal, not the beliefs
+The modifiers sit in a strip along the foot of the chart, separated by a
+rule, labelled with **what each one does** rather than with a reading it
+does not have — and each is drawn beside its full-size twin, in grey,
+because the difference is the size and nothing else:
+
+```
+ヤャ              ユュ              ヨョ              ツッ              ー
+joins the one     joins the one     joins the one     a beat of        lengthens
+before            before            before            silence          the vowel
+```
+
+A learner meets っ in がっこう on day three, so a reference sheet that
+leaves it off is a reference with a hole in it.
+
+### Today's sheet reads the journal
 
 ```
 Today, Sheet Tester                                        2026-10-21
@@ -1094,452 +1276,20 @@ Next time
 Drawn from your own answers, on this machine.
 ```
 
-A sheet of **beliefs** would show the same thing every day with the
-numbers slightly different. A sheet of the **journal** shows the session.
-One row per item carrying the outcome that stands — an item got wrong and
-then got right prints once, and prints right — in the order the questions
-were asked, because a record of a session reads forwards even though the
-journal is stored most-recent-first.
+A sheet of beliefs would show the same thing every day with the numbers
+slightly different. A sheet of the **journal** shows the session. One row
+per item carrying the outcome that stands — an item got wrong and then got
+right prints once, and prints right — in the order the questions were
+asked.
 
 The four marks are the four outcomes, and `?` is deliberately not `x`:
-saying *I do not know* is the most informative thing a beginner does, and
-a sheet that crossed it out would be teaching them not to.
+saying *I do not know* is the most informative thing a beginner does, and a
+sheet that crossed it out would be teaching them not to.
 
-`langpop/sheet.render` is the same thing on the wire. It is the only
-method that requires a session **conditionally** — a chart is a picture of
-the graph and needs none, today's sheet is a picture of one student's
-answers and needs one. Refusing a kana chart to someone who has not
-logged in would be a privilege check protecting a table anybody can buy
-on a poster.
+### The booklet
 
-
-## Coverage, which was the last `unmeasured`
-
-`coverage(reading, 0.95)` is Nation's measure: *the words you know
-account for 95% of the words on the page*. It held three English rungs
-closed for as long as nothing measured it, and a number invented to fill
-that gap would have looked like the others and not been one.
-
-It is arithmetic once the data exists. **Sum what the mastered words
-account for; divide by what the corpus accounts for.** No model, no
-interpolation, no published table — the definition applied to the data.
-
-```
-en  b1  coverage(reading, 0.95)   519   14   short by 81
-```
-
-519 words carry a frequency; all of them together reach **14%**; the
-criterion wants 95. That is a curation number now, where it used to be a
-hole in the design — and the whole graph reports **zero `unmeasured`**
-for the first time.
-
-### A rank cannot do this job
-
-`rank/3` says *where* a word sits. `freq/3` says *how much of the text it
-is*, and they are not the same thing: `the` and the fifty-thousandth
-word are one rank apart from their neighbours and **four orders of
-magnitude** apart in how much text they cover. So the count comes across
-with the rank, and the corpus total comes across once, and the engine
-divides.
-
-```prolog
-rank(e_people, opensubtitles_en, 118).
-freq(e_people, opensubtitles_en, 885915).
-corpus(opensubtitles_en, 50000, 725119374).
-```
-
-**The denominator is the whole corpus**, not the words we happen to
-teach. Dividing by our own vocabulary would give a figure that only ever
-goes up and would read as progress rather than as coverage.
-
-### The licence, which was the actual blocker
-
-[hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords):
-*"MIT License for code. CC-by-sa-4.0 for content."*
-
-Two **named** licences partitioning the repository, rather than two
-clauses contradicting each other — which is the test NGSL failed, and
-the test the zine template failed. CC BY-SA is also the licence family
-this project already handles: JMdict and KANJIDIC2 are CC BY-SA 4.0, and
-the whole `graph/<lang>/generated/` arrangement exists so share-alike
-stays on upstream's layer. The counts derive from OpenSubtitles
-(opus.nlpl.eu), which asks for attribution.
-
-**A note on fit, which is in the generated file's header.** OpenSubtitles
-is **dialogue**. Its frequency profile is a good basis for
-`coverage(listening, _)` and a *proxy* for `coverage(reading, _)`, whose
-published thresholds come from written corpora. The scale is named in
-every fact — `opensubtitles_en`, not `frequency` — so the difference is
-visible rather than averaged away, and `:status` prints it:
-
-```
-coverage(reading, 0.95): 14% of running text, over 519 words
-                         (opensubtitles_en, need 95%)
-```
-
-### What 14% says about the A1 list
-
-The top 100 words of English cover **59%** of running text. Our 519 A1
-words cover **14%**. The difference is that the A1 list is nouns, verbs
-and adjectives — *people, family, water, mother* — and **coverage lives
-in function words**: `the`, `to`, `a`, `of`, `and`.
-
-That is not a defect in the list, which was curated to be teachable on
-day one. It is a fact about what coverage measures, and it is the kind
-of thing a curator can only learn from a number — and then measure
-again: the list went from 100 words to 519, which is four hundred more
-nouns and verbs, and coverage moved 5.60% to 13.57%. Eight points for
-four hundred words, against thirteen pronouns in
-`docs/langpop-function-words.md` worth fifteen on their own.
-
-### The gap report, which turns that number into a queue
-
-"The graph is short 1,800 words" is true and useless. `--gap` inverts
-the frequency import: walk the list, drop every word the graph already
-teaches **at any level**, and print what is missing ranked by what each
-word buys — its share of the corpus, and the coverage the graph would
-reach if everything down to that row were added.
-
-```
-./langpop import --source frequency \
-     --gap --file <dir>/en_50k.txt --lang en [--top 40]
-```
-
-```
-gap: the graph answers 530 of the list's words, and they carry
-gap: 13.57% of the corpus
-
-   rank  share   if-added  word
-  1      3.97%   17.54%    you
-  2      3.74%   21.28%    i
-  3      3.14%   24.42%    the
-
-not in the queue, because there is nothing to teach:
-  23 tokeniser shards, 6.39% of the corpus -- 's 't 'm don 're 'll ...
-```
-
-Each row is annotated with what the curator needs to judge it: English
-rows say when a token is probably an inflection of a word already taught
-(`drinking` → *may be a form of e_drink*), and Japanese rows carry the
-price tag (`大丈夫` — *needs 2 kanji not in the graph*).
-
-Contraction halves are taken out of the queue and counted under the
-table, because *don't* tokenised into `don` and `'t` is two things
-nobody can teach, and they would otherwise hold the top of the report
-forever. The rule is two closed lists and not "has an apostrophe": that
-broader rule caught 315 tokens, among them `'em`, `'cause` and `'bout`,
-which are real spoken words at a rank a curator should see. Filing those
-under *nothing to teach* would be the report answering a curation
-question by itself.
-
-**It is a report, not an import** — adding a word is curation
-(an id, a level, a gloss), and nothing here mints any of those. Nothing
-is written.
-
-The first run earned its keep on the spot: the entire English top-30 gap
-is **function words** — the coverage the A1 content list cannot reach —
-and the Japanese list shows the tokeniser splitting verbs from their
-endings, which is a fact about the corpus the report now states rather
-than hides.
-
-
-## What about English
-
-Worse than Japanese, and in a way the audit measured but could not see.
-
-```
-  en  preschool  sound_contrasts       12  0   needs_audio
-  en  preschool  no_katakana_reading   12  12  ok
-  en  preschool  final_consonants      1   0   needs_audio
-```
-
-Two of the three criteria on the first rung needed audio, so the rung
-could not be exited. But the real problem was worse than that: it could
-not be **entered**.
-
-### A gate nothing can open
-
-`lp_mastered` reads the **gate** channel, and for a `sound` item the gate
-is `hear` — which is outside `VERIFIABLE`, so a sound can never be
-mastered, so anything requiring one is locked for ever. **All twelve
-English contrasts are sounds.**
-
-The symptom was not a bad measurement. The English pre-school rung had
-*nothing ready*, ever, and the tutor said **"nothing here can be checked
-by typing"** to every student who ever opened it.
-
-```prolog
-gate_ok(S, Pre) :- lp_known(S, Pre).
-gate_ok(_, Pre) :- lp_unverifiable(Pre).
-```
-
-A prerequisite the tutor has no way to check does not hold the door
-shut. The channels note already makes this argument one level down —
-*"if the gate demanded every channel, then with no way to verify `hear`
-nothing would ever unlock and the ladder could not be climbed at all"* —
-and this is the same argument about prerequisites. The edge is still
-true and still teaches order; it simply cannot be a *condition*, because
-nothing can satisfy it.
-
-**It does not let anybody pass anything.** `s_final` is still unmastered,
-`sound_contrasts` is still `needs_audio`, and `--audit` still says so. It
-unlocks the teaching, not the criterion.
-
-### How many syllables does `slim` have?
-
-A Japanese speaker says ドッグ for *dog* — three beats where English has
-one syllable — because Japanese cannot end a syllable in a consonant and
-puts a vowel there instead. That is what `skill(final_consonants)` is
-named for: *ends a word without adding a vowel*.
-
-Producing a final consonant does need a microphone. **Knowing** that
-English does not add a vowel is a count, exactly as the mora half was:
-
-```
-mansion    2 syllables   vs  マンション  4 beats
-slim       1             vs  スマート    4
-part-time  2             vs  アルバイト  5
-excited    3             vs  ハイテンション 6
-```
-
-One syllable per vowel nucleus, counted from the IPA CMUdict provides.
-The five diphthongs are two symbols and one nucleus — counting vowel
-*symbols* makes `child` two syllables — and the pairs are exactly the
-five ARPABET diphthongs the importer maps, so this is not a guess about
-English but the inverse of a table in `import.p`.
-
-**The material picks itself.** An item with both an English pronunciation
-and a katakana one, where the katakana takes more beats. The twelve
-loanword traps are exactly that set — a happy consequence of what they
-were curated for, since they were chosen as words a Japanese speaker
-already half-knows in katakana.
-
-### The wrong answer worth naming
-
-```
-  mansion
-  How many syllables? English, not the katakana.  ->  4
-  Almost.  That is the beats in マンション.  The English word has 2.
-```
-
-A learner who answers four has not guessed. They have read the katakana,
-honestly, which is the whole of the katakana box. So it is recorded as
-`near` rather than `wrong`, and the tutor says **which count they gave** —
-a verdict that only says *no* teaches nothing, because they already know
-they got it wrong and not why. `langpop/answer` carries it as
-`counted_instead`.
-
-### What the import found on the way
-
-The traps had never been enriched: `--source cmudict` filters by level
-and had only ever been run for `a1`. Running it for `preschool` wrote
-`graph/en/generated/preschool-sounds.pl` — and `imp_verify` reported all
-23 facts as **LOST**, because `GRAPH_GENERATED` is a hand-written list
-and the engine never loaded the file.
-
-The verifier was right and the message was baffling, so the importer now
-refuses the write instead:
-
-```
-import: the engine does not load that file -- add it to
-GRAPH_GENERATED in langpop.p, or pass --out
-```
-
-And one card quietly changed. `TERM_ORDER_EN` put `ipa` before
-`katakana`, so the moment the traps gained a pronunciation every trap
-card swapped マンション for `/mˈænʃən/` and stopped showing the thing the
-item exists to contrast. A katakana form on an English item *means* the
-word is a loanword trap; the IPA is a pronunciation guide, and the trap
-is the point.
-
-
-## The characters that are not syllables
-
-`kana/5` holds the 138 kana that stand for a mora **on their own**. It
-does not hold っ, ゃ, ゅ, ょ, the small vowels or ー — and
-`recognise(hiragana)` is measured over `kana/5`, so a criterion named
-*recognise hiragana* has been quietly measuring *recognise the
-syllabary* since the file was written.
-
-**They do not belong in the table, and that is not the problem.** A
-gojūon grid has no cell for them. They have no reading of their own.
-`type the romaji` cannot ask about ゃ, because ゃ and や are both `ya` —
-so adding them would make the criterion's name true and its measurement
-hollow, which is the trade this project keeps refusing.
-
-What was missing was the **declaration**:
-
-```prolog
-modifier('ゃ', hiragana, youon).
-modifier('っ', hiragana, mora_sokuon).
-modifier('ー', katakana, mora_long_vowel).
-```
-
-Each is covered by a skill that is about **what it does**. Together with
-`kana/5` they account for every character of the script, and now
-checkably so: `check(graph)` proves the *shape* of the graph, and a
-companion check proves the *content of its forms* — walking every
-written form and reporting any character that is neither a kana nor a
-declared modifier.
-
-```
-undeclared_kana(ゐ, w_neko)
-```
-
-It is a Pop-11 check and not a Prolog one because it walks a string
-character by character and the characters are UTF-8: splitting an atom
-into them is what `utf8_explode` is for and what Prolog here is not.
-`lp_check/0` returns both lists.
-
-**It found something on its first run.** `form(p_kore_wa_desu, hiragana,
-'これは___です')` — a sentence pattern's form is a *template*, and its
-underscores are not kana. Declared as such:
-
-```prolog
-modifier('_', any, placeholder).
-```
-
-The small vowels are declared although no item uses one yet, because the
-first katakana loanword with a ファ in it should not be the thing that
-breaks the check.
-
-### And they go on the chart
-
-A learner meets っ in がっこう on day three, so a reference sheet that
-leaves it off is a reference with a hole in it. They are not cells of
-the grid and never will be — so they sit in a strip along the foot,
-separated by a rule, labelled with **what each one does** rather than
-with a reading it does not have.
-
-```
-ヤャ              ユュ              ヨョ              ツッ              ー
-joins the one     joins the one     joins the one     a beat of        lengthens
-before            before            before            silence          the vowel
-```
-
-Each is drawn **beside its full-size twin**, in grey, because the
-difference is the size and nothing else: ゃ on its own at chart size is
-indistinguishable from や, which is exactly the confusion the strip
-exists to prevent. ー has no twin and gets none.
-
-The footer wraps now, too. A footer is one line until somebody writes a
-long one, and then it is one line that runs off the right-hand edge —
-which it did, the moment the strip needed explaining.
-
-
-## A mora is a unit of time, and you can ask about it by typing
-
-`--audit` called `skill(mora_count)` and `skill(mora_sokuon)` **thin**,
-over a set of one item — あ — which cannot demonstrate beat counting
-whatever a student does with it. The obvious reading of that was *timing
-needs audio*, and it was wrong.
-
-**Producing** correct timing needs a microphone. **Knowing** how many
-beats a word has is a reading question with a number for an answer, and
-the number is computable from the kana:
-
-```
-every kana       one beat
-small ゃゅょ      no beat -- it joins the kana before it
-small っ         one beat, of silence
-ん               one beat, which is why it is `moraic`
-ー               one beat
-```
-
-The first two are what make it worth asking. **きょう looks like three
-characters and is two beats; きって looks like three and is three.** A
-student who gets both right has the thing the criterion is named for.
-
-```
-Aoi>
-  きょう
-  何拍ですか。How many beats?  ->  3
-  Not yet. We will come back to it.  It is 2.
-
-Aoi>
-  ちょっと
-  Count the beats, not the letters:  ->  3
-  そうです。
-```
-
-### A skill with a probe is measured over itself
-
-```prolog
-criterion_item(skill(S), S) :- probe(S, _).
-criterion_item(skill(S), I) :- \+ probe(S, _), skill_leaf(S, I).
-```
-
-The difference is which thing the question is about. `skill(dakuten)` is
-*read the voiced kana*, so reading them is the evidence and the criterion
-is measured over the 46 of them. `skill(mora_count)` is *count the
-beats*, and reading あ is no evidence of that at all.
-
-`probe(Skill, morae(Feature))` says a skill carries a generated question,
-and names the material the feature picks out — `sokuon`, `youon`,
-`moraic_n`, `long_vowel`, `any`. The material is drawn from the graph and
-the answer is counted from the kana, so **neither is written down
-anywhere** and a content build that adds a thousand N5 words adds a
-thousand mora questions.
-
-### So the audit counts questions, not items
-
-A skill with a generated probe is one item that can be asked about fifty
-words. Counting it as one would call the criterion thin when it is not —
-and **the reverse matters more**: when the material runs to a single
-word, the criterion *is* thin, and nothing else would have said so.
-`skill(mora_sokuon)` had exactly one pre-school word with a small っ in
-it.
-
-### Which named the curation, precisely
-
-Two numbers from the same audit turned out to be one job:
-
-| | before | after |
-| --- | --- | --- |
-| `vocabulary(50, read)` | short by 10 | **50 of 50, ok** |
-| `skill(mora_sokuon)` | 1 question, thin | **7 questions, ok** |
-| `skill(mora_count)` | 1 item, thin | **51 questions, ok** |
-
-Ten more starter words, chosen as **words normally written in kana** —
-which is the criterion a kana-only list should have had from the start
-and did not. The first draft picked きっぷ, ざっし, でんしゃ, おちゃ, じしょ,
-しゅくだい and でんわ: all good mora examples, and **all seven already in
-the N5 pick list** as 切符, 雑誌, 電車, お茶, 辞書, 宿題 and 電話.
-`--check` caught it as `requires_from_above` — one id, two levels, the
-pre-school word inheriting the N5 word's kanji prerequisites.
-
-Adverbs and expressions are the right material anyway. A learner meets
-ちょっと and たくさん constantly, in kana, and will never meet them as
-一寸 and 沢山 — so teaching them here costs nothing later, where teaching
-でんしゃ in kana is teaching a word that has to be re-learned as 電車 two
-rungs up.
-
-**The whole Japanese pre-school rung is now `ok`.** It is the first rung
-of either ladder that is.
-
-### The long-vowel test, which went wrong first
-
-いえ is `ie`: two vowels, and two **different** ones — い then え, two
-beats of two sounds, no length anywhere. The first version of the test
-took any adjacent vowel pair and duly offered いえ as a long-vowel
-exercise. A long vowel is the same vowel twice, or one of the two
-spellings Japanese uses for one: おう and えい.
-
-### Still open
-
-**The small kana are not in the table** — and now they are *declared*,
-checked and printed. See the section above.
-
-## The study plan, as a booklet
-
-```
-./langpop --zine --user bob
-```
-
-and `:zine` in a session. Eight pages from one sheet of A4 — cover, where
-you stand, how it is going, what is next, the ladder, what to look at
-again, and how to fold it. Printable at any time, because the plan is a
-function of the beliefs and the beliefs are always current.
+Eight pages from one sheet of A4, printable at any time, because the plan is
+a function of the student record and the record is always current.
 
 | page | |
 | --- | --- |
@@ -1551,27 +1301,6 @@ function of the beliefs and the beliefs are always current.
 | 7 | worth another look |
 | 8 | how to fold it, and what the marks mean |
 
-### Nothing is vendored, and that is the whole of the licence answer
-
-The obvious way to build this is to take a free zine template and fill it
-in. The one we looked at
-([taylorsmithdesigns.co.uk/free-zine-pdf](https://www.taylorsmithdesigns.co.uk/free-zine-pdf))
-says *"the template itself must not be sold commercially, but feel free
-to share"* under a footer reading *"© 2025 … All Rights Reserved"*.
-
-That is a **permission note, not a licence**: no named licence, no
-version, and two clauses that disagree with each other. It is the same
-shape as the NGSL word list, which this project turned down for the same
-reason. It is also 37 MB of somebody else's PSD and PDF, and keeping
-other people's content out of the repo is what the whole
-`graph/<lang>/generated/` arrangement exists for.
-
-**And we do not need it.** What a template gives you is the
-**imposition** — which panel holds which page, and which half of the
-sheet is upside down — and that is not a creative work. It is a
-consequence of folding a sheet in half three times and cutting the
-middle:
-
 ```
   1. A4 landscape.  Fold in half left-to-right, again, and again:
      eight panels, four columns by two rows.
@@ -1581,37 +1310,27 @@ middle:
      and collapse into a stack.
 ```
 
-Follow a panel through that and the arrangement falls out:
+Which gives the imposition, and it is a consequence of the folding rather
+than a design choice:
 
 ```
      top row, upside down:   5   4   3   2
      bottom row, upright:    6   7   8   1
 ```
 
-Every zine template in the world shows this same arrangement, because the
-paper leaves no choice. So `sheet.p` derives it, the derivation is
-written down beside the table, and `test_langpop_sheet.p` checks it —
-each page in exactly one panel, the cover bottom-right and upright, the
-top row inverted, and the cut line spanning the middle two columns
-**only**. A dashed line the full width would be an instruction to cut the
-booklet in half, which is the one mistake that cannot be undone.
+The cut line spans the middle two columns **only**. A dashed line the full
+width would be an instruction to cut the booklet in half.
 
-### The booklet speaks the language the reader can read
+**The booklet speaks the language the reader can read.** Printing one for a
+Japanese speaker learning English is what showed the problem: every heading
+on the first draft was in English, which is the one language a beginner
+English learner cannot be assumed to read. This is the metalanguage problem
+the project started from, turned round — *a question about grammar in
+Japanese will be too challenging because the vocabulary used to talk about
+grammar exceeds beginner level.*
 
-Printing one for a Japanese speaker learning English is what showed the
-first draft was unusable for exactly the person it was for: every
-heading on it — *Study plan*, *Where you are*, *How it is going*, *Fold
-it* — was in **English**, which is the one language a beginner English
-learner cannot be assumed to read. That is the metalanguage problem this
-project started from, turned round: *a question about grammar in
-Japanese will be too challenging because the vocabulary used to talk
-about grammar exceeds beginner level.*
-
-So the chrome is in `lp_learner_lang()` — the **other** language from the
-ladder being climbed. `card.p` has had this rule since the cards were
-drawn (a loanword trap carries a Japanese gloss because the person
-reading it reads Japanese), but it was spelled inside `lp_card_gloss`
-and could not be used anywhere else.
+So the navigation is in the **other** language from the ladder being
+climbed:
 
 | | `--lang ja` | `--lang en` |
 | --- | --- | --- |
@@ -1623,126 +1342,462 @@ and could not be used anywhere else.
 | the cut line | cut along here | ここを切る |
 
 **The cover motto is the one exception, and it goes the other way.** A
-single phrase in the language being *learned* — がんばって, *you can do
-this* — is a flourish the student will meet soon and can be proud of
-reading. Navigation in that language is a booklet they cannot use. The
-difference is the whole of the distinction, so it has its own procedure
-(`zine_say_target`) rather than a flag.
+single phrase in the language being *learned* — がんばって — is a flourish
+the student will meet soon and can be proud of reading. Navigation in that
+language is a booklet they cannot use.
 
-And the status page is worded twice from **one** set of numbers.
-`lp_status_rows/0` returns `{criterion, kind, a, b, c, d}` and nothing
-else; `lp_status_text/1` words it for the TUI and `zine_status_text/1`
-for the page. Formatting the sentence in `lp_status_rows` was fine until
-a second reader wanted it in a second language — at which point two
-renderings would have become two measurements.
+Page 3 prints the same figures as `:status` and page 2 the same as `:place`,
+from the same procedures, because two renderings of one number is one too
+many: the paper would drift from the screen and nobody would notice which
+was right.
 
-### Two things a printed page does that a screen does not
-
-**Nothing clips.** A dictionary gloss — *"a very large and rather grand
-house, in American usage an apartment building"* — set as one line
-anchored to the right edge ran clean across the sheet and over the three
-panels beside it. SVG does not wrap and does not clip: a line that does
-not fit does not get smaller, it escapes. `zine_hint/2` cuts to the
-column and marks the cut with an ellipsis, so a reader can tell a short
-gloss from a trimmed one.
-
-**Japanese has no spaces.** A space-splitting wrap put a whole Japanese
-sentence on one line and sent it off the panel the same way. `zine_wrap`
-now measures in **columns** (a kana is two), breaks at a space where
-there is one and between characters where there is not, and keeps the
-one typographic rule worth keeping — kinsoku: a line may not *begin*
-with closing punctuation, or a sentence breaks before its own full stop
-and the next line opens with a lone 。
-
-English still does not break mid-word. A wrap that split
-`supercalifragilistic` across two lines without a hyphen would be worse
-than one that let it hang over the edge, so a mid-word break requires a
-wide character.
-
-
-### Not TeX, and why
-
-TeX would do this, and it was the obvious fallback for a page with
-rotation on it. But SVG already draws the cards and the sheets, and
-turning half the page over is one `transform` attribute:
-
-```xml
-<g transform="translate(2970,4200) rotate(180)">
-```
-
-A whole toolchain bought for one rotation is a bad trade, and the
-graphics requirement for this project has been *"a system call to run an
-external program is probably good enough"* from the start.
-
-### One measurement, one rendering
-
-Page 3 prints `lp_status_rows/0` and so does `:status`; page 2 prints
-`lp_place_says/1` and so does `:place`. Both were extracted from the
-procedures that used to print them directly, because **two renderings of
-one number is one too many** — the paper would drift from the screen and
-nobody would notice which was right.
-
-### The unit, which is the trap
-
-The page is in **twentieths of a millimetre**, not the tenths the other
-sheets use, so that a quarter of A4's width is an integer: 74.25 mm is
-1485 units exactly. The cost is that type sizes carried over from
-`sheet.p` mean half what they say, and the first draft of this page was
-unreadable at about five point because of it. The sizes are now named
-constants with the point size in the comment.
-
-### And one size for both scripts was the same mistake again
-
-`Z_GLYPH = 130` — 18pt — was used for *either a kana or a kanji*, which
-is the terminal's assumption on paper. 18pt renders あ cleanly and closes
-up the inside of 語. Mixed-script house styles set CJK **above** the
-Latin beside it for exactly this reason: a Latin lowercase letter fills
-about half the em box vertically and a third of it across, while a kanji
-fills the box and then subdivides it.
-
-Kanji are now 24pt and kana stay at 18. The interesting part is what paid
-for it, because the booklet panel is 74.25 x 105 mm and the plan page
-holds eight rows at a fixed pitch of 185 units:
-
-- with the hint **under** the glyph the pitch has to carry
-  `1.36 x size + 10`, which is where 130 came from — and 130 is already
-  two units past that limit;
-- with the hint **beside** it the constraint is only `0.88 x size`, so
-  24pt fits with room and **the page still holds eight**. Going larger
-  costs rows, and a plan page showing four items is a different page.
-
-Beside is better for a glyph anyway: kana and kanji are both square and
-leave the width of the panel empty, which is where the reading goes on
-every flashcard ever printed. A **Latin** term keeps its hint
-underneath, because that is a word rather than a glyph and the two would
-collide — which is what the page's original comment argued, correctly,
-about the case it was looking at.
-
-**Kana had to move too, and that is not about kana.** A kana row with its
-hint 62 units under the baseline, followed by a kanji row at 24pt, puts
-the kanji's top *above* that hint: the first render printed `neko` inside
-日. A page mixes the two freely, so both go beside.
-
-The day's sheet gets the same treatment and it costs nothing there at
-all — the hint is already in a column of its own, so the only constraint
-is the 72-unit row pitch and `0.88 x 70` is 62. Kanji go from 13.6pt to
-20pt; kana stay where they were, because they were never the problem.
-
-
-## Seeing the graph
-
-The tutor reads the graph one item at a time, chosen for one student. That
-is the right view for teaching and the wrong one for **curating**:
-`check(graph)` catches the seven things that are wrong by definition, and
-everything else is a judgment, which needs to see the thing. A
-prerequisite edge pointing somewhere silly looks exactly like one that
-does not.
-
-`dump.p` is the reader. It starts no session, registers no student and
-records no evidence, so what it shows is the shape of the graph and
-nobody's progress:
+### Cards
 
 ```
+:card hi_a
+{"method":"langpop/card.render","params":{"item":"w_neko"}}
+  -> {"item":"w_neko","style":"word","path":"…/cards/w_neko-word.svg",
+      "width":640,"height":400,"format":"svg"}
+```
+
+The term is the form the student has to recognise, and the line above it is
+whatever helps them get there. Which form that is depends on the item:
+
+| Item | Term | Above it |
+| --- | --- | --- |
+| kana grapheme `hi_a` | あ | `a` |
+| starter word `w_gakkou` | がっこう | `gakkou` |
+| N5 word `w_yama` | 山 | やま |
+| loanword trap `t_mansion` | マンション | `manshon` |
+| sound contrast `s_r_l` | `/r/ - /l/` | ラ行では区別されない |
+| written confusion `m_rice` | `rice / lice` | 米とシラミ |
+
+The term is the form in the **item's own** language, and the gloss is in
+the **learner's** — a Japanese item glossed in English, an English item in
+Japanese. A sound contrast has an IPA form and nothing else, so the IPA is
+the term, and the line above it is the Japanese gloss, because the point of
+the card is the distinction the learner's own language does not make.
+
+Three details that are not decoration: the term shrinks to fit, and the
+fitted size is floored rather than rounded, because rounding up is how a
+fitted term still overflows by a point or two; a gloss that only repeats
+the reading is dropped, because a kana grapheme's English gloss *is* its
+romaji; and each font family is quoted, because an unquoted multi-word
+family name is not valid CSS and a strict renderer drops the whole list.
+
+Cards are SVG. The text is drawn from the font by the viewer, named as a
+family rather than rasterised here, so the output is deterministic and
+diffable; it opens on all four platforms with no graphics build; and it
+carries its own provenance line. The rule the design asked for survives: *if
+the output contains text the student is asked to read, it came from the
+font.* Stroke-order animation is the one style SVG cannot do, and it answers
+with its own error code so a client can tell "that does not exist yet" from
+"you asked wrongly".
+
+In a session the card goes **in the terminal** rather than in a window,
+because opening a viewer mid-question takes the focus off the thing the
+student is being asked to read. `tools/term-image.py` speaks the kitty
+graphics protocol (kitty, ghostty, WezTerm, Konsole) and iTerm2's inline
+images, rasterises with whichever of `rsvg-convert`, ImageMagick or
+`qlmanage` is installed, and distinguishes its failures in its exit status:
+
+| | |
+| --- | --- |
+| 0 | drawn |
+| 2 | this terminal has no image protocol |
+| 3 | no SVG converter installed |
+| 4 | the file is unreadable |
+
+`2` is a terminal to name in a one-line hint; `3` is a missing
+`rsvg-convert`. Either way it is said once per session, and the character is
+still printed, just small.
+
+---
+
+## Sound
+
+Sound arrives in three pieces, and they are three different claims.
+
+### Playing it
+
+```sh
+./langpop --audio preschool
+./langpop --audio preschool --rate slow
+```
+
+```
+audio: 188 made, 0 already cached in ~/.langpop/audio/ja/
+  8 not said: no_spoken_form
+  3 not said: has_blank
+audio: listen at ~/.langpop/audio/ja/listen-preschool.html
+```
+
+The first audio to exist is **output**, and it carries no verdict. A learner
+has little exposure to correct pronunciation, so asking someone to produce a
+sound we declined to let them hear is a test of material we never taught.
+
+**The voice is a command, not a dependency.** It is named in
+`~/.langpop/audio.conf`:
+
+```json
+{"ja": {"cmd":   "kokoro --voice %v --speed %r --text-file %i --out %o",
+        "voice": "jf_alpha",
+        "model": "kokoro-82m-v1.0",
+        "rates": {"slow": "0.7", "normal": "1.0", "fast": "1.3"}}}
+```
+
+`%i` is a file holding the text, `%o` the wav to write, `%v` the voice, `%r`
+the rate. **The text goes through a file and never onto the command line**:
+the words are Japanese and the shell is not, and a quoting bug in a tutor
+would be a quoting bug in whatever the shell made of ひらがな.
+
+Nothing is installed, imported or vendored. A machine with no model
+configured answers `no voice for ja` and goes on teaching exactly as it did,
+which is the state every fresh checkout and every CI run is in. macOS's own
+`say -v Kyoko` is a usable way to see the pipeline work before wiring a
+teaching voice up — not a teaching voice itself, but something to compare one
+against, which is easier than judging a voice in the absolute.
+
+**`model` is declared, not detected**, because an external command cannot be
+asked what weights it loaded. The declaration is part of the cache key:
+
+    ~/.langpop/audio/ja/hi_a-Kyoko-slow-3936002.wav
+
+`{name, voice, rate, model, text}` — four of them in the filename and the
+text as a hash. The key being the filename means there is no index to keep
+in step with the directory: a corrected form writes a new name, and the old
+file simply stops being reachable rather than being served to a student as
+the reading of a word we have since fixed. Beside each wav is a sidecar JSON
+naming the item, the text, the voice, the model and the command that made it.
+
+**Nothing is synthesised inside a question.** `--audio <level>` makes the
+files ahead of time; asking only ever reads the cache. 188 items took 89
+seconds with `say`, nearly all of it process startup — half a second is not
+much, and half a second in the middle of a question is a tutor that feels
+broken.
+
+**What has no sound, and why that is right.** Skills are abstractions and
+have no utterance. Sentence patterns contain a gap, and a voice would either
+read the gap aloud or swallow it, so the student would hear a sentence that
+is not the item. Japanese is read from **kana**, never romaji: a voice handed
+`gakkou` reads English. English is read from the latin form and **never from
+the IPA**, which is a notation rather than a word — a voice handed `/wɜrld/`
+says something, and it is not *world*. That last one means a sound contrast
+has no sound of its own, which is correct: `/l/` is not something a voice can
+pronounce in isolation. It is heard through the words that exercise it, and
+the graph already links them.
+
+**The rate is a name, not a number.** Kokoro takes a multiplier where `1.0`
+is normal; `say(1)` takes words per minute where `175` is normal; the next
+engine will take a percentage. So the scale belongs to the engine and the
+name belongs to us. `:rate slow` persists in the profile beside the aids,
+because a beginner who has asked for slow should not have to ask again
+tomorrow.
+
+And one caveat the tutor states rather than hides. Japanese length is
+*contrastive* — きて and きって differ by a beat of silence, and four of the
+mora skills exist to teach exactly that. Every TTS engine stretches durations
+under a rate change, and none of them promises to stretch a geminate closure
+by the same factor as the vowel beside it, so at `0.7` the student may be
+hearing a ratio the language does not have:
+
+```
+Aoi> :say w_gakkou slow
+  ~/.langpop/audio/ja/w_gakkou-Kyoko-slow-4821930.wav  (slow)
+  Length is contrastive in this one.  Hear its RHYTHM
+  at normal rate -- a slowed voice stretches the beats
+  and not always evenly.
+```
+
+Slow is the right setting for finding the *segments* in a word and the wrong
+one for learning its *rhythm*. Those are two lessons on one item.
+
+### Hearing it
+
+Hearing and producing are not the same problem. Producing a sound needs a
+microphone, a phoneme model and a verdict. *Hearing* one needs a speaker.
+
+A listening question plays the word and the student types what they heard.
+The grading is exact match on a typed answer, exactly as for reading, so it
+needs no new evidence tier — the only machine in it is the one that spoke.
+
+```
+Aoi>
+  聞いてください。What did you hear?
+  ->  again
+  もう一度。
+
+  Listen.  Which word was that?
+  ->  neko
+  そうです。  ねこ
+```
+
+`again` is free and unlimited. The written form appears **after** the
+answer, never before: a listening question has nothing to read, and the
+glyph is the other half of the item the student has just recognised by ear.
+
+A sound contrast becomes a two-option question instead, because a contrast
+is not a word and there is nothing to type:
+
+```
+Mr Hill>
+  Listen.  What did you hear?
+    1) boat
+    2) vote
+  ->  1
+  Not yet. We will return to it.  It is vote -- /v/ - /b/.
+```
+
+There is no typing version of that question. A student who cannot hear /r/
+from /l/ cannot type the difference either, and asking them to spell it
+would be testing spelling.
+
+Four conditions, all of them load-bearing:
+
+- **A voice must be installed.** Otherwise the criterion goes on saying
+  `needs_audio` rather than reporting a listening vocabulary of zero, which
+  would read as a student who failed instead of a tutor that cannot ask.
+- **The sound must already be cached.** Asking never synthesises.
+- **At the normal rate.** A slowed voice is an easier exposure, and for the
+  geminate words it is a rhythm the language does not have. Slow is for
+  studying; the measurement is at `normal`.
+- **It must actually play.** A question that could not be played is **not
+  marked at all**. Asking *what did you hear?* of somebody who heard
+  nothing, and then filing the answer, would record a failure of this
+  machine as a failure of the learner.
+
+**The pool is words the student has already read.** A word leaves the
+teaching plan the moment it is mastered on `read`, so a listening question
+drawn from the plan could never reach it — but `vocabulary(50, hear)` is
+measured over the same fifty words as `vocabulary(50, read)`. So the pool is
+words already read-mastered, not yet heard, and with audio cached. Which is
+also the right teaching order rather than merely the convenient one:
+recognising by ear a word you cannot read is a harder and different task,
+and no criterion in the graph asks for it.
+
+One question in four is by ear, and the last one in a level is by ear too —
+a ratio rather than *listening once the reading is done*, because otherwise
+a student with reading left would never practise listening and the criterion
+would only start moving at the very end.
+
+### Speaking it
+
+`:speak` is the one channel that wants a microphone, and it is **not**
+`produce`: producing is composing a sentence, which a pattern item asks
+for and a keyboard can answer; speaking is making the sound.
+
+```
+Aoi> :speak w_kitte
+
+  Say it: きって
+  (enter to record, and hold the small っ)  ->
+  The held beat is there: 200 ms of silence against a 130 ms mora.
+  (machine verdict, confidence 0.399 -- capped at 0.77, because a
+   confident model is still a model)
+```
+
+**It checks one thing: whether the held beat is there.** The geminate っ
+of きって is a beat of silence, and silence is what a recording's energy
+envelope can actually measure. Everything else a teacher might want
+scored — vowel quality, pitch accent, whether /r/ came out as /l/ — this
+build does not attempt. The calibration behind the one measurement, and
+why the obvious plan of counting beats does not work, is in
+[DESIGN_NOTES.md](DESIGN_NOTES.md).
+
+**Some words it declines rather than guessing.** いっしょ is `[iʃːo]` —
+the mora is a lengthened `[ʃ]` with energy all the way through, so there
+is no silence to time. That is a fact about Japanese, and the engine knows
+the following kana, so it says so instead of asking a question it cannot
+mark:
+
+```
+Aoi> :speak w_issho
+  いっしょ holds a fricative rather than a silence -- っ
+  before し is a long し, so there is no gap to time.
+```
+
+**Check the room before you trust a verdict.** A held beat *is* silence,
+so a fan fills in the very thing being measured and the verdict comes
+back `wrong` for a learner who did nothing wrong. `:mic` shows what the
+scorer sees:
+
+```
+Aoi> :mic
+  Say anything -- a word, a count to three.  I will show you
+  the level and the silences the scorer would see.
+  (enter to record)  ->
+  peak    -9.8 dBFS  =============---------------------------
+  rms    -25.8 dBFS  ==--------------------------------------
+  floor  -88.7 dBFS  ----------------------------------------
+  heard 0.33 s of 0.37 s recorded
+  silences inside it: 100 ms
+
+  ▂▅▆▆▅▄▃    ▁▂██▇▃
+         ^^^^^        <- silence the scorer times (longest 100 ms)
+
+  level is good
+```
+
+The `^` marks the silence the scorer times, so the difference between
+きって and きて is something a student can **see** before anyone argues
+about the verdict. Above −35 dBFS on the floor line the meter says `THE
+ROOM IS NOISY` rather than letting the scorer blame the student, and
+`:speak` shows the meter itself on anything but a clean `right`, because
+that is when attribution matters. A microphone that is not working is
+reported as such:
+
+```
+  heard 0.00 s of 0.40 s recorded
+  NOTHING REACHED THE MICROPHONE -- not one non-zero sample.
+  Check the input device, the cable, and that the terminal
+  has microphone permission.
+```
+
+**Both ends are commands**, on the same terms as the voice, and neither is
+per-language — a microphone is a microphone, and the scorer is told the
+language in the request:
+
+```json
+"record":  {"cmd": "rec -S -r 16000 -c 1 -b 16 %o trim 0 %s", "seconds": "2"},
+"verdict": {"cmd": "python3 tools/score-morae.py --request %q --out %v"},
+"meter":   optional -- defaults to tools/mic-level.py
+```
+
+With neither configured, `:speak` says so and records nothing.
+
+**A recording of somebody's voice is the most sensitive thing this project
+touches**, so the sample is scratch: written under the data directory,
+scored, and deleted, along with the request and verdict files beside it.
+Nothing keeps it and nothing uploads it. The only reason it is a file at
+all is that the scorer is a separate process.
+
+A machine verdict is its own kind of evidence — the student spoke,
+something measured it, and nobody listened — so it is capped at 0.77,
+below a teacher's check. `near` from the scorer is not a near miss on
+spelling; it is the confidence floor, *I could not tell*, and it moves the
+belief in neither direction.
+
+**`:speak` is not wired into the teaching loop.** No criterion on any rung
+asks a student to produce a sound, so a tutor that started demanding it
+would be grading something the ladder never promised. The capability
+exists; the criteria do not. Whether the ladder should declare them, and
+at what threshold, is a curation question and an open one —
+[docs/langpop-production-criteria.md](docs/langpop-production-criteria.md).
+
+---
+
+## The protocol
+
+`server.p` serves JSON-RPC with line framing — one JSON value per line,
+which is what MCP uses over stdio, so an MCP host can speak to it with no
+shim. `--port N` for TCP, nothing for stdio.
+
+| Method | |
+| --- | --- |
+| `langpop/recognise` | is this somebody we know? — before registration |
+| `langpop/register` | a student, by username; no password, because this is a local tool |
+| `langpop/session.open` / `session.close` | a session is a row, not a process |
+| `langpop/plan` | what is ready now, and why that order |
+| `langpop/next` | the question — **and not its answer** |
+| `langpop/answer` | the judging, which stays on this side |
+| `langpop/explain` | the derivation: prerequisites, provenance, belief |
+| `langpop/status` | the level's exit criteria, measured |
+| `langpop/placement.next` / `placement.report` | find out where they are |
+| `langpop/aids` | which helps are on, and switching them |
+| `langpop/audit` | which rungs of the ladder are hollow |
+| `langpop/card.render` | the item as a picture |
+| `langpop/sheet.render` | a page to print: a chart, today, or the booklet |
+| `langpop/audio.say` | the sound file for an item, if one is cached |
+| `langpop/assign` / `report` | work to do elsewhere, and what came of it |
+
+Three things are deliberately on the server's side of the line, and each one
+is a property the design would lose if it moved.
+
+**The answer never leaves.** `langpop/next` returns the prompt; the client
+cannot tell whether what the student typed was right until `langpop/answer`
+says so. A protocol that hands over the answer key is a quiz file, not a
+tutor, and no later check of it means anything.
+
+**The clock is the server's.** `langpop/next` starts it, `langpop/answer`
+stops it. Every pre-school exit criterion has a millisecond budget, and a
+client that could send `latency_ms: 1` would make the speed half of each one
+worthless. The reply says which clock was used (`latency_source: "server"`),
+and the client's own figure is a fallback for a caller that never asked a
+question — a batch import, a test.
+
+**The tier is decided from the evidence, not chosen.** A client reports `ok`
+or `17/20`; the server decides that the first is tier 3 and the second tier
+2. Anything else is refused rather than quietly filed as compliance, because
+`"18 out of 20"` written without a slash means a result, and recording it as
+"I did it" would throw the number away and cap the item at 0.50 without
+saying so.
+
+Errors are typed, so a client can tell a mistake it made from a bug in here:
+`-32602` invalid params, `-32001` no such session, `-32002` no such student,
+`-32003` no such item, `-32004` no such assignment, `-32005` that rendering
+style does not exist yet.
+
+`client.p` holds no graph, no beliefs and no judgement — 288 lines of asking
+and printing. That is the only honest test of an API: the reference client
+has no private door.
+
+### The teacher is allowed to misremember
+
+> *"Ideally we start to 'remember' things, and the teacher would say, ahh, is
+> it Bob Smith? No, my mistake, Bob White."*
+
+That is recognition, not lookup.
+
+```
+Ah -- Bob White?  (y/n) n
+My mistake.  And your name?  Bob Smith
+```
+
+The correction is kept, and that wrong guess is never made again. Offering
+the nearest name and being corrected is how a person recognises somebody; a
+lookup that is either right or empty is not memory.
+
+`langpop/recognise` is the same thing on the wire. It needs no session,
+because it happens before registration, and it creates nothing, so a client
+may ignore the answer:
+
+```json
+-> {"method":"langpop/recognise",
+    "params":{"student_id":"bwhite","display_name":"Bob White"}}
+<- {"result":{"student_id":"bwhite","known":false,
+              "guess":{"student_id":"bsmith","display_name":"Bob Smith",
+                       "matched_on":"the name"}}}
+```
+
+**A name is not a string.** `Bob Smith` against `Bob White` is three edits
+apart — outside any sane tolerance — and yet it is the exact confusion a
+person makes, because the two share a given name. So tokens are compared as
+well as whole strings, and a close token counts with one added so a
+whole-name match still wins. This will sometimes offer the wrong one of two
+people sharing a first name, which is the behaviour being modelled rather
+than a defect in it: the teacher asks once, is told no, and never asks again.
+
+**A transposition is one typo, not two.** Plain Levenshtein charges two for
+`bsmiht` against `bsmith`, which is outside the budget for any short name, so
+the single commonest slip a returning student makes would be the one case
+that got no guess at all. The distance is Damerau-Levenshtein.
+
+**And the same keystrokes must give the same guess.** Ties break
+alphabetically — not because that is the better guess, but because it has to
+be the same one every time. A teacher who asks *Bob Smith?* on Monday and
+*Yuki Tanaka?* on Tuesday from the same input is not remembering.
+
+---
+
+## Looking at the graph
+
+The tutor reads the graph one item at a time, chosen for one student. That is
+the right view for teaching and the wrong one for curating: `check(graph)`
+catches the things that are wrong by definition, and everything else is a
+judgement, which needs to see the thing. A prerequisite edge pointing
+somewhere silly looks exactly like one that does not.
+
+```sh
 ./langpop dump --html --out /tmp/graph.html
 ./langpop dump                 # JSON on stdout
 ./langpop dump --dot | dot -Tsvg -o graph.svg
@@ -1750,318 +1805,29 @@ nobody's progress:
 ./langpop dump --lang ja       # one language
 ```
 
-`--html` is the one to reach for: it inlines the dump into
-`viewer/page.html` and writes **one file** that opens by double-clicking
-it. That is not a convenience — a browser refuses `fetch()` of a sibling
-file under `file://`, so a viewer that loaded its data separately would
-need a web server before it showed anybody anything. `viewer/page.html`
-is deliberately a fragment with an embed marker in it, so the standalone
-file and the shared copy are the same page rather than two that drift.
+`dump.p` starts no session, registers no student and records no evidence, so
+what it shows is the shape of the graph and nobody's progress.
 
-The page lays the DAG out in **prerequisite order** — one row per
-topological layer, earliest first, which is the order a teacher has to
-follow — and shows one item's three relations at a time: what must come
-first, what it unlocks, and what it is confused with. Confusable pairs are
-drawn always and in a different colour from prerequisites, because the two
-edge kinds mean opposite things (*teach after* versus *do not teach
-together*) and a viewer that drew them alike would be worse than none.
+`--html` inlines the dump into `viewer/page.html` and writes **one file**
+that opens by double-clicking it. That is not a convenience: a browser
+refuses `fetch()` of a sibling file under `file://`, so a viewer that loaded
+its data separately would need a web server before it showed anybody
+anything.
 
-Two things the exporter needed that the tutor did not:
+The page lays the graph out in **prerequisite order** — one row per
+topological layer, earliest first, which is the order a teacher has to follow
+— and shows one item's three relations at a time: what must come first, what
+it unlocks, and what it is confused with. Confusable pairs are drawn always
+and in a different colour from prerequisites, because the two edge kinds mean
+opposite things (*teach after* versus *do not teach together*) and a viewer
+that drew them alike would be worse than none.
 
-- **`edges/0` in `schema.pl`.** `index/0` collects every relation except
-  `requires/2`, because `ready/4` only ever asks the one-level question and
-  the overlay would otherwise carry 423 pairs nothing reads. The exporters
-  ask for them once.
-- **`--lang` drops an edge unless both ends survive the filter.** The
-  English katakana traps are confusable *with* Japanese kana, so narrowing
-  to `en` has to drop those pairs rather than half-emit them and leave the
-  viewer with arrows into nothing.
+`--lang` drops an edge unless both ends survive the filter. The English
+katakana traps are confusable *with* Japanese kana, so narrowing to `en` has
+to drop those pairs rather than half-emit them and leave the viewer with
+arrows into nothing.
 
-`tests/test_langpop_dump.p` reads the output back rather than the source:
-52 checks over the parsed JSON, the DOT and the standalone page. Three of
-them compare **bytes**, because a mangled encoding parses perfectly and
-comes out wrong — a JSON round trip cannot tell あ from mojibake, and the
-glyphs are the content.
-
-## The boundary: Pop-11 procedures *are* Prolog predicates
-
-The one idea the whole thing rests on. `lp_known/2` is a Pop-11
-procedure defined with `define :prolog`, and `ready/4` above calls it as
-if it were a table of facts:
-
-```pop11
-define :prolog lp_known/2(s, i, contn);
-    lvars s, i, contn;
-    if lp_mastered(prolog_deref(i)) then chain(contn) endif;
-enddefine;
-```
-
-Succeeding means calling the continuation. So the prerequisite rule
-consults evidence recorded seconds ago, in a property table, without
-knowing that it is not consulting a database. The same trick carries the
-graph *out* to Pop-11: `lp_take/1` collects solutions from a
-failure-driven loop, and every query in `langpop.p` is a term built with
-`prolog_maketerm` — no query strings anywhere.
-
-This is the pattern `examples/robotarmy/chainnet.p` uses to make Prolog
-backtrack across a network. Here it makes Prolog backtrack across a
-*belief*.
-
-## Evidence has tiers, and the arithmetic enforces them
-
-The tutor assigns work it cannot watch, and the student reports back.
-Three kinds of evidence, three ceilings, set in one place in
-`langpop.p`:
-
-| Tier | What it is | Ceiling |
-| --- | --- | --- |
-| 1 | verified here — we saw the answer and timed it | mastery (0.80) |
-| 2 | a reported result — "17 out of 20" | 0.78 |
-| 3 | reported compliance — "I did it" | 0.50 |
-
-So **compliance cannot reach mastery by arithmetic**, not by good
-intentions: twenty "I did it"s leave an item below 0.5, and the suite
-asserts it. A reported result carries an item to just below mastery, so
-one verified check here is always what settles it. Only tier-1 evidence
-is measured against a level's exit criteria.
-
-Accuracy and speed are reported separately and never averaged. A student
-who is right slowly has not learned to read a syllabary — recognition is
-the thing being taught, and the clock is the only way to tell the two
-apart.
-
-## Two pre-schools, which are the same problem twice
-
-**Japanese.** N5 is not a starting point: it assumes hiragana, some
-katakana and several hundred words. A learner with none of that is not a
-beginner at N5, they are below the ladder. So pre-school is index 0, and
-it teaches the two syllabaries, the pairs beginners actually confuse
-(`あ/お`, `シ/ツ`, `ね/れ/わ`), and mora — because a student who reads
-every kana and still hears きって as two beats has not finished.
-
-**English.** A Japanese speaker starts with several thousand words
-already half-known, in katakana, and some of them are *wrong*. Those are
-not vocabulary to learn but vocabulary to **unlearn**, which is a
-different exercise and gets its own items: `マンション` is not a
-mansion, `サービス` is not a service, `クレーム` is not a claim. The same
-katakana layer that makes English easier to read makes it harder to hear
-and harder to use, and that asymmetry is the whole reason the level
-exists. Beside it sit the twelve contrasts Japanese does not make.
-
-## The teacher is a data file
-
-`personas/aoi.json` and `personas/hill.json` hold a name, a gender, a
-register and the lines. Nothing about a teacher is in the code, because
-what a teacher says is content and a native speaker should review it.
-Lines cycle round-robin — which is Weizenbaum's reassembly rule, and for
-once exactly the right mechanism.
-
-The student is whoever is at the keyboard, keyed by a username, with no
-password: this is a local tool and a password would be theatre. The
-teacher is allowed to *mis*remember:
-
-```
-Ah -- Bob White?  (y/n) n
-My mistake.  And your name?  Bob Smith
-```
-
-The correction is kept in the profile, and that wrong guess is never
-made again. Offering the nearest name and being corrected is how a
-person recognises somebody; a lookup that is either right or empty is
-not memory.
-
-## Three things this found in the tree, and what came of them
-
-Building the thing is what turned these up, and none of them is langpop's
-to carry.
-
-**No font was loaded by either ImGui backend** — so `gfx_text` took UTF-8
-and drew Japanese as blank space, with no error. Both backends went
-`CreateContext()` → renderer init, leaving ImGui's built-in ASCII atlas in
-place. **Fixed**: `pop/extern/lib/imgui_font.cpp` loads a CJK-capable face
-(`tools/fetch-gfx-font.sh` pins Noto Sans JP, SIL OFL 1.1, by commit and
-sha256; the OS's own font is the fallback), `gfx_font()` reports which
-file, and `make gfx-font-test` asserts both halves without needing a
-display. See `docs/bugs/imgui-atlas-ascii-only.md`. Card rendering is no
-longer blocked.
-
-**A millisecond wall clock was there all along.** I first wrote
-`lp_now_ms()` against `sys_real_time()` — whole seconds — having concluded
-from `HELP CLOCK` that nothing finer existed. `REF TIMES` has
-`sys_microtime()`, which is microseconds of real time, and HELP CLOCK
-simply never mentioned it. **Fixed** in the help file, with three checks
-in `test_datetime.p` holding the real-vs-CPU distinction down; langpop now
-uses it, and the latency criteria mean what they say.
-
-**Twelve words were honoured as interactive commands while a file was
-being consulted.** `source/2` as a provenance relation made the graph fail
-to load with an error naming a goal the file does not contain; `help(a).`
-tries to open a HELP file. **Fixed** in `pop/plog/src/prolog_compile.p`,
-with the first test suite for the Prolog subsystem in this fork
-(`tools/tests/test_prolog_consult.p`). See
-`docs/bugs/prolog-commands-swallow-clauses.md`. The relation here is still
-called `provenance/2`, which reads better anyway.
-
-## Four Poplog Prolog behaviours worth knowing
-
-**`prolog_compile` has reconsult semantics per predicate.** A second file
-that defines `item/5` silently replaces the clauses the first one gave
-it, and `:- dynamic` does not change that. A seven-file graph loaded
-file-by-file therefore ends up holding only the last file's items — with
-no error. So `lp_load()` concatenates the manifest and compiles once.
-
-**There is no `forall/2`** — not in `pop/plog/lib/`, not in any help
-file. `schema.pl` states the idiom once as `all_hold/2`:
-
-```prolog
-all_hold(Cond, Action) :- \+ (Cond, \+ Action).
-```
-
-**A call to an undefined predicate fails** rather than raising, which is
-how the missing `forall/2` hid: the rule using it simply never succeeded,
-and a level with nothing ready in it looks like a data problem. This one
-is *configurable* and the default is the trap, so `schema.pl` now opens
-with the two lines that turn it off:
-
-```prolog
-:- library(unknown).
-:- unknown(_, error).
-```
-
-See `PLOGHELP UNKNOWN` — `fail` (the default), `error`, `autoload`,
-`debug`. Every graph file is loaded together, so nothing in this graph is
-legitimately undefined, and a misspelled predicate now raises.
-
-**A cycle check needs a visited list.** Without one, a two-item cycle has
-infinitely many proofs and the check exhausts `pop_prolog_lim` instead of
-reporting the cycle — so `reaches/2` carries the path it has walked.
-
-### And one that was a bug, now fixed
-
-Twelve words used to be honoured as **interactive commands while a file
-was being consulted**, not just at the Prolog prompt: `ved help teach ref
-showlib im source cd pwd pop11 bye` (`pop/plog/src/commands.p`). A data
-file containing `help(a).` did not define `help/1` — it tried to open a
-HELP file and said `;;; HELP (A). not found`, with no hint that a clause
-had been swallowed. That is fixed in `pop/plog/src/prolog_compile.p`
-(commands now apply only in query mode, i.e. at the prompt), with
-`tools/tests/test_prolog_consult.p` to keep it fixed.
-
-### Editing the file a Poplog program is running from
-
-Worth its own line, because it cost a session and the trace it leaves
-blames the wrong thing.
-
-**Poplog compiles a `.p` file incrementally**: it reads, compiles and
-runs as it goes, so by the time the last statement of `langpop.p` --
-
-```pop11
-unless isdefined("langpop_lib") then lp_main() endunless;
-```
-
--- is executing, the whole tutoring session is running *inside* the
-compiler's read of the file, which is still open at a byte offset.
-Rewrite the file while that session is up, and when `lp_main` returns
-the reader resumes **at its old offset in the new text**. Whatever
-happens to be there is compiled as Pop-11.
-
-The resulting trace reads as though the tutor crashed on the way out:
-
-```
-また今度。
-;;; DECLARING VARIABLE bad
-;;; FILE : .../langpop.p   LINE NUMBER: 12482
-;;; DOING : Comp_expr_seq trycompile
-;;; MISHAP - NUMBER(S) NEEDED ... Arith_> > trycompile
-```
-
-**The impossible line number is the tell.** `langpop.p` is about 4,300
-lines; a mishap reported past that is not a mishap in the program, it is
-the reader somewhere in a file that changed underneath it. A
-segmentation fault in the compiler can follow, which looks far worse
-than it is.
-
-The window closes by not returning at all: all three front ends
-`sysexit()` after their main rather than letting control fall back to
-the reader. Nothing was ever at risk in the student's profile either
-way -- `lp_save` runs *before* the signoff, not after it.
-
-## And four more the importer found
-
-Three where Pop-11 does something reasonable that is not what the code
-asked for, and one where Poplog Prolog quietly discards a clause. In
-every case nothing warns.
-
-**A property compares its keys with `==`.** So two equal strings are two
-different keys:
-
-```pop11
-lvars p = newproperty([], 8, [], "perm"), a = 'yama';
-[x] -> p(a);
-p(consstring(`y`,`a`,`m`,`a`,4)) =>      ;;; ** []
-```
-
-The importer keyed 148 wanted headwords by string and every single lookup
-missed, which read back as *matches no entry* for all 148 picks — a
-plausible-looking result, since a missing word is exactly what a bad key
-produces. Words are interned, so the fix is `consword`; the entry side
-then needs a cheap pre-filter (`imp_sig`, the length and first byte) so
-that interning 148 keys does not mean interning three quarters of a
-million headwords to find them.
-
-This is the same shape as the `false`-dropping defect in `lib jsonrpc`:
-a property doing something sensible that the caller did not mean.
-
-**`printf` has no hex conversion.** `REF * PRINT` lists `p P s S c M` and
-`%%`, then says of `b`, `d`, `i` and `x` that they are "reserved for
-system use". `%x` duly prints the raw **tagged machine word**:
-
-```pop11
-sprintf('%x', [16:5C71]) =>      ;;; ** '00000000000171C7'   (23665*4+3)
-```
-
-Every kanji id is minted from a codepoint, so this produced 103 items
-named `k_00000000000171c7` and not one of the word-to-kanji edges
-matched. It also means `dump.p`'s JSON escape for a control character
-was emitting `\u00000000000000a9` for a newline — invalid JSON, latent
-since nothing in the graph has a control character in it. Both now use a
-hex formatter written out longhand.
-
-**`==` on two string literals is `false`.** The emitter decided which
-source name to stamp with `srcname == 'JMdict'`, which is never true, so
-the words file announced itself as `generated(kanjidic2, ...)`. The same
-mistake as the first one, one layer up.
-
-**And one that cost data.** Standard Prolog escapes a quote inside a
-quoted atom by doubling it. Poplog Prolog does not accept that:
-
-```prolog
-d1('doubled''quote').     % FOUND : 'quote'  -- the clause is DROPPED
-d2('backslash\'quote').   % ok
-```
-
-A syntax error in a consulted file is **not fatal** — Prolog reports it,
-skips that clause and carries on — so the first import emitted three
-glosses containing an apostrophe that silently never reached the graph,
-and `--check` still said *no violations*, because no integrity rule says
-an item must have a gloss. The error does print, in a line of loading
-noise, among several hundred others.
-
-Two things came out of that. The escape is a backslash now; and the
-importer **reads back what it wrote** (`imp_verify`), comparing what the
-emitter meant to emit against what the graph actually holds, so any
-emission bug by this route is loud:
-
-```
-LOST w_byouin: gloss missing or wrong
-;;; MISHAP - import: facts written but not in the graph (quoting? syntax?)
-```
-
-The test that should have caught it was asserting the *shape* of
-`imp_atom`'s output — and passing, because it asserted the standard's
-doubled quote, which is wrong here. The checks now round-trip the atom
-through `prolog_compile` and ask the real consumer, including one that
-asserts the doubled form would **not** have survived.
+---
 
 ## Commands
 
@@ -2081,1013 +1847,110 @@ asserts the doubled form would **not** have survived.
 | `:zine` | the study plan, as a booklet to fold |
 | `:say <item>` | hear it said, if a voice is installed; `:say <item> slow` |
 | `:rate slow` | listen slower from now on, and it sticks (`slow`/`normal`/`fast`) |
+| `again` | *at a listening question:* play it once more, free and unlimited |
 | `:mic` | check the microphone level, and whether the room is quiet enough |
 | `:speak <item>` | say it, and have the held beat timed (needs a microphone) |
-| `again` | *at a listening question:* play it once more, free and unlimited |
 | `:assign` | something to do away from the keyboard |
 | `:report <n> ok` | done it (tier 3) |
 | `:report <n> 17/20` | done it, with a result (tier 2) |
 | `:level <name>` | move the goal |
 | `:quit` | save and stop |
 
-Profiles live in `~/.langpop/`: one JSON file per student, plus
-`roll.json`, which is what lets the teacher recognise — and
-misrecognise — somebody.
+---
 
-## The teacher is allowed to misremember
-
-> *"Ideally we start to 'remember' things, and the teacher would say, ahh,
-> is it Bob Smith? No, my mistake, Bob White."*
-
-That is recognition, not lookup, and until now it was the one thing the
-in-process TUI could do that the protocol could not — which made
-Proposal B's premise, *the TUI is just a client*, false for exactly the
-feature the project asked for by name. A client got a database lookup
-where `langpop.p` got a teacher.
-
-`langpop/recognise` closes it. No session, because it happens before
-registration; it creates nothing, so a client may ignore the answer:
-
-```json
--> {"method":"langpop/recognise",
-    "params":{"student_id":"bwhite","display_name":"Bob White"}}
-<- {"result":{"student_id":"bwhite","known":false,
-              "guess":{"student_id":"bsmith","display_name":"Bob Smith",
-                       "matched_on":"the name"}}}
-```
-
-and `langpop/register` takes `not_me` back, so a refused name is never
-offered to that person again.
-
-**A name is not a string.** `Bob Smith` against `Bob White` is three
-edits apart — outside any sane tolerance — and yet it is the exact
-confusion a person makes, because the two share a given name. So tokens
-are compared as well as whole strings, and a close token counts with one
-added so a whole-name match still wins. This will sometimes offer the
-wrong one of two people sharing a first name, which is the behaviour
-being modelled rather than a defect in it: the teacher asks once, is told
-no, and never asks again.
-
-**A transposition is one typo, not two.** Plain Levenshtein charges two
-for `bsmiht` against `bsmith`, which is outside the budget for any short
-name — so the single commonest slip a returning student makes was the one
-case that got no guess at all. The distance is Damerau-Levenshtein, and
-that is load-bearing rather than a nicety.
-
-**And the same keystrokes must give the same guess.** The old matcher
-compared the first three characters of the username and kept whichever
-candidate a property walk reached first — so with two students on the
-roll it guessed by hash order. A teacher who asks *Bob Smith?* on Monday
-and *Yuki Tanaka?* on Tuesday from the same input is not remembering, it
-is rolling dice. Ties now break alphabetically, not because that is the
-better guess but because it has to be the same one every time.
-
-One thing this turned up on the way. `lp_load_profile` cleared the
-journal, the assignments and the refused guesses *after* its early
-return, so a failed load left the previous student's behind. In the
-one-shot TUI that never showed; the server is long-lived and serves
-whoever asks, so binding to a student who does not exist used to leave
-the last one's work sitting in the globals. Beliefs were never at risk —
-`lp_bkey` puts the student in the key — but the rest was, and it is
-cleared before the return now.
-
-## B: one protocol is the door
-
-`server.p` serves ten methods over JSON-RPC with line framing — one JSON
-value per line, which is what MCP uses over stdio, so an MCP host can
-speak to it with no shim. `--port N` for TCP, nothing for stdio.
-
-| Method | |
-| --- | --- |
-| `langpop/register` | a student, by username; no password, because this is a local tool |
-| `langpop/session.open` / `session.close` | a session is a row, not a process |
-| `langpop/plan` | what is ready now, and why that order |
-| `langpop/next` | the question — **and not its answer** |
-| `langpop/answer` | the judging, which stays on this side |
-| `langpop/explain` | the derivation: prerequisites, provenance, belief |
-| `langpop/status` | the level's exit criteria, measured |
-| `langpop/placement.next` / `placement.report` | find out where they are |
-| `langpop/aids` | which helps are on, and switching them |
-| `langpop/audit` | which rungs of the ladder are hollow |
-| `langpop/card.render` | the item as a picture |
-| `langpop/sheet.render` | a page to print: a chart, today, or the zine |
-| `langpop/assign` / `report` | work to do elsewhere, and what came of it |
-
-Three things are deliberately on the server's side of the line, and each
-one is a property the design would lose if it moved:
-
-**The answer never leaves.** `langpop/next` returns the prompt; the
-client cannot tell whether what the student typed was right until
-`langpop/answer` says so. A protocol that hands over the answer key is a
-quiz file, not a tutor, and no later check of it means anything.
-
-**The clock is the server's.** `langpop/next` starts it, `langpop/answer`
-stops it. Every pre-school exit criterion has a millisecond budget, and a
-client that could send `latency_ms: 1` would make the speed half of each
-one worthless. The reply says which clock was used
-(`latency_source: "server"`), and the client's own figure is a fallback
-for a caller that never asked a question — a batch import, a test.
-
-**The tier is decided from the evidence, not chosen.** A client reports
-`ok` or `17/20`; the server decides that the first is tier 3 and the
-second tier 2. Anything else is refused rather than quietly filed as
-compliance, because `"18 out of 20"` written without a slash means a
-result, and recording it as "I did it" would throw the number away and
-cap the item at 0.50 without saying so.
-
-Errors are typed, so a client can tell a mistake it made from a bug in
-here: `-32602` invalid params, `-32001` no such session, `-32002` no such
-student, `-32003` no such item, `-32004` no such assignment. A mishap
-stays a mishap — that is a bug, and `jsonrpc_serve` turns it into
-`-32603` for the client while a test still sees it break.
-
-`client.p` is the same session as A to look at, and holds no graph, no
-beliefs and no judgment — 288 lines of asking and printing. That is the
-only honest test of an API: the reference client has no private door.
-
-The protocol suite drives the handler over a `sys_socket_pair` with both
-ends in one process, the idiom `tools/tests/test_jsonrpc.p` uses, so
-there are no forks, no ports and no sleeps. 63 checks, including that
-`langpop/next` does not leak the answer anywhere in its reply — not just
-in a field called `answer`.
-
-## The item as a picture
-
-A terminal can print あ. It cannot print あ at 150 points with its reading
-in furigana position above it, which is the one view that teaches a glyph
-rather than naming it. So `langpop/card.render` is a **method**, not a TUI
-feature: the TUI shells out to `open(1)` like anybody else, and a
-non-Pop-11 caller gets the identical picture by the identical route.
-
-```
-:card hi_a                                   # the TUI, either front end
-{"method":"langpop/card.render","params":{"item":"w_neko"}}
-  -> {"item":"w_neko","style":"word","path":"…/cards/w_neko-word.svg",
-      "width":640,"height":400,"format":"svg"}
-```
-
-**V1 renders SVG, and the design said raster.** That is a deliberate
-departure. The design specified `gfx_text` over a Noto Sans JP atlas drawn
-headless — but no headless path exists that Pop-11 can drive:
-`tools/validate-gfx-headless.sh` runs a standalone C++ harness
-(`pop/extern/lib/imgui_headless.cpp`) that draws one hard-coded scene, and
-the Pop-11 `gfx_*` surface needs `pop_gfx_init`, which opens a window.
-Turning that into a renderer langpop can call means new C exports, a build
-flag and a PPM-to-PNG step, on Linux only — a graphics-backend change, not
-a langpop change.
-
-SVG keeps every property `card.render` was asked for and costs none of
-that. The text is drawn from the font, by the viewer, named as a family
-rather than rasterised here; the output is **deterministic and diffable in
-CI**, which a GPU rasterisation is not; it opens on all four platforms
-with no graphics build; and it carries its own provenance line. The
-design's rule survives intact: *if the output contains text the student is
-asked to read, it came from the font.*
-
-What SVG genuinely cannot do is the other two styles — stroke order wants
-line drawing frame by frame. Those answer with `-32005`, a code of their
-own, so a client can tell "that does not exist yet" from "you asked
-wrongly".
-
-### The size of a kanji is not the size of a letter
-
-A terminal cell gives a glyph about twenty pixels of height, and it gives
-the same twenty to あ and to 聞. あ is a handful of strokes in the em box;
-聞 is fourteen, and at that size the gaps inside 門 fall below one pixel
-and are not drawn small but **dropped**. The box is capped by the line
-height, not the width, so the only lever a terminal offers is the global
-font size — which scales the romaji with it.
-
-That makes a wrong answer on a complicated kanji ambiguous: the student
-may not have known it, or the renderer may not have drawn it. It is the
-same class of fault as counting the mora scorer's abstentions against the
-student, and the ladder's response-time floors make it worse, because
-squinting costs seconds.
-
-So **the glyph is drawn as a picture the first time a complicated
-character is met**, and the rule comes out of the graph rather than out of
-a list:
-
-```
-国    ->            # k_56fd, 8 strokes: drawn, then asked
-日    ->            # k_65e5, 4 strokes: the terminal is fine
-```
-
-- **`rank(k_8a9e, strokes, 14)` was already there.** kanjidic2 carries the
-  stroke count and the importer keeps it, so "is this too detailed for a
-  terminal cell?" is answered from a fact imported in Stage 0. Nothing
-  new is curated.
-- **A word has no count of its own, so it takes the worst character
-  written inside it.** 電話 is two thirteen-stroke kanji, and the hardest
-  glyph on the card is what decides whether the card is legible.
-  `lp_contains` is the same test `lp_infer` uses, so an antonym edge
-  cannot drag a simple word's figure up.
-- **Eight strokes is the line**, which takes in 29 of the 103 N5 kanji and
-  leaves 日, 山 and 口 in the terminal where they are perfectly legible
-  and where a picture would be an interruption.
-- **The first meeting only.** Reading 聞 at terminal size is itself a
-  skill, and a tutor that draws it big every time is one the student never
-  has to learn it from. `lp_asked` counts the journal, so this is the
-  first time *ever*, not the first time today.
-- **It is a fourth aid**, beside `slip`, `oops` and `later`, and goes off
-  the same way: `:aids glyph off`. An aid that cannot be refused is
-  indistinguishable from a lower standard.
-- **The picture goes up before the clock starts.** Rasterising and
-  pushing 20KB of base64 takes a fifth of a second, and every criterion in
-  both ladders carries a response-time floor.
-
-**A different card, because the word card would give the answer away.**
-The word card carries the reading in furigana position and the gloss
-below — the two things the student is being asked for. The `glyph` style
-is the term alone on a square, with the provenance line, which names the
-source and not the answer.
-
-```
-{"method":"langpop/card.render","params":{"item":"k_56fd","style":"glyph"}}
-  -> {"item":"k_56fd","style":"glyph","path":"…/cards/k_56fd-glyph.svg",
-      "width":420,"height":420,"format":"svg"}
-```
-
-**In the terminal, not in a window.** Opening a viewer mid-question takes
-the focus off the thing the student is being asked to read.
-`tools/term-image.py` speaks the two protocols that matter — the kitty
-graphics protocol (kitty, ghostty, WezTerm, Konsole) and iTerm2's inline
-images — rasterises the SVG with whichever of `rsvg-convert`,
-ImageMagick or `qlmanage` is installed, and says what happened in its
-**exit status**, because the caller needs the difference:
+## Repository layout
 
 | | |
 | --- | --- |
-| 0 | drawn |
-| 2 | this terminal has no image protocol |
-| 3 | no SVG converter installed |
-| 4 | the file is unreadable |
+| `langpop` | the wrapper: finds a Poplog, runs a front end |
+| `langpop.p` | the engine and the terminal interface |
+| `server.p` / `client.p` | the same engine over JSON-RPC, and a reference client |
+| `oracle.p` | a seeded harness that climbs the ladder over the protocol |
+| `import.p` | reference-source imports and the gap report |
+| `card.p` / `sheet.p` / `audio.p` | the item as a picture, pages to print, sound |
+| `dump.p` / `viewer/page.html` | the curator's view |
+| `graph/` | the curriculum |
+| `personas/` | what each teacher says |
+| `tools/` | the kana table generator, the terminal image writer, the scorers |
+| `tests/` | the suites |
+| `docs/` | the open curation questions |
 
-`2` is a terminal to name in a one-line hint; `3` is a missing
-`rsvg-convert`. A plain false would have made those the same thing and
-the hint would have been wrong half the time. Either way it is said
-**once per session** — the same hint in front of thirty kanji is thirty
-interruptions to say one thing — and the character is still printed, just
-small.
+**The teacher is a data file.** `personas/aoi.json` and `personas/hill.json`
+hold a name, a gender, a register and the lines. Nothing about a teacher is
+in the code, because what a teacher says is content and a native speaker
+should review it. Lines cycle round-robin.
 
-One Poplog detail worth writing down: **`pop_status` is the wait status,
-not the exit code.** A child that exits 2 leaves 512 there. Everything
-else in the tree compares it with zero, where the two readings agree, and
-this is the first caller that has to tell 2 from 3.
-
-### What goes on the card
-
-The term is the form the student has to recognise, and the line above it
-is whatever helps them get there. Which form that is depends on the item,
-and the four kinds in the graph want four different answers:
-
-| Item | Term | Above it |
-| --- | --- | --- |
-| kana grapheme `hi_a` | あ | `a` |
-| starter word `w_gakkou` | がっこう | `gakkou` |
-| loanword trap `t_mansion` | マンション | `manshon` |
-| sound contrast `s_r_l` | `/r/ - /l/` | ラ行では区別されない |
-
-The last one is the interesting case. A sound contrast has an IPA form and
-nothing else, so the IPA *is* the term — and the line above it is the
-**Japanese** gloss, because the learner reads Japanese and the point of
-the card is the distinction their own language does not make.
-
-Three details that are not decoration:
-
-- **The term shrinks to fit.** マンション at the full 150pt is half again
-  as wide as the card. The width is estimated from two classes (a CJK or
-  kana glyph is one em square by design; Latin in this face averages a
-  little over half that), and the fitted size is floored, not rounded —
-  rounding up is how a fitted term still overflows by a point or two.
-- **A gloss that only repeats the reading is dropped.** A kana grapheme's
-  English gloss *is* its romaji, so printing both puts `a` on the card
-  twice and says nothing the second time.
-- **Each font family is quoted.** An unquoted multi-word family name is
-  not valid CSS; a strict renderer drops the whole list and the kana come
-  out as boxes.
-
-### Which face, and whose language
-
-Two choices on every card, and both are per-language rather than fixed.
-
-**The term is the form in the item's own language.** A flat order got
-this wrong twice in a row. Hiragana-first was right while every item was
-a kana or a kana-only starter word, and made the card for 山 come out as
-a card reading やま with no reading line at all. Putting kanji first then
-did the same thing to English: a loanword trap came out as マンション with
-`mansion` — the word the item exists to teach — nowhere on it.
-
-**The gloss is in the learner's own language**, which is the other one:
-a Japanese item is glossed in English, an English item in Japanese. The
-card for `water` used to print *the liquid we drink* while 水 sat in the
-graph, hand-written, and never appeared on anything.
-
-That second change turned up a modelling error it had been hiding. The
-loanword traps filed **English text under `ja`** —
-`gloss(t_mansion, ja, 'apartment building')` — where `schema.pl` defines
-a gloss as what an item means *in a named language*. Nothing read it
-that way until a card asked for the Japanese, and then the card for
-`mansion` proudly displayed the very meaning the item exists to unteach.
-The contrast now lives in the English gloss, where a contrast belongs,
-and the Japanese slot holds Japanese:
-
-```prolog
-trap(t_mansion, 'mansion', 'マンション',
-     'a very large house -- the katakana means an apartment building',
-     '大邸宅').
-```
-
-So the trap is one card: `mansion`, with マンション above it and 大邸宅
-below.
-
-### Why determinism was the point
-
-`tests/test_langpop_card.p` renders the same item twice and compares the
-bytes. That check is the whole argument for this approach: a rendering
-regression becomes a failing diff rather than something somebody notices
-months later. 43 checks over the term rule, the SVG, the escaping, the
-fitting and the refusals.
-
-The path in the reply is on the **server's** filesystem. Where client and
-server share one — every run of the pair today — the client opens the file
-it was handed. Where they do not, the path is still the honest answer: the
-client says where it is rather than pretending, and a remote client that
-wants the bytes needs a method that sends them, which `card.render`
-deliberately is not. A card is a file on disk, cached by item; putting it
-down a JSON-RPC line would make every call pay for it.
-
-## Stage 0 of audio: the student can hear it
-
-The first compounding factor in `docs/langpop-pronunciation.md`
-is not a measurement problem. It is that a learner has *little exposure
-to correct pronunciation* — so asking someone to produce a sound we
-declined to let them hear is a test of material we never taught.
-
-So the first audio that ships is **output**, and it carries no verdict:
+### Tests
 
 ```sh
-./langpop --audio preschool
+./langpop test                          # every suite
+./langpop oracle --seed 42 --answers 3000
+./langpop oracle --place --skill 0.9
 ```
 
-```
-audio: 188 made, 0 already cached in ~/.langpop/audio/ja/
-  8 not said: no_spoken_form
-  3 not said: has_blank
-audio: listen at ~/.langpop/audio/ja/listen-preschool.html
-```
-
-**It does not make `hear` verifiable**, and `--audit` still says
-`needs_audio` for every criterion on that channel. Playing a sound and
-checking that somebody heard it are different claims, and nothing in
-`audio.p` touches a belief. The plan for the half that does measure is
-`docs/langpop-audio.md`.
-
-### The voice is a command, not a dependency
-
-Kokoro is the chosen model — 82M parameters, Apache-licensed weights,
-CPU, Japanese among its voices — but nothing in the engine knows that.
-The voice is a command named in `~/.langpop/audio.conf`, the way `card.p`
-shells out to `open(1)`:
-
-```json
-{"ja": {"cmd":   "kokoro --voice %v --speed %r --text-file %i --out %o",
-        "voice": "jf_alpha",
-        "model": "kokoro-82m-v1.0",
-        "rates": {"slow": "0.7", "normal": "1.0", "fast": "1.3"}}}
-```
-
-`%i` is a file holding the text, `%o` the wav to write, `%v` the voice,
-`%r` the rate.
-**The text goes through a file and never onto the command line**: the
-words are Japanese and the shell is not, and a quoting bug in a tutor
-would be a quoting bug in whatever the shell made of ひらがな.
-
-Nothing is installed, imported or vendored. A machine with no model
-configured answers `no voice for ja` and goes on teaching exactly as it
-did — which is the state every fresh checkout and every CI run is in, and
-the state most of the 60 checks in `test_langpop_audio.p` are about.
-
-To hear the pipeline work before wiring Kokoro up, macOS already has a
-Japanese voice:
-
-```json
-{"ja": {"cmd": "/usr/bin/say -v Kyoko -r %r -f %i -o %o --file-format=WAVE --data-format=LEI16@22050",
-        "voice": "Kyoko", "model": "macos-say",
-        "rates": {"slow": "110", "normal": "175", "fast": "220"}}}
-```
-
-That is not a teaching voice and it is not meant to be one. It is
-something to compare Kokoro *against*, which is easier than judging a
-voice in the absolute.
-
-### `model` is declared, not detected
-
-An external command cannot be asked what weights it loaded. So the
-config declares it, and the declaration is part of the cache key:
-
-    ~/.langpop/audio/ja/hi_a-Kyoko-3936002.wav
-
-`{item, voice, model, text}`, three of them in the name in full and the
-fourth as a hash of the text. A line edited in the config is a cache
-invalidated — which is the honest behaviour, because what we cached is
-what the config *said*. The key being the **filename** means there is no
-index to keep in step with the directory: a corrected `form/3` writes a
-new name and the old file simply stops being reachable, rather than being
-served to a student as the reading of a word we have since fixed.
-
-Beside each wav is a sidecar JSON naming the item, the text, the voice,
-the model and the command that made it — provenance that goes stale with
-the file it describes instead of outliving it in a manifest.
-
-### Nothing is synthesised inside a question
-
-`lp_audio_path/1` answers from the cache and never runs a model.
-`lp_audio_make/1` is the one that does, and `--audio <level>` calls it
-ahead of time. On the wire the same distinction is a positive flag,
-`cached_only: true`, and **not** a `render: false` — `lp_param` cannot
-tell an absent key from a JSON `false`, so a `render` parameter would
-read every client that omitted it as one switching rendering off.
-
-The reason for the rule is visible in the numbers: 188 items took **89
-seconds** with `say`, nearly all of it process startup. Half a second is
-not much; half a second in the middle of a question is a tutor that feels
-broken.
-
-### What has no sound, and why that is right
-
-Eleven of the 199 pre-school items are not said, and the report names
-both reasons:
-
-- **8 skills** — `mora_count`, `youon`, `hiragana_all`. An abstraction
-  has no utterance.
-- **3 patterns** — `これは___です`. A voice would read the gap aloud, or
-  swallow it silently, and either way the student hears a sentence that
-  is not the item.
-
-Japanese is read from **kana**, never romaji: a voice handed `gakkou`
-reads English. English is read from the latin form and **never from the
-IPA**, which is a notation and not a word — a voice handed `/wɜrld/` says
-something, and it is not *world*. That last one means the twelve sound
-contrasts have no sound of their own, which is correct: `/l/` is not
-something a voice can pronounce in isolation. It is heard through the
-words that exercise it, and the graph already links them.
-
-### Controlling the rate, and the one item family it misleads
-
-A beginner needs it slower. So the config maps a **name** to whatever
-that engine's scale wants, and `%r` substitutes it:
-
-```json
-"rates": {"slow": "0.7", "normal": "1.0", "fast": "1.3"}
-```
-
-There is no portable number to use instead. Kokoro takes a multiplier
-where `1.0` is normal; `say(1)` takes **words per minute** where `175` is
-normal; the next engine will take a percentage. **The scale belongs to
-the engine and the name belongs to us** — so langpop says `slow`, the
-config says `0.7`, and nothing in the engine has an opinion about which
-number means slow.
-
-```sh
-./langpop --audio preschool --rate slow
-./langpop --audio preschool --rate all
-```
-
-In a session it is `:say <item> slow` for one word and `:rate slow` for
-all of them, which **persists in the profile** beside the aids: a
-beginner who has asked for slow should not have to ask again tomorrow.
-On the wire it is `rate` on `langpop/audio.say`, and the reply carries
-both the rate it used and the rates that voice has, so a client can
-offer a control rather than guess at one.
-
-The rate is **part of the cache key**, and so is its *value*:
-
-    hi_a-Kyoko-slow-7083155.wav
-
-The name is in the filename so a directory can be read; the number goes
-through the hash with the model, because a config that redefines `slow`
-from `0.7` to `0.8` has to invalidate what `0.7` produced — otherwise the
-student goes on hearing the old speed under the new name.
-
-**And then the part that is not plumbing.** Japanese length is
-*contrastive*: きて and きって differ by a beat of silence, and four of
-the mora skills exist to teach exactly that. Every TTS engine stretches
-durations under a rate change, and **none of them promises to stretch a
-geminate closure by the same factor as the vowel beside it** — so at
-`0.7` the student may be listening to a ratio the language does not have.
-
-Slow is still the right setting for finding the *segments* in a word. It
-is the wrong one for learning its *rhythm*, and those are two different
-lessons on the same item. So langpop reports it and never refuses:
-
-```
-Aoi> :say w_gakkou slow
-  ~/.langpop/audio/ja/w_gakkou-Kyoko-slow-4821930.wav  (slow)
-  Length is contrastive in this one.  Hear its RHYTHM
-  at normal rate -- a slowed voice stretches the beats
-  and not always evenly.
-```
-
-The test is `っ`, `ッ`, `ー`, `ん` or `ン` in the spoken form — the
-characters `lp_morae/1` counts as beats of their own. On the wire the
-same fact is `timing_sensitive`, and on the listening page those rows
-carry a ♪ with the reason printed above the table.
-
-### The listening test is the part that is not wiring
-
-Whether Kokoro's Japanese is good enough to teach pronunciation *with* is
-a question for an ear, not a benchmark — for teaching, the model's own
-accent is the product. So `--audio` also writes a page with every file on
-it, the voice and model named at the top, and one question: *does it
-sound like a person reading, and would you learn to say it this way?*
-
-## Hearing needs a speaker; only producing needs a microphone
-
-`hear` sat outside `VERIFIABLE` for the whole of this project's life,
-with a comment explaining that there is no audio in langpop. Stage 0
-ended that, and the mistake underneath it is worth keeping on the
-record: **`hear` and `produce` were parked together as "audio"** when
-they are not the same problem. Producing a sound needs a microphone, a
-phoneme model and a verdict. *Hearing* one needs a speaker.
-
-So a listening question is: **play the word, the student types what they
-heard.** The grading is exact match on a typed answer, exactly as it is
-for reading. Nothing is machine-judged, so it needs no new evidence tier
-— the only machine in it is the one that spoke.
-
-```
-Aoi>
-  聞いてください。What did you hear?
-  ->  again
-  もう一度。
-
-  Listen.  Which word was that?
-  ->  neko
-  そうです。  ねこ
-```
-
-The written form appears **after** the answer, never before: a listening
-question has nothing to read, and the glyph is the other half of the item
-the student has just recognised by ear.
-
-### The same answer key, one stimulus swapped
-
-`lp_question/2` gained a channel. On `hear` it builds the reading
-question and replaces the prompt with the path to the sound:
-
-| | reading | listening |
-| --- | --- | --- |
-| stimulus | ねこ | `w_neko-Kyoko-normal-4821930.wav` |
-| answer | `neko` | `neko` |
-| shape | `type` | `listen` |
-
-An English trap keeps its two glosses and becomes `listen_pick`. Nothing
-else in `lp_drill` changes — the slip tolerance, the confusable
-diagnosis, `later`, `:oops` and the clock are all reused rather than
-reimplemented. And that substitution is exactly what
-`vocabulary(50, hear)` means: *can you recognise these fifty words by
-ear.*
-
-### Four conditions, all of them load-bearing
-
-- **A voice must be installed.** `lp_verifiable("hear")` is conditional
-  on `lp_can_hear()`, because a machine with no `audio.conf` must go on
-  saying `needs_audio` rather than reporting a listening vocabulary of
-  zero — which reads as a student who failed instead of a tutor that
-  cannot ask.
-- **The sound must already be cached.** Asking never synthesises;
-  `--audio <level>` is how the files get there. The rule from Stage 0
-  stands: 188 items took 89 seconds, and half a second mid-question is a
-  tutor that feels broken.
-- **At the normal rate.** A slowed voice is an easier exposure, and for
-  the geminate words it is a rhythm the language does not have. Slow is
-  for studying; the measurement is at `normal`.
-- **It must actually play.** `lp_audio_play` now checks `pop_status`
-  rather than merely finding a player binary, and a question that could
-  not be played is **not marked at all**. Asking *what did you hear?* of
-  somebody who heard nothing, and then filing the answer, would record a
-  failure of this machine as a failure of the learner.
-
-### The pool is the words already read
-
-`lp_hear_plan/0` is not `lp_plan/0`, and it cannot be: `ready/4` excludes
-anything already known, and *known* reads the gate channel — so a word
-leaves the plan the moment it is mastered on **read**, and a listening
-question drawn from the plan could never reach it. But
-`vocabulary(50, hear)` is measured over the same fifty words as
-`vocabulary(50, read)`.
-
-So the pool is **words the student has already read-mastered, has not yet
-heard, and whose audio is cached**. Which is also the right teaching
-order rather than merely the convenient one: recognising by ear a word
-you cannot read is a harder and different task, and no criterion in the
-graph asks for it.
-
-One question in four is by ear (`HEAR_EVERY`), and the last one in a
-level is by ear too — a ratio rather than *listening once the reading is
-done*, because otherwise a student with reading left would never practise
-listening and the criterion would only start moving at the very end.
-
-### The trap: making `hear` verifiable re-locks the English ladder
-
-`gate_ok/2` lets an unverifiable prerequisite off, so that a channel
-nothing can check does not hold the door shut. That exemption was
-*"is the gate channel outside `VERIFIABLE`?"* — and the twelve English
-contrasts are `sound` items whose gate is `hear`. Install a voice, and
-the exemption vanishes and every one of them starts locking everything
-built on it. That is the defect `570849c` fixed, coming back in through
-the door Stage 0 opened.
-
-The first fix was wrong in an instructive way. I made the exemption
-*"can this item be drilled?"* — which is true of a contrast and also true
-of `hiragana_all`, an aggregate with no probe whose belief rises **by
-inference** from the 46 kana it requires. Undrillable is not uncheckable.
-The result was that every aggregate became a free pass and all 50 starter
-words were declared ready at the first question. The suite caught it:
-*only the vowels are ready at the start* went from 5 items to 53.
-
-`lp_ungateable/1` is the narrow version. For `read` and `produce` it is
-the channel alone, exactly as before. For `hear` — which became verifiable
-only because a voice exists — it asks whether a listening question can
-actually be asked, and where one cannot, nothing has changed from the
-state before the voice arrived.
-
-### What running it found that reading it did not
-
-**The tie-break had never fired, once, in the project's history.**
-
-```pop11
-if not(best) or b < bb or (b == bb and a < ba) then
-```
-
-A belief is a float, and in Pop-11 `==` on floats is **identity**: two
-`0.0` *literals* are not `==` each other, let alone two separately
-computed ones. So `b == bb` was false for every pair of beliefs ever
-compared, and `lp_choose` returned the first item in plan order and kept
-returning it until it was mastered — which is precisely what its own
-comment says it exists to prevent, *"which is how a learner comes to hate
-a flashcard"*.
-
-It showed up because a listening session asked ひと twice in a row with
-49 untouched words in the pool. In the reading path the same bug is
-invisible: ties at 0.0 are broken by plan order, which looks like a
-reasonable curriculum order, so nobody would ever notice.
-
-The fix is one character, `=` for `==`, in both choosers.
-
-### Which word did you hear?
-
-A contrast has no written form — it is not a word — so there was nothing
-for the listening question to swap the stimulus of, and all twelve were
-reported `needs_audio`. **It was never the microphone that was missing;
-it was a pair.**
-
-```
-Mr Hill>
-  Listen.  What did you hear?
-    1) boat
-    2) vote
-  ->  1
-  Not yet. We will return to it.  It is vote -- /v/ - /b/.
-```
-
-`pair(Contrast, A, B)` in `graph/en/items.pl`: 29 pairs over 8 of the 12
-contrasts. **Not called `minimal_pair`, and the name is the point.**
-`right`/`light` differ in one phoneme; `sport`/`support` do not — they
-differ by a whole schwa. They are a pair *here* because the epenthesis a
-Japanese speaker brings to a consonant cluster turns the first into the
-second. A relation called `minimal_pair` would have been a claim about
-English; this one is a claim about the learner, which is what the graph
-is for.
-
-Shaped as **`listen_pick`, deliberately not a new shape**: hear a sound,
-choose between two options. `lp_drill`, the protocol and every client
-need no new arm — only what the options *mean* differs, two glosses for
-a trap and two words for a contrast. The one-in-two guess is the same
-bargain the trap questions already strike, and there is no typing version
-of this question: a student who cannot hear /r/ from /l/ cannot type the
-difference either, and asking them to spell it would be testing spelling.
-
-Four contrasts have no pair and are deliberately absent — `s_final`
-(*need* against *need-o* is not two words), `s_stress` (**PRE**sent and
-pre**SENT** are one spelling, so the question would offer the same option
-twice), `s_schwa` and `s_rhythm` (properties of an utterance, not a
-word). The audit says so rather than pretending.
-
-**The pair words are not items.** `right` and `light` are drill material
-belonging to a contrast, and making them items to get them spoken would
-have inflated every English vocabulary criterion with words whose only
-job is a drill. So the audio cache lost its assumption that everything it
-speaks is an item: the key is `{name, voice, rate, model, text}`, an
-item's name is its id, and a pair word's is a slug of the word. One file
-per word, shared between the contrasts that use it — `berry` separates
-`/r/`–`/l/` from *belly* and `/v/`–`/b/` from *very*.
-
-### Two things the rotation and the reveal got wrong first
-
-**Each pair would always have played the same side.** `lp_pair_item`
-picks the pair with `asked mod 4`, so choosing the side with
-`asked mod 2` gives pair 0 an even count every time: `right`/`light`
-would play *right* for ever and *light* never, and a student could learn
-the pair number instead of the contrast. Dividing first —
-`(asked div npairs) mod 2` — means the first pass through the pairs plays
-one side of each and the second pass plays the other.
-
-**And the reveal said `It is 2.`** The first session read
-
-```
-  Not yet. We will return to it.  It is 2 -- /v/ - /b/.
-```
-
-when what the student needed was the word. For a question answered by a
-number the answer *is* a number, and revealing it teaches nothing — which
-had been true of the trap questions all along, not just these. The reveal
-now shows the option, and `expected` on the wire does too.
-
-### What it does not change
-
-Every `vocabulary(N, hear)` row is now measurable, and with the
-pre-school audio rendered:
-
-```
-ja  preschool  vocabulary(50, hear)   50   50   ok
-...
-ja  preschool  7   yes
-
-1 of 12 rungs can be left as the graph stands.
-```
-
-The first exitable rung in the project, and it was one criterion away
-from exitable for the whole of the project's life — parked behind a
-microphone it never needed. With the pairs, English pre-school goes the
-same way:
-
-```
-en  preschool  sound_contrasts   12   29   ok -- 4 of 12 cannot be asked
-en  preschool  3   yes
-```
-
-And with a voice for **both** languages, and both pre-school levels
-rendered:
-
-```
-11 ok   28 short   0 needs_audio   0 unmeasured
-
-2 of 12 rungs can be left as the graph stands.
-```
-
-**`needs_audio` is empty.** All fourteen rows were `hear`; not one was
-`produce`, which has been inside `VERIFIABLE` the whole time. Every
-criterion in this graph is measurable without a microphone, and what is
-left on every rung is content — 28 `short` rows of curation.
-
-Which is also the uncomfortable conclusion: a pronunciation verdict,
-Stages 1 and 2 of `docs/langpop-audio.md`, would not move a
-single row of `--audit`. Production is an **unstated goal** — if it
-matters, the ladder has to declare criteria that say so, and it does
-not. That is a curation question before it is an engineering one.
-
-### The honest `ok`, and what the breadth change had cost
-
-`sound_contrasts` reporting `ok` with four of its twelve contrasts silent
-looks like a false claim, and the columns made it worse: `12  29` reads
-as full coverage because **`askable` counts distinct questions**, not
-items. That is the price of the earlier change from items to questions,
-and this is the first criterion partial enough to show it.
-
-The verdict is right and stays: accuracy on an item-set criterion is
-measured over the answers given, so an item nobody can be asked about
-leaves the measurement rather than capping it. What was missing was the
-reader being told. Hence `ok -- 4 of 12 cannot be asked`, and with no
-voice installed at all, `needs_audio -- 12 of 12 cannot be asked`.
-
-## The microphone, and what an energy envelope can actually see
-
-`speak` is the one channel in langpop that wants a microphone, and it is
-**not** `produce`: producing is composing a sentence, which a pattern
-item asks for and a keyboard can answer; speaking is making the sound.
-Two different things English calls production, kept apart because one of
-them this build can check by typing.
-
-```
-Aoi> :speak w_kitte
-
-  Say it: きって
-  (enter to record, and hold the small っ)  ->
-  The held beat is there: 200 ms of silence against a 130 ms mora.
-  (machine verdict, confidence 0.399 -- capped at 0.77, because a
-   confident model is still a model)
-```
-
-### The measurement, which is not the one the plan specified
-
-`docs/langpop-audio.md` scoped Stage 1 as *beat boundaries, a
-duration per mora, a comparison against a count the graph already
-computes*. **The first half of that is wrong, and measuring it is how we
-found out.**
-
-An energy envelope finds **voiced runs, not beats**. がっこう comes back
-as two runs — が, then っこう — because こ and う are one continuous
-voiced stretch with nothing between them to detect. No threshold
-produces four.
-
-What the envelope *does* see is silence, and **one Japanese mora is made
-of silence**: the geminate っ is a held closure. So the scorer answers
-the question `mora_sokuon` actually asks — *is the beat there?* — and
-declines the rest.
-
-Measured over 188 words from one TTS voice, with the engine's own
-`lp_morae/1` for ground truth:
-
-| | n | gap ÷ mean mora |
-| --- | --- | --- |
-| geminate stops (っk, っt, っp) | 6 of 6 | **1.33 – 1.55** |
-| geminate fricative (っし) | 1 | 0.00 |
-| no geminate | 181 | 0.00 – **0.90** |
-
-A threshold of `1.1` separates them, with the nearest non-geminate
-(くち, whose /tʃ/ closure runs 130 ms) at 0.90. The ratio is normalised
-by the word's own mean mora length, so it needs no calibration
-utterance — the speaker's rate cancels out.
-
-And scoring the 41 multi-mora words that have **no** geminate as though
-they did — the same signal a learner produces saying きて for きって —
-returns `wrong` **41 times out of 41**. No false positives.
-
-### っ before し is not a silence, and the graph knows it in advance
-
-いっしょ is `[iʃːo]`: the mora is a lengthened `[ʃ]` with energy all the
-way through. The gap is 0 ms and no threshold will find it. That is a
-fact about Japanese, not a defect in the scorer.
-
-The engine knows the following kana, so it **declines to ask** rather
-than asking and abstaining — the difference between a question with no
-answer and a question that was never fair:
-
-```
-Aoi> :speak w_issho
-  いっしょ holds a fricative rather than a silence -- っ
-  before し is a long し, so there is no gap to time.
-```
-
-### A verdict you cannot attribute to the recording is useless
-
-`wrong` from a microphone that was not plugged in, and `wrong` from a
-learner who dropped the beat, are the same word. There are **two**
-indicators, because they answer different questions.
-
-**While you speak**, sox's own VU bar — which is why the recommended
-config says `-S` and not `-q`:
-
-```
-In:0.00% 00:00:00.60 [00:00:01.40] Out:9.60k [   -==|==-   ]  Clip:0
-```
-
-**After**, what the scorer saw, in the scorer's own units:
-
-```
-Aoi> :mic
-  Say anything -- a word, a count to three.  I will show you
-  the level and the silences the scorer would see.
-  (enter to record)  ->
-  peak    -9.8 dBFS  =============---------------------------
-  rms    -25.8 dBFS  ==--------------------------------------
-  floor  -88.7 dBFS  ----------------------------------------
-  heard 0.33 s of 0.37 s recorded
-  silences inside it: 100 ms
-
-  ▂▅▆▆▅▄▃    ▁▂██▇▃
-         ^^^^^        <- silence the scorer times (longest 100 ms)
-
-  level is good
-```
-
-The envelope is the point. `^` marks the silence inside the word — the
-thing `score-morae.py` actually times — so the difference between
-きって and きて is something you can **see** before you argue about the
-verdict. Compare that 5-column gap with きって's:
-
-```
-       ▁▁▃▃▂▁        ▁▇██▇▇▃▁
-            ^^^^^^^^^^         <- silence the scorer times (longest 200 ms)
-```
-
-**The floor line is the one that matters most**, and it is why this tool
-exists at all: a held beat *is* silence, so a room with a fan in it
-fills in the very thing being measured and the verdict comes back
-`wrong` for a learner who did nothing wrong. Above −35 dBFS the meter
-says `THE ROOM IS NOISY` rather than letting the scorer blame the
-student.
-
-And `:speak` shows the meter itself on **anything but a clean `right`**,
-because that is exactly when attribution matters.
-
-### What a dead microphone looks like
-
-The case the whole tool is for, and it was wrong on the first attempt:
-
-```
-  heard 0.00 s of 0.40 s recorded
-  NOTHING REACHED THE MICROPHONE -- not one non-zero sample.
-  Check the input device, the cable, and that the terminal
-  has microphone permission.
-```
-
-With a peak of zero the gate is zero, so `v >= gate` was true for every
-frame and a silent recording reported *"the voiced part fills the whole
-recording"* — true, and the exact opposite of useful. The gate needs
-`v > 0` as well.
-
-It also exited non-zero, which made the tutor say *"I could not run the
-meter"* over a perfectly good report of a dead microphone. A non-zero
-exit now means only **I could not read the recording**; reporting that
-nothing arrived is a successful run.
-
-### Tier 5, and why it is capped
-
-A machine verdict is its own kind of evidence: the student spoke,
-something measured it, and **nobody listened.** So it sits strictly
-between `INFERRED_CAP` and `TIER2_CAP`:
-
-```
-MASTERY = 0.80    a check: watched them do it
-MACHINE_CAP 0.77  a model measured them
-INFERRED_CAP 0.75 watched them do something requiring it
-TIER2_CAP 0.78    a reported result, "18 out of 20"
-TIER3_CAP 0.50    compliance, "I did it"
-```
-
-Above an inference, because what was observed **is** the item. Below a
-human check, because a confident model is still a model — and `0.77`
-leaves room for exactly one teacher's check to tip an item over mastery.
-Twelve machine verdicts do not.
-
-`near` from a scorer is not a near miss on spelling. It is the
-**confidence floor** — *I could not tell* — and tier 5 moves the belief
-in neither direction for it.
-
-### Both ends are commands, and absence is an answer
-
-```json
-"record":  {"cmd": "rec -S -r 16000 -c 1 -b 16 %o trim 0 %s", "seconds": "2"},
-"verdict": {"cmd": "python3 tools/score-morae.py --request %q --out %v"},
-"meter":   optional -- defaults to tools/mic-level.py
-```
-
-Same terms as the voice, and neither is per-language: a microphone is a
-microphone, and the scorer is told the language in the request. With
-neither configured, `:speak` says so and records nothing.
-
-**The plan said a JSON-RPC side-car, and this is a command.** The
-argument for a persistent process was model load time — and the scorer
-that exists loads no model, so the latency that justified it is not
-there to measure. The contract is identical either way, a request object
-in and a verdict object out, so the day a model makes startup hurt the
-transport changes inside `lp_pronounced` and nothing above it moves.
-
-**A recording of somebody's voice is the most sensitive thing this
-project touches**, so the sample is scratch: written under the data
-directory, scored, and deleted — along with the request and verdict
-files beside it. Nothing keeps it and nothing uploads it. The only
-reason it is a file at all is that the scorer is a separate process.
-
-A scorer is somebody else's program, so its answer is checked before it
-reaches `lp_record`, which mishaps on an outcome it does not know. A
-model saying `magnificent` is a `bad_verdict`, not a crash.
-
-### The false-dropping trap, for the third time
-
-`json_generate` drops a `false`, so `detectable: false` left the key out
-altogether — and the scorer, reading an absent key as its default, duly
-measured a gap in いっしょ and called it **right**. The aids hit this
-(which is why `aids_off` stores *names*) and the exporter hit it before
-that. An absent field and a false field are the same thing once parsed,
-so the fact is now carried positively: `"detectable": "no"`.
-
-### What this deliberately does not do
-
-**`:speak` is not wired into `lp_next`.** No criterion on any rung asks a
-student to produce a sound, so a tutor that started demanding it would be
-grading something the ladder never promised. The capability exists; the
-criteria do not. Whether the ladder should declare them — and at what
-threshold — is a curation question, and an open one.
-
-## What A deliberately does not have
-
-No model, no speech, no rendering, no generated content, no DCG, no
-kanji, no spaced repetition. Judging is exact match on a string, which is
-the correct amount of cleverness for a level where the right answer *is*
-a string. (A had no server either; B is that gap closed.) Proposal C — a
-model that may classify and rank but never assert into the graph — stays
-behind a flag until B has been used in anger.
-
-What building B cost, which is the useful number: the engine needed three
-changes, and two of them were bugs A had and nobody had noticed.
-Assignments were written to the profile and never read back, so a student
-who was given work on Monday was told "No assignment 1." on Tuesday —
-which is the entire assignment model, broken in the one place a local TUI
-never looks. `lp_measure` returned Pop-11 ratios rather than floats, which
-compare equal to the float they denote (so the tests passed) and cannot be
-serialised at all. The third was a data-dir override, so the suite can
-write profiles somewhere other than a real person's home.
+The suites cover the engine, the protocol, the importer, the cards, the
+sheets, the audio and the dump. They pass with the imported content and
+without it, and the second case is the one that catches an assumption about
+content that happens to be built.
+
+`oracle.p` is a seeded student that climbs the ladder over JSON-RPC,
+asserting the engine's invariants at every answer — a belief that moved the
+wrong way, an item taught before its prerequisite, a criterion that went
+backwards. A failing run prints its seed, and the seed is the bug report.
+
+The protocol suite drives the handler over a `sys_socket_pair` with both ends
+in one process, so there are no forks, no ports and no sleeps. It includes a
+check that `langpop/next` does not leak the answer anywhere in its reply —
+not just in a field called `answer`.
+
+Three checks in the card and dump suites compare **bytes**, because a mangled
+encoding parses perfectly and comes out wrong: a JSON round trip cannot tell
+あ from mojibake, and the glyphs are the content.
+
+---
+
+## Limits
+
+**What this build cannot check.** `speak` needs a microphone and a scorer,
+and the scorer that exists measures one thing: whether a geminate beat is
+there. `hear` needs a voice installed and the sound already cached. Where
+either is missing, the affected criteria report as unmeasurable rather than
+as zero.
+
+**What the graph is short of.** Content, on almost every rung. `--audit` is
+the list. N5 reading is met; its listening half needs `--audio n5` run once
+with a voice installed. The English A2 word count is the largest gap, and
+the English function words are the largest gap in *coverage*.
+
+**What is deliberately absent.** No model in the teaching loop. No generated
+content in the repository. No spaced-repetition scheduling beyond the
+four-step ladder described above. Judging is exact match on a string, which
+is the correct amount of cleverness for a level where the right answer *is* a
+string.
+
+**Open curation questions** are each written up rather than left implicit:
+
+| | |
+| --- | --- |
+| [langpop-function-words.md](docs/langpop-function-words.md) | 33 function words, the only lever on coverage, awaiting marks |
+| [langpop-japanese-tranche.md](docs/langpop-japanese-tranche.md) | how the N5 word rows were argued |
+| [langpop-pronunciation.md](docs/langpop-pronunciation.md) | what a Japanese speaker learning English cannot be asked |
+| [langpop-reviews-and-periods.md](docs/langpop-reviews-and-periods.md) | the review intervals and the 28-day period, and which numbers are still arguable |
+| [langpop-production-criteria.md](docs/langpop-production-criteria.md) | should the ladder ask a student to speak, and at what threshold |
+| [langpop-audio.md](docs/langpop-audio.md) | the plan for the half of audio that measures |
+| [langpop-standalone-and-validation.md](docs/langpop-standalone-and-validation.md) | what running the whole thing has found |
+
+---
+
+This repository was carved out of
+[IoTone/poplog](https://github.com/IoTone/poplog) with its history intact: it
+grew past what an example is, and it is a program that *uses* Poplog rather
+than part of the language.
+
+The one idea the engine rests on is that a Pop-11 procedure can be a Prolog
+predicate. `lp_known/2` is defined with `define :prolog`, and the `ready/4`
+clause above consults it as if it were a table of facts — so the prerequisite
+rule reads evidence recorded seconds ago, in a property table, without
+knowing that it is not consulting a database. The graph travels the other way
+by the same route: every query in `langpop.p` is a term built with
+`prolog_maketerm`, so there are no query strings anywhere.

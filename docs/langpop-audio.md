@@ -303,9 +303,8 @@ Kokoro behind a cache. No assessment, no verdict, no microphone.
 **Built 2026-10-21**: `audio.p`, `--audio <level>`, the
 TUI's `:say` and `:rate`, `langpop/audio.say` as the 18th method, and 94
 checks in `test_langpop_audio.p`. The engine runs with no model installed and says
-`no voice for ja`, which is the state CI is in. See the README section
-*Stage 0 of audio: the student can hear it* for the shape of the config,
-the cache key and what has no sound.
+`no voice for ja`, which is the state CI is in. See the README section *Sound* for the
+shape of the config, the cache key and what has no sound.
 
 What remains of this stage is **not wiring**: whether Kokoro's Japanese
 is good enough to teach pronunciation with. `--audio` writes a page with
@@ -466,7 +465,7 @@ recorder and the scorer as commands in `audio.conf`, `lp_pronounced/4`
 as the one call behind all of it, and `:speak <item>`. 1211 checks over
 seven suites.
 
-One departure, stated in the README and worth repeating here: **the
+One departure, stated in DESIGN_NOTES.md and worth repeating here: **the
 side-car is a command, not a JSON-RPC process.** The argument for a
 persistent process was model load time, and the scorer that exists loads
 no model — so the latency that justified it is not there to measure. The

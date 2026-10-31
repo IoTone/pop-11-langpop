@@ -17,6 +17,29 @@ Source: `import.p --source frequency --lang ja --gap` against
 `ja_full.txt` (OpenSubtitles Japanese, 34,504 entries, 3,794,284 tokens
 — a small corpus, so read the ranks with salt).
 
+> **The ranks below should not be read at all, 2026-10-31.** "A small
+> corpus, read with salt" turned out to be too generous. hermitdave's
+> 2018 Japanese list is missing 私, 僕, 君, 俺 and 誰 — the commonest
+> first and second person pronouns and the word for *who* — **in every
+> spelling, kanji and kana alike**, while holding 、, 。, あなた, お前 and
+> 彼女. It was found by trying to use the file to attest the second N5
+> tranche, which reported 僕 and 誰 as absent from Japanese. The file is
+> the genuine upstream one, so this is not a download that went wrong.
+>
+> Everything on this page that is a *share of the corpus* is therefore
+> unsound, including the 14.6% headline: the denominator is missing its
+> most frequent words, so every share is inflated by an unknown amount
+> and the ordering is unreliable too. The rows themselves are still
+> sensible N5 words, and the judgements recorded about them stand — it is
+> the arithmetic that does not.
+>
+> The same fact is why no Japanese `coverage(reading)` figure in this
+> repository should be believed, and why the criterion the owner deferred
+> should stay deferred. The `--gap` report keeps the half that reads the
+> graph rather than the corpus — *which characters does this word need
+> that the graph lacks* — and loses the half that ranks by share. See
+> DESIGN_NOTES.md.
+
 ---
 
 ## Three things found before any row was proposed

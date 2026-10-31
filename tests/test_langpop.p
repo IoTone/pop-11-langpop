@@ -1432,16 +1432,52 @@ check_false('so a skipped vowel is wrong there', member('gakko', pans));
 ;;; must be askable; what is left over must be left over for a reason --
 ;;; a skill is a roll-up, a pattern is produced, a sound contrast needs
 ;;; audio.  A count would have gone stale; this says which kinds.
-lvars i, wrong = [], sh0;
+;;;
+;;; AND ONE MORE REASON, from the N5 word list: a word written only in
+;;; kana.  A reading question holds one form up and asks for another, so
+;;; it needs two, and はい has one.  The katakana loanwords are the same
+;;; shape and are asked anyway, because reading コーヒー is an exercise a
+;;; learner gets wrong -- so the allowance here is narrow, and the test
+;;; asserts the narrowness: no kanji, no katakana, no hand-written
+;;; romaji, and a hiragana form it does have.  The 251-item bug this
+;;; invariant was written for had kanji AND kana on every item, so it
+;;; would still be caught.
+define kana_only_word(i);
+    lvars i;
+    lp_kind(i) == "word" and lp_ilang(i) == "ja"
+    and not(lp_form_of(i, "kanji")) and not(lp_form_of(i, "katakana"))
+    and not(lp_form_of(i, "romaji")) and lp_form_of(i, "hiragana")
+enddefine;
+
+lvars i, wrong = [], kanaonly = [], sh0;
 for i in lp_items do
     lp_question(i, lp_primary(i)) -> (sh0, , , );
     nextunless(sh0 == "none");
-    unless member(lp_kind(i), [skill pattern sound]) then
-        wrong <> [^i] -> wrong
-    endunless;
+    if member(lp_kind(i), [skill pattern sound]) then
+    elseif kana_only_word(i) then kanaonly <> [^i] -> kanaonly
+    else wrong <> [^i] -> wrong
+    endif;
 endfor;
-check('every item that cannot be typed is a skill, a pattern or a sound',
-      wrong, []);
+check('every item that cannot be typed is a skill, a pattern, a sound '
+      <> 'or a word written only in kana', wrong, []);
+
+;;; And the loanwords are on the other side of that line, which is the
+;;; whole reason the allowance could be kept narrow.
+if lp_form_of("w_terebi", "katakana") then
+    lvars (tsh, tpr, tans, ) = lp_question("w_terebi",
+                                           lp_primary("w_terebi"));
+    check_true('a katakana loanword is asked', tsh == "type");
+    check('prompted as the katakana', tpr, 'テレビ');
+    check_true('and answered in romaji', member('terebi', tans));
+    check('which is also what the tutor says back, because the hiragana '
+          <> 'folding of a loanword spells nothing', hd(tans), 'terebi');
+    check_false('never by copying the prompt back',
+                member('テレビ', tans));
+    check_true('while a kana-only word has no question at all',
+               member("w_hai", kanaonly) or not(lp_form_of("w_hai", "hiragana")));
+else
+    printf(';;; imported content not built -- loanword probe not checked\n');
+endif;
 
 ;;; -------------------------------------------------------- the catalogue
 lvars r = lp_resource_for("s_r_l");

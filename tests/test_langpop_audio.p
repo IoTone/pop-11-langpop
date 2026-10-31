@@ -903,8 +903,17 @@ check_true('and says nothing changed', not(dgc));
 lvars vtflat = tmpdir <> 'vtflat.wav';
 wav_write(vtflat, 16000, [[130 8000] [40 0] [130 8000]]);
 lvars vtvoice = tmpdir <> 'vtvoice';
+;;; A GEMINATE IS WRITTEN IN EITHER SCRIPT, and this stub used to look
+;;; for the hiragana one alone.  That was true of every geminate word in
+;;; the graph while the N5 list was native vocabulary; the loanwords
+;;; brought in コップ, ポケット, ベッド and サッカー, whose beat is the
+;;; KATAKANA ッ -- so the stub handed each of them the dropped-beat
+;;; recording and the chain, quite correctly, said the beat was missing.
+;;; Four disagreements, none of them the scorer's: measured against the
+;;; real voice the same four come back at 1.24-1.46 on the ratio, which
+;;; is where the native words are.
 lp_write_file(vtvoice,
-    'if grep -q っ "$1"; then cp ' <> held <> ' "$2"; else cp '
+    'if grep -qE "っ|ッ" "$1"; then cp ' <> held <> ' "$2"; else cp '
     <> vtflat <> ' "$2"; fi\n');
 lp_write_file(lp_audio_conf_path(),
     '{"ja": {"cmd": "sh ' <> vtvoice <> ' %i %o", "voice": "vt", "model": "vt-1"},'
@@ -942,7 +951,7 @@ check_true('the word as written is kept -- the same render :say plays',
 lvars vtmid = tmpdir <> 'vtmid.wav';
 wav_write(vtmid, 16000, [[130 8000] [90 0] [130 8000]]);
 lp_write_file(vtvoice,
-    'if grep -q っ "$1"; then cp ' <> held <> ' "$2"; else cp '
+    'if grep -qE "っ|ッ" "$1"; then cp ' <> held <> ' "$2"; else cp '
     <> vtmid <> ' "$2"; fi\n');
 lp_voice_test(false) -> (va, vd, vab);
 check('a borderline gap is never a disagreement', vd, 0);
