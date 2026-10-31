@@ -263,10 +263,18 @@ English target is **pre-school to `en c1`**, and TOEIC enters as a
   somebody adds a rung to chase a number.
 
 **The coverage criteria are the English blocker,** more than the
-vocabulary ones. `coverage(reading, 0.95)` is measured against a
-frequency list that currently holds **100 words**. Coverage is the one
-criterion that cannot be satisfied by importing more items -- it needs a
-corpus, with a licence checked the way speechocean762's was.
+vocabulary ones. Coverage is the one criterion that cannot be satisfied
+by importing more items -- it needs a corpus, with a licence checked the
+way speechocean762's was, and the corpus is now there (`en_50k.txt`).
+
+What it cannot be satisfied by is *content words*, and the second A1
+tranche is the measurement of that: four hundred of them took the graph
+from 5.60% to **13.57%** of the corpus, against a B1 line of 95%. The
+twenty-one words the gap report now puts at the top of the queue are
+`you`, `i`, `the`, `to`, `a`, `it`, `and` ... every one of them a row in
+`docs/langpop-function-words.md`, which is still waiting to be marked.
+A learner who knows five hundred nouns and no articles reads nothing,
+and the number now says so twice.
 
 ## What "validated" should mean -- three layers, separately reported
 
@@ -524,7 +532,57 @@ did what the section above predicted, in order:
    number because a client with nothing to ask should say "nothing
    today, two more tomorrow" rather than sounding like it has run out.
 
-12. **Smaller observations, not yet acted on:** a reported-but-never-
+12. **A1 English, 100 words to 519, and two rungs climbed.** The
+   curation wall `en a1` reported -- 100 words where 500 are wanted --
+   is gone: `exit(en, a1, vocabulary(500, read))` is met and the oracle
+   now climbs pre-school, A1 and into A2, where it stops at 531 of
+   1000 -- every English word the graph holds, and the honest curation
+   wall one rung further up. The corpus share went 5.60% to 13.57%, and the word list now
+   exercises every sound contrast a pronunciation rule can derive (10
+   of 13; the other three are `s_final`, `s_stress` and `s_rhythm`,
+   which no single CMUdict entry can show).
+
+   Three things the new content found, all of them half-truths that had
+   been true-enough while no item had two spellings:
+
+   - **The cmudict import took the first spelling and called it the
+     item's.** A written confusion has two, so `m_rice` was given the
+     pronunciation of `rice` alone. Both modes now read every `latin`
+     form, which is what `imp_en_forms` was already doing for
+     frequency and for the same stated reason.
+   - **It also derived a prerequisite edge the schema forbids.**
+     `requires(m_think, s_th_un)` is true of the word and wrong about
+     the teaching order: a confusion is the half of a merge that can be
+     *read*, and gating it behind hearing the contrast puts the harder
+     task first. Invisible without a voice installed, because `gate_ok`
+     opens a door no channel can check -- with one installed the whole
+     written rung would have moved behind the listening one.
+   - **A cumulative criterion was reported against a level-exact
+     denominator.** A2 declares no words of its own, so a student with
+     499 of them read `499 of 1000 (graph holds 0)`. Both halves of
+     that line are now counted the same way, cumulatively and bounded
+     by the student's own rung, which is what the criteria mean.
+
+   And a fourth, which is the one worth remembering: **an item
+   forgotten after moving up was orphaned.** `ready/4` asked for the
+   student's level *exactly* while everything else in the design is
+   cumulative -- the criteria, the audit pool, the mastered counts,
+   `lp_hear_plan` -- and `lp_review_note` takes an item off the review
+   ladder the moment it falls under `MASTERY`. So a word the student
+   forgot sat in neither the plan nor the review queue, was still
+   counted against the criterion, and could only be found again by
+   setting the level back by hand. A2 is where it stopped being
+   theoretical: A2 declares no items of its own, so its plan was empty
+   by construction. The plan is cumulative now, which is what "it walks
+   back into the plan" had been claiming since the review ladder was
+   built. The oracle measures what it was costing: the same seed went
+   from 497 of 531 words mastered to 531 of 531.
+
+   And `s_ts` is derivable after all: a word-final /ts/ is exactly the
+   cluster, CMUdict shows it, and `pants` is the word at A1 that
+   exercises it.
+
+13. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
@@ -534,9 +592,9 @@ Soak state: seeds 1-5 (ja) and 1-3 (en) all pass, deterministically.
 ~1300 turns to exhaust ja pre-school's typed pool from empty before
 reviews existed; ~2650 with them, which is the ladder being climbed four
 rungs deep on every item and then burned; ~5700 with advancement. The
-English runs went from ~100 turns to ~1900 once there was something on
-the rung a learner could finish and the harness would come back the
-next day for it.
+English runs went ~100 to ~1900 once there was something on the rung a
+learner could finish and the harness would come back the next day for
+it, and ~1900 to ~7800 once A1 held 519 words rather than 100.
 
 ---
 
@@ -554,7 +612,7 @@ later one.
 | 4 | the oracle student over JSON-RPC, and the invariant assertions | `ja preschool` climbs from empty, reproducibly, from a seed |
 | 5 | the okurigana fix and the n5 word tranche to 800 | `ja n5` climbs; the disagreement log is a curation queue |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
-| 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | `en a1` climbs; `coverage` measures something real |
+| 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |
 
 Phases 0--4 are days of small work (and 3 is none). Phase 5 upward is content, and that
 is where the time actually goes -- which is the same conclusion the

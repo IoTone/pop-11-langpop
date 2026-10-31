@@ -414,6 +414,15 @@ check_true('AE with AH is the cat/cut pair',
 check_true('F with HH is the food/hood pair', has_c('HH AE1 F', "s_f_h"));
 check_true('V with B is the vote/boat pair', has_c('V AY1 B', "s_v_b"));
 
+;;; A word-final /ts/, which is the cluster s_ts is about: Japanese has
+;;; ツ and will not let it close a word, so the plural, the possessive
+;;; and the third person all go quiet together.  `presents` is the word
+;;; the contrast was written for.
+check_true('a final T S is the presents/presence pair',
+           has_c('P R IY0 Z EH1 N T S', "s_ts"));
+check_true('and in the middle it is not -- itself is no example of it',
+           not(has_c('IH0 T S EH1 L F', "s_ts")));
+
 ;;; s_final is deliberately NOT derived: it would be true of two words in
 ;;; three, and an edge that common tells a reader nothing.  Asserted so
 ;;; that adding the obvious rule later fails here first.
@@ -421,6 +430,24 @@ check_true('ending in a consonant is not made into an edge',
            not(has_c('S T R IY1 T', "s_final")));
 check_true('nor is stress, which needs the shifting pair',
            not(has_c('L AY1 B R EH2 R IY0', "s_stress")));
+
+;;; EVERY SPELLING OF AN ITEM, not the first one.  A written confusion
+;;; has two latin forms, and taking the first gave m_rice the
+;;; pronunciation of `rice` and called it the item's.
+"en" -> lp_lang; "en" -> imp_lang; "preschool" -> imp_level;
+lvars pforms = imp_en_forms(), pf, ricef = [];
+for pf in pforms do
+    if hd(pf) == "m_rice" then ricef <> [% hd(tl(pf)) %] -> ricef endif;
+endfor;
+check('a confusion offers both of its spellings', length(ricef), 2);
+
+;;; And the contrast edge is NOT derived for one, because a confusion
+;;; already records the contrast it comes from and deliberately does not
+;;; make it an edge -- gating the reading behind hearing would put the
+;;; harder task first (mix/4 in graph/schema.pl).  The rule itself still
+;;; fires on the word; it is the emitted edge that does not.
+check_true('the rule still sees the TH in think',
+           has_c('TH IH1 NG K', "s_th_un"));
 
 ;;; the file format
 lvars (ws, un2) = imp_cmudict(FIX <> 'cmudict-sample.dict',

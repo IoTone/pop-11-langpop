@@ -30,6 +30,25 @@ check('patterns are patterns', lp_kind("p_ni_ikimasu"), "pattern");
 check('traps are English', lp_ilang("t_mansion"), "en");
 check('contrasts are sounds', lp_kind("s_r_l"), "sound");
 
+;;; THE A1 LIST, AND THE ONE THING A LEARNER CANNOT RECOVER FROM.  A
+;;; question about an English word offers its English gloss against its
+;;; Japanese one, so two items whose JAPANESE gloss is the same word are
+;;; two items a learner has been given no way to tell apart -- and it is
+;;; the kind of thing that only appears when a hundred-word list becomes
+;;; a five-hundred-word one.  Three collided when it did: 店 for `shop`
+;;; and `store`, 時間 for `time` and `hour`, 高い for `expensive` and
+;;; `high`.  Not a graph violation, because two Japanese words may
+;;; honestly share an English gloss; a claim about this file, checked
+;;; here because graph/en/a1.pl makes it.
+lvars enja = newproperty([], 1024, false, "perm"), clash = [], ii, gg;
+for ii in lp_items do
+    nextunless(lp_ilang(ii) == "en" and lp_kind(ii) == "word");
+    lp_gloss_of(ii, "ja") -> gg;
+    nextunless(gg);
+    if enja(gg) then clash <> [^gg] -> clash else ii -> enja(gg) endif;
+endfor;
+check('no two English words share a Japanese gloss', clash, []);
+
 check('ja ladder', lp_levels("ja"), [preschool n5 n4 n3 n2 n1]);
 check('en ladder', lp_levels("en"), [preschool a1 a2 b1 b2 c1]);
 
@@ -516,6 +535,21 @@ t_due_now("hi_u");
 lp_record_phase("review", "hi_u", "read", 1, "skip", 100);
 check('a skipped review drops it too', t_rev("hi_u"), false);
 
+;;; AND BACK IN THE PLAN FROM A RUNG ABOVE, which is the half of "back
+;;; in the plan" that was not true.  ready/4 asked for the student's
+;;; level exactly, and lp_review_note takes an item off the ladder the
+;;; moment it falls under MASTERY -- so an item forgotten after moving
+;;; up sat in neither the plan nor the review queue, and only setting
+;;; the level back by hand could find it again.  Every other count in
+;;; the design is cumulative, including the criterion that was still
+;;; counting the forgotten item against the student.
+"n5" -> lp_level;
+check_true('a forgotten pre-school item is in an n5 plan',
+           member("hi_u", lp_plan()) and true);
+check_false('while one still known is not',
+            member("hi_a", lp_plan()));
+"preschool" -> lp_level;
+
 ;;; WHAT THE CRITERIA READ.  Learning answers are not evidence of
 ;;; knowing: every one of them was given while the item was unknown.
 "window" -> lp_user;
@@ -705,6 +739,24 @@ check('and so is a criterion whose content is not built',
       t_excused(t_row("unbuilt", 0, 0, 0, false, false, false, false)), true);
 check('an excused criterion is not also counted as met',
       t_met(t_row("audio", 0, 800, 50, "word", false, false, false)), false);
+
+;;; BOTH HALVES OF A COUNT, COUNTED THE SAME WAY.  A criterion is
+;;; cumulative -- vocabulary(1000) at A2 is every word through A2 -- and
+;;; the two numbers on one printed line were counted three different
+;;; ways: mastered over every level, the graph's total over exactly the
+;;; current one.  English A2 made it absurd rather than merely wrong,
+;;; because A2 declares no words of its own: a student with 499 of them
+;;; read "499 of 1000 (graph holds 0)".
+"en" -> lp_lang;
+"a1" -> lp_level;
+lvars a1words = lp_count_items("word");
+"a2" -> lp_level;
+check_true('a rung that declares no words of its own still holds them',
+           lp_count_items("word") >= a1words and a1words > 500);
+"preschool" -> lp_level;
+check_true('and a lower rung holds fewer', lp_count_items("word") < a1words);
+"ja" -> lp_lang;
+"preschool" -> lp_level;
 
 ;;; A MEASURED SET WHERE NOT ONE MEMBER CAN BE ASKED.  Reached from the
 ;;; other side than the vocabulary criterion above, and it was the live
@@ -1947,9 +1999,21 @@ check('ja preschool is blocked only by audio',
 ;;; and moves the student up, so --audit saying `not yet` of this rung
 ;;; contradicted it.  It now reports both answers -- the rung can be
 ;;; left, and part of it will not have been measured when it is.
-check('en preschool is blocked only by audio too',
-      rung("en", "preschool")(4), "needs_audio");
 check('which is four criteria, not three', rung("en", "preschool")(3), 4);
+;;; Only by audio WHEN THE PRONUNCIATIONS ARE BUILT.  final_consonants
+;;; counts the syllables of a katakana form against the English one,
+;;; and the English one is an IPA form the cmudict import attaches -- so
+;;; without graph/en/generated/ that criterion has no probe at all, and
+;;; the rung says so rather than blaming the microphone.  Both answers
+;;; are right about the build they are measuring, which is why the
+;;; guard is on the form and not on a flag.
+if lp_form_of("t_mansion", "ipa") then
+    check('en preschool is blocked only by audio too',
+          rung("en", "preschool")(4), "needs_audio");
+else
+    check('without the pronunciations it is the probe that is missing',
+          rung("en", "preschool")(4), "no_probe");
+endif;
 
 ;;; B1 declared one criterion, coverage(reading, 0.95), and nothing
 ;;; measures coverage -- the same missing door A1 had, differently

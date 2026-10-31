@@ -167,16 +167,16 @@ teach a syllabary, a sound contrast and a sentence pattern.
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
 | `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
-| `graph/en/a1.pl` | 100 A1 words with Japanese glosses, hand-written | 100 |
+| `graph/en/a1.pl` | 519 A1 words with Japanese glosses, hand-written | 519 |
 | `graph/ja/picks/n5.pl` | which words are N5, by upstream key — the curation | 148 picks |
-| `graph/*/generated/*.pl` | imported content, a build product, never committed | 251 + 100 |
+| `graph/*/generated/*.pl` | imported content, a build product, never committed | 273 items (ja), and for English facts only: 555 pronunciations, 519 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
 
-340 committed items, 613 once the content is built; 12 ladder levels,
+759 committed items, 1032 once the content is built; 12 ladder levels,
 40 exit criteria, no integrity violations either way. (Both counts are
 what `./langpop --check` prints with and without
-`graph/*/generated/`; they had drifted, and are measured here rather
-than remembered.)
+`graph/*/generated/`, measured rather than remembered -- they had
+drifted before.)
 
 Four things make it a graph rather than a table with arrows drawn on it:
 
@@ -185,10 +185,20 @@ the tutor's choice of what to teach next is one clause:
 
 ```prolog
 ready(S, Lang, Level, I) :-
-    item(I, _, Lang, Level, _),
+    item(I, _, Lang, Lv, _),
+    at_or_below(Lang, Lv, Level),
     \+ lp_known(S, I),
-    all_hold(requires(I, Pre), lp_known(S, Pre)).
+    all_hold(requires(I, Pre), gate_ok(S, Pre)).
 ```
+
+`at_or_below` and not `Level` exactly, because every other count in the
+design is cumulative and this clause was the one that was not. An item
+the student *forgot* after moving up was orphaned: `ready/4` did not
+reach down to it, and the review ladder drops an item the moment it
+falls under `MASTERY`, so it sat in neither the plan nor the queue while
+still being counted against the rung's criterion. English A2 is where
+that stopped being theoretical — A2 declares no items of its own, so its
+plan was empty by construction.
 
 **Forms are derived, not enumerated.** 138 `kana/5` facts produce 138
 items and 276 forms; the katakana-after-hiragana edges, the vowels-first
@@ -421,11 +431,13 @@ requires(e_mother, s_th_v).
 
 The rules are **selective, and that was measured rather than guessed.** A
 rule for `s_final` — "ends in a consonant", the contrast about not adding
-a vowel after it — is true of 67 of these 100 words, and an edge two
+a vowel after it — was true of 67 of the first 100 words, and an edge two
 items in three carry tells a reader nothing and a planner nothing either.
 It is left out, with `s_stress` (which needs the stress-shifting *pair*,
 and one CMUdict entry cannot show one) and `s_rhythm` (a property of a
-sentence). What remains fires on 2% to 14% of the list. The minimal-pair
+sentence). `s_ts` was in that list and has since left it: a word-final
+/ts/ is exactly the cluster the contrast is about, CMUdict shows it, and
+`pants` is the word at A1 that exercises it. What remains fires on 2% to 14% of the list. The minimal-pair
 rules want *both* phonemes present, since a word with an R and no L is
 not the r/l exercise, just a word with an R in it — and `ER` counts as
 carrying the R, because it is a rhotic vowel and `world` is one of the
@@ -475,7 +487,17 @@ than not glossing it at all.
 So the Japanese glosses in `graph/en/a1.pl` are ours, typed by hand. No
 licence reaches them, nothing upstream has an opinion about which English
 words are A1, and the importer's job for English is the one thing no
-person should type a hundred times: the pronunciation.
+person should type five hundred times: the pronunciation.
+
+Five hundred, now, and that is what the corpus *is* used for. The second
+tranche took the list from 100 words to 519, and the frequency list
+decided none of them: it was the **attestation** check. Every word in the
+file appears in `en_50k.txt` and in CMUdict, which is a mechanical way of
+catching a spelling that is archaic, mistyped or invented. Selection
+stayed a curation question, and the worst rank in the file says why —
+`insect` at 8551, `pencil` at 5821, `vegetable` at 7532, all three in
+every A1 syllabus ever written. Characters in films do not say
+*vegetable*; learners do.
 
 ### Asking about what was imported
 
@@ -786,18 +808,20 @@ nothing said so.
 ```
 
 ```
-  34 exit criteria over 12 ladder levels.
+  40 exit criteria over 12 ladder levels.
 
   lang  level      criterion                 have  askable  verdict
   ja    preschool  recognise(hiragana)       69    69       ok
-  ja    preschool  skill(mora_count)         1     1        thin
+  ja    preschool  skill(mora_count)         1     51       ok
   ja    preschool  skill(dakuten)            46    46       ok
-  ja    preschool  vocabulary(50, read)      40    40       short by 10
-  ja    preschool  vocabulary(50, hear)      40    0        needs_audio
+  ja    preschool  vocabulary(50, read)      50    50       ok
+  ja    n5         vocabulary(800, read)     220   220      short by 580
   ja    n5         kanji(103, read)          103   103      ok
   ja    n1         kanji(2230, read)         103   103      short by 2127
-  en    preschool  sound_contrasts           12    0        needs_audio
-  en    b1         coverage(reading, 0.95)   0     0        unmeasured
+  en    preschool  sound_contrasts           13    0        needs_audio -- 13 of 13 cannot be asked
+  en    preschool  written_confusions        12    24       ok
+  en    a1         vocabulary(500, read)     531   531      ok
+  en    b1         coverage(reading, 0.95)   519   14       short by 81
 ```
 
 Six verdicts, because they mean different things to whoever reads them:
@@ -827,7 +851,12 @@ not a defect.
 
 Counts are **cumulative**, because the criteria are: `kanji(2230)` at N1
 means every kanji through N1, not 2,230 more of them. So the pool is that
-level and below.
+level and below — and `:status` says it the same way now, which it did
+not. The mastered count had no level bound at all and the graph's total
+had an exact one, so the two numbers on one line were counted three
+different ways. English A2 made it absurd rather than merely wrong: A2
+declares no words of its own and inherits every one of them, so a
+student with 499 words read `499 of 1000 (graph holds 0)`.
 
 `langpop/audit` is the same thing on the wire, with `"short_by"` computed
 so a client need not subtract, and `"wanted": null` on a criterion that
@@ -847,26 +876,30 @@ came to be a room with no door and had to be found by hand — and how
 
 ```
   lang  level      criteria  can it be left?
-  ja    preschool  7         not yet -- needs_audio
+  ja    preschool  7         yes
   ja    n5         3         not yet -- short
-  en    preschool  3         not yet -- needs_audio
-  en    b1         3         not yet -- unmeasured
-  en    c1         0         NO -- it declares no exit criterion
+  en    preschool  4         yes -- with an audio criterion excused, so partly unmeasured
+  en    a1         2         yes -- with an audio criterion excused, so partly unmeasured
+  en    b1         3         not yet -- short
 
-  0 of 12 rungs can be left as the graph stands.
+  3 of 12 rungs can be left as the graph stands, 2 of them with
+  something nothing here can measure.
 ```
 
 A rung is left by meeting **every** criterion on it, so it is exitable
-only if every one is reachable. One criterion nothing can measure closes
-the rung as surely as having none. The verdict names the **worst**
-blocker, in the order of whose problem it is: no exit is a bug in the
-ladder, `unmeasured` is a hole in the design, `short` is curation, and
+only if every one is reachable. The verdict names the **worst** blocker,
+in the order of whose problem it is: no exit is a bug in the ladder,
+`unmeasured` is a hole in the design, `short` is curation, and
 `needs audio` is a limit of this build that is written down elsewhere.
 
-**Zero of twelve** is the honest number, and it is worth sitting with.
-The Japanese pre-school rung passes everything that can be typed and is
-held open by one listening criterion; that is the documented state of
-this build rather than a defect. The rest are short of content.
+**It was zero of twelve** when this was written, and that number is the
+history of the two sections above. A criterion nothing on this machine
+can measure is now *excused* by the engine, which moves the student up
+and says which criterion it could not ask — so `--audit` stopped saying
+`not yet` of a rung the engine will pass, and says both things instead:
+the rung can be left, and part of it will not have been measured when
+it is. Three can be left now. The rest are short of content, which is
+curation and is the only one of these verdicts allowed to be large.
 
 `check(graph)` now refuses a rung with no exit criterion outright, so
 the next level anyone adds cannot repeat it:
@@ -1092,10 +1125,10 @@ account for; divide by what the corpus accounts for.** No model, no
 interpolation, no published table — the definition applied to the data.
 
 ```
-en  b1  coverage(reading, 0.95)   100   6    short by 89
+en  b1  coverage(reading, 0.95)   519   14   short by 81
 ```
 
-100 words carry a frequency; all of them together reach **6%**; the
+519 words carry a frequency; all of them together reach **14%**; the
 criterion wants 95. That is a curation number now, where it used to be a
 hole in the design — and the whole graph reports **zero `unmeasured`**
 for the first time.
@@ -1140,20 +1173,24 @@ every fact — `opensubtitles_en`, not `frequency` — so the difference is
 visible rather than averaged away, and `:status` prints it:
 
 ```
-coverage(reading, 0.95): 6% of running text, over 100 words
+coverage(reading, 0.95): 14% of running text, over 519 words
                          (opensubtitles_en, need 95%)
 ```
 
-### What 6% says about the A1 list
+### What 14% says about the A1 list
 
-The top 100 words of English cover **59%** of running text. Our hundred
-A1 words cover **6%**. The difference is that the A1 list is nouns and
-verbs — *people, family, water, mother* — and **coverage lives in
-function words**: `the`, `to`, `a`, `of`, `and`.
+The top 100 words of English cover **59%** of running text. Our 519 A1
+words cover **14%**. The difference is that the A1 list is nouns, verbs
+and adjectives — *people, family, water, mother* — and **coverage lives
+in function words**: `the`, `to`, `a`, `of`, `and`.
 
 That is not a defect in the list, which was curated to be teachable on
 day one. It is a fact about what coverage measures, and it is the kind
-of thing a curator can only learn from a number.
+of thing a curator can only learn from a number — and then measure
+again: the list went from 100 words to 519, which is four hundred more
+nouns and verbs, and coverage moved 5.60% to 13.57%. Eight points for
+four hundred words, against thirteen pronouns in
+`docs/langpop-function-words.md` worth fifteen on their own.
 
 ### The gap report, which turns that number into a queue
 
@@ -1169,13 +1206,13 @@ reach if everything down to that row were added.
 ```
 
 ```
-gap: the graph answers 111 of the list's words, and they carry
-gap: 5.60% of the corpus
+gap: the graph answers 530 of the list's words, and they carry
+gap: 13.57% of the corpus
 
    rank  share   if-added  word
-  1      3.97%   9.57%     you
-  3      3.14%   16.44%    the
-  4      2.36%   18.80%    to
+  1      3.97%   17.54%    you
+  2      3.74%   21.28%    i
+  3      3.14%   24.42%    the
 
 not in the queue, because there is nothing to teach:
   23 tokeniser shards, 6.39% of the corpus -- 's 't 'm don 're 'll ...

@@ -11,6 +11,17 @@ cost nothing, because none of this is written anywhere the engine reads.
 The source is `import.p --source frequency --lang en --gap`, run against
 `en_50k.txt` (OpenSubtitles, 50,000 entries, 725,119,374 tokens).
 
+> **Note, 2026-10-31.** The baseline below is out of date and the
+> argument is not. `graph/en/a1.pl` held 100 words when this was
+> written and holds 519 now, so the graph answers 13.57% of the corpus
+> rather than 5.60%. Nothing on this page was taken: the second tranche
+> was content words only, and not one of its rows appears in any group
+> here -- the six question words it added are the six this queue does
+> not hold, `what` being the seventh and still here. So each row's own
+> *share* is unchanged, being a fact about the corpus; the `if-added`
+> totals in the table at the end are **understated** by about the eight
+> points the tranche bought, because they were computed up from 5.60%.
+
 ---
 
 ## Why this tranche exists
@@ -169,7 +180,7 @@ and *a* are not vocabulary; they are a choice made about a noun, and the
 item should have the noun in it.
 
 The cost is that a `pattern` carries no `latin` form, so
-`imp_en_words()` will not find it and the frequency importer will not
+`imp_en_forms()` will not find it and the frequency importer will not
 enrich it -- which means **articles as patterns do not count toward
 coverage**, and that is 5.14 points of the thirty-nine.  Either coverage learns
 to credit a pattern for the words it frames, or articles stay words and
@@ -192,11 +203,16 @@ agree to than discover.
 
 The frequency list counts four tokens. English has one verb. Four items
 would be a lie about the language that happens to measure correctly;
-one item measures wrong, because `imp_en_words()` reads
+one item measured wrong, because the importer read
 `lp_form_of(i, "latin")` -- a single form per item -- so one `e_be` with
-four forms collects 0.58% and drops the 2.21% the other three carry.
+four forms would have collected 0.58% and dropped the 2.21% the other
+three carry.
 
-Proposal, and the one code change the tranche needs:
+Proposal (**the code change it asked for is done**: both enriching
+modes read every `latin` form through `imp_en_forms`, and
+`imp_frequency` sums them. It was made for a different multi-form item
+-- a written confusion, which has two spellings -- and this row is
+waiting on nothing but the gloss decision below):
 
 ```prolog
 a1(e_be, 'be', 'joining a thing to what it is', '〜です').
@@ -205,14 +221,13 @@ form(e_be, latin, 'are').
 form(e_be, latin, 'was').
 ```
 
-plus `imp_frequency` summing every `latin` form of an item instead of
-taking the first. That is correct on both axes at once -- one item for
+That is correct on both axes at once -- one item for
 `vocabulary(500, read)` to count, four tokens for `coverage` to credit --
 and `imp_graph_words()` already walks every form, so the gap report will
 stop listing the other three the moment they exist.
 
-I would make that importer change as part of wiring, with its own test.
-Say if you would rather have four flat rows and no code.
+That importer change is in, with its own test, so the choice left here
+is only whether `be` is one item with four spellings or four flat rows.
 
 ### `do` and `have` -- two jobs each
 
@@ -291,9 +306,26 @@ the graph's words account for. The word column is what the list
 recognises, which is three higher than the item count because `is`,
 `are` and `was` are forms of `be`.
 
+**Updated 2026-10-31.** `graph/en/a1.pl` now holds 519 words, not 100,
+and the gap report reads 530 words recognised for **13.57%** of the
+corpus. Nothing below was marked or wired: the tranche took content
+words only, deliberately, and every row in this queue is still a row in
+this queue. The group totals below were computed up from 5.60% and so
+understate where they would land today, by about the eight points the
+tranche bought; each row's own share is a property of the corpus and has
+not moved.
+
+What the tranche settled is the argument rather than the queue. Four
+hundred content words bought eight points; the thirteen pronouns in
+Group A are worth fifteen on their own, and the twenty-one words the
+report now ranks highest are every one of them a row on this page. A
+learner who knows five hundred nouns and no articles reads nothing, and
+the number says so twice now.
+
 | | words the list knows | corpus share |
 |---|---|---|
-| now | 111 | 5.60% |
+| when this was written | 111 | 5.60% |
+| now, after the second A1 tranche | 530 | 13.57% |
 | Group A (13 rows) | 124 | 21.07% |
 | plus Group B (6 rows) | 130 | 27.57% |
 | plus Group C (8 rows) | 138 | 33.16% |
@@ -311,8 +343,9 @@ no objection attached -- is worth more than fifteen points on its own.
 1. The accepted rows into `graph/en/a1.pl`, in sections, in house style.
 2. `requires` edges: `e_my -> e_i`, `e_your -> e_you`, and whatever the
    article decision implies.
-3. `imp_frequency` sums every `latin` form of an item, with a test.
-4. The shards note in `--gap`.
+3. ~~`imp_frequency` sums every `latin` form of an item, with a test.~~
+   Done 2026-10-31, for a written confusion rather than for `be`.
+4. ~~The shards note in `--gap`.~~ Done.
 5. Re-import `cmudict` and `frequency`, which attaches pronunciation,
    the sound-contrast edges, and the counts coverage reads.
 6. `--check` and the full suite, and the coverage figure before and after

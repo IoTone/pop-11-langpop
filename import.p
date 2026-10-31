@@ -1125,6 +1125,18 @@ define imp_edge_map() -> m;
     endfor;
 enddefine;
 
+;;; Does the graph hold this form of this script for this item -- any of
+;;; them, where an item carries several.
+define imp_has_form(id, script, text) -> yes;
+    lvars id, script, text, pr, yes = false;
+    for pr in lp_forms(id) do
+        if hd(pr) == script
+        and (hd(tl(pr)) sys_>< '') = (text sys_>< '') then
+            true -> yes; return;
+        endif;
+    endfor;
+enddefine;
+
 define imp_verify(es, out) -> bad;
     lvars es, out, e, f, r, bad = [], id, edges;
     lp_load_except(false);              ;;; everything, including `out`
@@ -1139,8 +1151,15 @@ define imp_verify(es, out) -> bad;
         ;;; word, and a word is never = to a string with the same
         ;;; characters, so the first version of this check reported all
         ;;; 444 facts missing -- which at least proved it was looking.
+        ;;;
+        ;;; And ANY form of that script, not the first one: an item may
+        ;;; carry two, which is the whole point of imp_en_forms above.
+        ;;; Written as lp_form_of, this reported every second
+        ;;; pronunciation of every written confusion as LOST -- the
+        ;;; facts were on disk and correct, and the check was reading
+        ;;; one of the two.
         for f in imp_e_forms(e) do
-            unless (lp_form_of(id, hd(f)) sys_>< '') = (hd(tl(f)) sys_>< '') then
+            unless imp_has_form(id, hd(f), hd(tl(f))) then
                 bad <> [[% id, 'form ' <> (hd(f) sys_>< '') <> ' missing or wrong' %]]
                     -> bad;
             endunless;
@@ -1249,7 +1268,16 @@ define imp_main();
         imp_frequency(imp_file, fwant) -> (es, unresolved);
     elseif imp_source == "cmudict" then
         'CMUdict' -> srcname;
-        lvars want = imp_en_words();
+        ;;; EVERY latin form, not the first one -- see imp_en_forms, and
+        ;;; the comment above it, which was written for frequency and
+        ;;; argues this case too: "a pronunciation belongs to a
+        ;;; spelling".  While no item had two spellings that was a
+        ;;; distinction without a difference.  A written confusion has
+        ;;; two, and taking the first gave m_rice the pronunciation of
+        ;;; `rice` and called it the item's -- a card and an audit row
+        ;;; both saying that the item for `rice`/`lice` sounds like
+        ;;; exactly one of them.
+        lvars want = imp_en_forms();
         if want == [] then
             mishap(imp_level, 1, 'import: no items with a latin form at that level '
                                  <> '(cmudict enriches items the graph already has)')
@@ -1351,7 +1379,7 @@ lconstant ARPA_VOWELS = [AA AE AH AO AW AY EH ER EY IH IY OW OY UH UW];
 ;;; sentence.  Naming them here is what lets the report say "no rule
 ;;; derives this" instead of blaming the word list for it.
 lconstant DERIVABLE = [s_r_l s_v_b s_f_h s_th_un s_th_v s_si_shi
-                       s_cluster s_ae_uh s_schwa];
+                       s_cluster s_ae_uh s_schwa s_ts];
 
 define imp_ipa_of(sym) -> s;
     lvars sym, l = ARPA_IPA, s = false;
@@ -1465,29 +1493,32 @@ define imp_contrasts(ps) -> cs;
     if imp_cons_run(syms) >= 3 then cs <> [s_cluster] -> cs endif;
     if imp_has(syms, "AE") and imp_has(syms, "AH") then cs <> [s_ae_uh] -> cs endif;
     if imp_has(raw, "AH0") then cs <> [s_schwa] -> cs endif;
+    ;;; A word-final /ts/, which is the cluster s_ts is about: Japanese
+    ;;; has ツ and does not let it close a word, so the plural, the
+    ;;; possessive and the third person all go quiet together.  Final,
+    ;;; and not anywhere in the word, because `itself` is not an example
+    ;;; of the thing that goes quiet.
+    if n >= 2 and syms(n fi_- 1) == "T" and syms(n) == "S" then
+        cs <> [s_ts] -> cs
+    endif;
 enddefine;
 
 ;;; The English items already in the graph, at the level being enriched,
-;;; as [id word] pairs.  This is the mode's whole input: it adds nothing
-;;; the graph does not already name.
-define imp_en_words() -> ws;
-    lvars i, w, ws = [];
-    for i in lp_items do
-        nextunless(lp_ilang(i) == imp_lang and lp_ilevel(i) == imp_level);
-        lp_form_of(i, "latin") -> w;
-        nextunless(w);
-        ws <> [[% i, w %]] -> ws;
-    endfor;
-enddefine;
-
-;;; EVERY latin form, and not the first one.
+;;; as [id form] pairs -- EVERY latin form, and not the first one.  This
+;;; is the whole input of both enriching modes: they add nothing the
+;;; graph does not already name.
 ;;;
-;;; imp_en_words takes lp_form_of, which is one form per item, and that
-;;; is right for cmudict -- a pronunciation belongs to a spelling, so
-;;; `be` and `was` want separate entries or neither is correct.
+;;; There was a one-form-per-item version of this (imp_en_words, now
+;;; gone) and the argument for it was "a pronunciation belongs to a
+;;; spelling" -- which is true, and is the argument for this instead:
+;;; an item with two spellings wants two pronunciations, not the first
+;;; one labelled as the item's.  A written confusion has two, and the
+;;; old version gave m_rice the pronunciation of `rice` alone, so the
+;;; card and the audit row both said that the item for `rice`/`lice`
+;;; sounds like exactly one of them.
 ;;;
-;;; It is wrong for frequency, and the English function-word tranche is
-;;; where it shows: is/are/was/be is ONE verb and four tokens.  An item
+;;; The same mistake was waiting on the frequency side, where the
+;;; English function-word tranche is where it shows: is/are/was/be is ONE verb and four tokens.  An item
 ;;; `e_be` carrying all four forms would have collected the count of
 ;;; `be` alone and silently dropped the 2.21% of the corpus the other
 ;;; three carry -- a coverage figure quietly short by a third of what
@@ -2050,9 +2081,25 @@ define imp_cmudict(path, want) -> (es, unresolved);
         ;;; Only a contrast that IS an item in the graph becomes an edge,
         ;;; exactly as for kanji: the rule describes the word, the graph
         ;;; decides whether there is anything to point at.
-        [% for c in imp_contrasts(pron(word)) do
-               if lp_ilang(c) then c endif;
-           endfor %] -> cs;
+        ;;;
+        ;;; AND NOT FOR A WRITTEN CONFUSION, which is the one kind of
+        ;;; item that already records the contrast it comes from and
+        ;;; deliberately does not make it an edge: a confusion is the
+        ;;; half of a merge that can be read, and gating it behind
+        ;;; hearing the contrast puts the harder task first (see mix/4
+        ;;; in graph/schema.pl).  This mode had been drawing that edge
+        ;;; from the pronunciation -- requires(m_think, s_th_un), true
+        ;;; of the word and wrong about the teaching order -- and the
+        ;;; effect was invisible without a voice installed, because
+        ;;; gate_ok opens a door no channel can check.  With one
+        ;;; installed the whole written rung would have moved behind the
+        ;;; listening one.  The pronunciations still come through; it is
+        ;;; only the edge that does not.
+        if lp_kind(id) == "confusion" then []
+        else [% for c in imp_contrasts(pron(word)) do
+                   if lp_ilang(c) then c endif;
+               endfor %]
+        endif -> cs;
         ;;; kind and gloss are false: this mode DECLARES no item, it adds
         ;;; facts about one the graph already has, so imp_emit writes the
         ;;; form and the edges and no item/5 line at all.

@@ -3538,10 +3538,23 @@ define lp_coverage(ch, every) -> (frac, nwords, scale);
 enddefine;
 
 ;;; ----------------------------------------------------------------- status
+;;; CUMULATIVE, and bounded above by the student's own rung -- which is
+;;; what the criteria mean: vocabulary(1000) at A2 is every word through
+;;; A2 and not a thousand more of them, and the fifty pre-school words
+;;; count towards it.
+;;;
+;;; The bound used to be absent on this side and level-exact on the
+;;; other (lp_count_items), so the two halves of one printed line were
+;;; counted three different ways.  A2 made it absurd rather than merely
+;;; wrong: a student with 499 words read "499 of 1000 (graph holds 0)",
+;;; because A2 declares no words of its own and inherits every one of
+;;; them from the rung below.
 define lp_count_mastered(kind, ch) -> n;
-    lvars kind, ch, i, n = 0;
+    lvars kind, ch, i, n = 0, top = lp_level_index(lp_level);
     for i in lp_items do
         if lp_kind(i) == kind and lp_ilang(i) == lp_lang
+        and lp_level_index(lp_ilevel(i)) >= 0
+        and lp_level_index(lp_ilevel(i)) <= top
         and lp_mastered_on(i, ch) then
             n + 1 -> n
         endif;
@@ -3560,9 +3573,11 @@ enddefine;
 ;;; student who has got everything wrong rather than a criterion nothing
 ;;; was counting.
 define lp_count_mastered_kanji(ch) -> n;
-    lvars ch, i, n = 0;
+    lvars ch, i, n = 0, top = lp_level_index(lp_level);
     for i in lp_items do
         if lp_kind(i) == "grapheme" and lp_ilang(i) == lp_lang
+        and lp_level_index(lp_ilevel(i)) >= 0
+        and lp_level_index(lp_ilevel(i)) <= top
         and lp_form_of(i, "kanji") and lp_mastered_on(i, ch) then
             n + 1 -> n
         endif;
@@ -3573,9 +3588,11 @@ enddefine;
 ;;; tutor can say "148 of the 800 are in the graph" rather than implying
 ;;; the student is short of 652 they have never been shown.
 define lp_count_items(kind) -> n;
-    lvars i, n = 0;
+    lvars i, n = 0, top = lp_level_index(lp_level);
     for i in lp_items do
-        if lp_ilang(i) == lp_lang and lp_ilevel(i) == lp_level
+        if lp_ilang(i) == lp_lang
+        and lp_level_index(lp_ilevel(i)) >= 0
+        and lp_level_index(lp_ilevel(i)) <= top
         and (if kind == "kanji" then
                  lp_kind(i) == "grapheme" and lp_form_of(i, "kanji")
              else lp_kind(i) == kind endif) then

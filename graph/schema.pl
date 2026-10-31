@@ -104,12 +104,32 @@ level_empty(Lang, Level) :-
 gate_ok(S, Pre) :- lp_known(S, Pre).
 gate_ok(_, Pre) :- lp_unverifiable(Pre).
 
+% AT OR BELOW the student's rung, and not that rung exactly.  Everything
+% else in the design is cumulative -- the exit criteria (vocabulary(1000)
+% at A2 counts every word through A2), the audit pool, the mastered
+% counts, and lp_hear_plan -- and this clause was the one place that was
+% not, which orphaned any item the student FORGOT after moving up:
+% ready/4 did not reach down to it, and lp_review_note takes an item off
+% the review ladder the moment it falls under MASTERY, so it sat in
+% neither the plan nor the queue and could only be found by setting the
+% level back by hand.
+%
+% English A2 is where this became visible rather than theoretical,
+% because A2 declares no items of its own: every word it is measured
+% over lives at A1, so at A2 the plan was empty by construction and a
+% forgotten word stayed forgotten while still being counted against the
+% criterion.
+at_or_below(Lang, Lv, Level) :-
+    ladder(Lang, N, Lv), ladder(Lang, Top, Level), N =< Top.
+
 ready(S, Lang, Level, I) :-
-    item(I, _, Lang, Level, _),
+    item(I, _, Lang, Lv, _),
+    at_or_below(Lang, Lv, Level),
     \+ lp_known(S, I),
     all_hold(requires(I, Pre), gate_ok(S, Pre)).
 
-% Everything ready at the student's current level, for the Pop-11 driver.
+% Everything ready at the student's current level or below, for the
+% Pop-11 driver.
 plan(S, Lang, Level) :- ready(S, Lang, Level, I), lp_take(I), fail.
 plan(_, _, _).
 
