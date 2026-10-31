@@ -148,6 +148,17 @@ lconstant TERM_ORDER_EN = [latin ipa katakana hiragana kanji];
 
 define lp_card_term(i) -> (term, reading);
     lvars i, term = false, reading = false, sc, found = false;
+    ;;; A WRITTEN CONFUSION IS BOTH WORDS.  Taking the first `latin` form
+    ;;; drew a card saying `rice` over the Japanese for "ラ行では区別され
+    ;;; ない", which is a card for a contrast with half the contrast
+    ;;; missing -- and the half left out is the one the learner reaches
+    ;;; for by mistake.  Under it goes the merge the pair exists to show.
+    lvars mx = if lp_kind(i) == "confusion" then lp_mix_of(i) else false endif;
+    if mx then
+        (mx(1) sys_>< ' / ' sys_>< mx(2)) -> term;
+        lp_gloss_of(i, "ja") -> reading;
+        return;
+    endif;
     for sc in (if lp_ilang(i) == "en" then TERM_ORDER_EN
                else TERM_ORDER_JA endif) do
         lp_form_of(i, sc) -> term;

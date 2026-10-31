@@ -65,8 +65,24 @@ define lp_new_session(student) -> sid;
     ;;; lp_m_next chose, and an answer filed in the wrong phase would be
     ;;; a review that measures nothing or a first attempt that counts
     ;;; towards an exit criterion.
+    ;;; Slot 11 is THE QUESTION ITSELF -- {shape prompt answer options} --
+    ;;; and it is remembered for the hardest-won of these reasons.  It
+    ;;; was recomputed at grading time, and a question is not a pure
+    ;;; function of its item: a `pick` turns its options over on every
+    ;;; call so a student cannot learn the position, and a written
+    ;;; confusion chooses which of its two sides to ask.  So the key the
+    ;;; grader built was not always the key the student was shown, and
+    ;;; the answer sent against the offered options was marked wrong.
+    ;;;
+    ;;; It survived because lp_plan and lp_choose ask lp_question too, on
+    ;;; their way to choosing, so the turnovers between asking and
+    ;;; grading happened to come out even -- until a review was injected,
+    ;;; which made one more call and reversed the parity.  A question
+    ;;; whose answer is recomputed is a question that can be marked
+    ;;; against a different question; remembering it is the fix, and the
+    ;;; clock in slot 4 is remembered for the same kind of reason.
     {% student, lp_now_ms(), false, 0, false,
-       [], 0, newproperty([], 32, 0, "perm"), false, "learn" %}
+       [], 0, newproperty([], 32, 0, "perm"), false, "learn", false %}
         -> lp_sessions(consword(sid));
 enddefine;
 
@@ -397,6 +413,7 @@ define lp_m_next(msg) -> res;
     lp_now_ms() -> s(4);
     ch -> s(9);
     phase -> s(10);
+    {% shape, prompt, answer, options %} -> s(11);
     ;;; A listening question's `prompt` is a PATH and not something to
     ;;; print: showing it would not give the answer away, but a client
     ;;; that rendered it as a glyph would be showing the student a
@@ -540,7 +557,14 @@ define lp_m_answer(msg) -> res;
     ;;; in it.  Nothing should reach here now, which is the point of
     ;;; putting it where a stale session would.
     unless lp_drillable_on(item, ach) then lp_primary(item) -> ach endunless;
-    lp_question(item, ach) -> (shape, prompt, answer, options);
+    ;;; The question that was ASKED, when this is the answer to it.  A
+    ;;; caller that drives the graph without going through next -- a
+    ;;; batch import, a test -- gets one computed now, which is the same
+    ;;; fallback the client's own latency is kept as.
+    lvars q = if asked then s(11) else false endif;
+    if q then (q(1), q(2), q(3), q(4)) -> (shape, prompt, answer, options);
+    else lp_question(item, ach) -> (shape, prompt, answer, options);
+    endif;
     lp_norm(given sys_>< '') -> typed;
     member(typed, answer) and true -> correct;
     ;;; Which of the four this was.  A client says "I do not know" by
@@ -591,8 +615,11 @@ define lp_m_answer(msg) -> res;
     ;;; lp_undo_last restores every belief this moved, which is more than
     ;;; one whenever a correct answer inferred a prerequisite from what
     ;;; the item contains.
-    ;;; Out of flight, now that it is being recorded.
+    ;;; Out of flight, now that it is being recorded -- the question
+    ;;; goes with the item, so a later answer to it cannot be graded
+    ;;; against a key nobody was shown.
     false -> s(3);
+    false -> s(11);
     lp_undo_start(item);
     ;;; In the phase the question was ASKED in, and only when the answer
     ;;; is to the question in flight -- a client answering something else
@@ -782,6 +809,12 @@ define lp_m_status(msg) -> res;
                                   then lp_period_start + lp_period_span()
                                   else json_null endif,
                    'reviews_due', lp_review_count(),
+                   ;;; And when the next one comes round, so a client
+                   ;;; with nothing to ask can say "nothing today, two
+                   ;;; more tomorrow" instead of sounding exhausted.
+                   ;;; Zero means something is owed now; null means
+                   ;;; nothing is on the ladder at all.
+                   'next_review_in', lp_review_soonest() or json_null,
                    ;;; How the period has gone, and the schedule to offer
                    ;;; if it has gone badly.  Numbers, not a sentence: a
                    ;;; client says it in the language its student reads,

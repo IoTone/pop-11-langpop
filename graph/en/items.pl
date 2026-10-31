@@ -32,9 +32,16 @@ contrast(s_cluster,'CCC-',        'street, splash',           '子音連続').
 contrast(s_stress, 'stress',      'PREsent and preSENT',      '強勢の位置で意味が変わる').
 contrast(s_schwa,  '/uh/',        'the weak vowel in about',  '弱母音').
 contrast(s_rhythm, 'rhythm',      'stress-timed, not mora-timed', 'モーラ拍ではない').
+% Added 2026-10-31 with the written confusions below, which needed a
+% cause for `presents` against `presence`.  A word-final /ts/ is not a
+% sound Japanese is short of -- ツ is ordinary -- but it is not a sound
+% Japanese allows to CLOSE a word, so the cluster loses its stop and the
+% plural, the possessive and the third person all go quiet with it.
+contrast(s_ts,     '/ts/ - /s/',  'presents and presence',    '語末の ts と s').
 
 requires(s_th_v,   s_th_un).
 requires(s_cluster, s_final).
+requires(s_ts,     s_final).
 requires(s_rhythm, s_stress).
 requires(s_schwa,  s_stress).
 
@@ -98,6 +105,115 @@ pair(s_si_shi, 'sell',    'shell').
 pair(s_cluster, 'sport',  'support').
 pair(s_cluster, 'train',  'terrain').
 
+pair(s_ts,      'presents', 'presence').
+
+% --- Written confusions ---------------------------------------------------
+% The same merge, met on paper.  A learner whose ears do not separate
+% /r/ from /l/ does not separate `rice` from `lice` when writing either,
+% and that half of the problem needs no microphone, no speaker and no
+% audio cache: show what one of them means, offer both spellings, and
+% the answer is typed.
+%
+% WHY THIS IS A SEPARATE ITEM AND NOT A CHANNEL OF THE CONTRAST.  A
+% contrast is a fact about perception and is measured by playing a
+% sound; a confusion is a fact about two words and is measured by
+% showing a meaning.  Folding them together would have let a reading
+% answer stand as evidence of hearing, which it is not -- so
+% sound_contrasts goes on saying needs_audio on a machine with no voice,
+% honestly, while written_confusions below can be finished today.
+%
+% The fourth argument is the cause, and it is one of the contrasts above
+% wherever one explains it.  It is NOT a prerequisite edge: see the note
+% on mix/4 in graph/schema.pl.
+%
+% The pairs are the ones a Japanese learner is actually caught by, and
+% one of them is not a minimal pair at all: `sport`/`support` differ by
+% a whole vowel, and they are a pair here because the epenthesis a
+% Japanese speaker brings to a cluster turns the first into the second.
+% Same argument as pair/3, one layer along.
+
+% Guarded once, here, and every derivation below reads the guarded
+% form.  mix/4 carries a mix(none, ...) clause so that a graph with no
+% confusions in it answers instead of raising (graph/schema.pl says why),
+% and the first version of this section derived an item from it: `none`
+% became a confusion item with two empty forms, and written_confusions
+% was measured over thirteen things of which one could never be asked.
+mixed(Id, A, B, Why) :- mix(Id, A, B, Why), Id \== none.
+
+item(Id, confusion, en, preschool, own(contrast)) :- mixed(Id, _, _, _).
+
+% Both spellings are forms of the item, because the item IS the pair.
+% Nothing reads form(_, latin, _) expecting exactly one, and a confusion
+% with only its first word on record would render as half a card.
+form(Id, latin, A) :- mixed(Id, A, _, _).
+form(Id, latin, B) :- mixed(Id, _, B, _).
+
+% And the item's gloss is the gloss of whatever makes the two merge, in
+% both languages -- which is why `Why` is a contrast id and not prose.
+gloss(Id, en, G) :- mixed(Id, _, _, W), contrast(W, _, G, _).
+gloss(Id, ja, G) :- mixed(Id, _, _, W), contrast(W, _, _, G).
+gloss(Id, en, G) :- mixed(Id, _, _, W), why_gloss(W, G, _).
+gloss(Id, ja, G) :- mixed(Id, _, _, W), why_gloss(W, _, G).
+
+% A cause that is not one of the sound contrasts, and the observation
+% this section was built from: コーヒー and コピー are two ordinary
+% Japanese words, fluently known and plainly different, while the
+% English pair they stand for is one consonant apart in the middle.  The
+% merge is in the katakana rather than in the phonology, which is why it
+% is not filed under a contrast that would then be making a claim about
+% English it cannot support.
+why_gloss(katakana_near, 'two katakana words that sit next to each other',
+                         'カタカナの形が近い二語').
+
+% A confusion is asked through its pair as well, once there is a voice:
+% the same two words, played instead of shown.  Derived rather than
+% written twice, so a confusion added below is audible for free.
+pair(Id, A, B) :- mixed(Id, A, B, _).
+
+% mix(Id, A, B, Why).
+mix(m_rice,     'rice',     'lice',     s_r_l).
+mix(m_glass,    'glass',    'grass',    s_r_l).
+mix(m_correct,  'correct',  'collect',  s_r_l).
+mix(m_think,    'think',    'sink',     s_th_un).
+mix(m_mouth,    'mouth',    'mouse',    s_th_un).
+mix(m_vote,     'vote',     'boat',     s_v_b).
+mix(m_fair,     'fair',     'hair',     s_f_h).
+mix(m_cat,      'cat',      'cut',      s_ae_uh).
+mix(m_sip,      'sip',      'ship',     s_si_shi).
+mix(m_presents, 'presents', 'presence', s_ts).
+mix(m_sport,    'sport',    'support',  s_cluster).
+mix(m_coffee,   'coffee',   'copy',     katakana_near).
+
+% sense(Id, Word, MeansEn, MeansJa) -- what each spelling means.  The
+% Japanese is what the question SHOWS: a pre-school learner cannot be
+% asked to read an English definition in order to prove they can read an
+% English word, which would be testing the harder thing to measure the
+% easier one.  The English is for the card, where both belong.
+sense(m_rice,     'rice',     'the grain you eat',            '米').
+sense(m_rice,     'lice',     'more than one louse',          'シラミ').
+sense(m_glass,    'glass',    'what a window is made of',     'ガラス').
+sense(m_glass,    'grass',    'what a lawn is made of',       '草').
+sense(m_correct,  'correct',  'right, not wrong',             '正しい').
+sense(m_correct,  'collect',  'gather things together',       '集める').
+sense(m_think,    'think',    'use your mind',                '考える').
+sense(m_think,    'sink',     'go down under water',          '沈む').
+sense(m_mouth,    'mouth',    'you eat with it',              '口').
+sense(m_mouth,    'mouse',    'a small grey animal',          'ネズミ').
+sense(m_vote,     'vote',     'choose in an election',        '投票する').
+sense(m_vote,     'boat',     'a small one, with oars',       'ボート').
+sense(m_fair,     'fair',     'treating everyone the same',   '公平な').
+sense(m_fair,     'hair',     'it grows on your head',        '髪').
+sense(m_cat,      'cat',      'the animal that says meow',    '猫').
+sense(m_cat,      'cut',      'divide it with a knife',       '切る').
+sense(m_sip,      'sip',      'drink a very little',          '少しずつ飲む').
+sense(m_sip,      'ship',     'a big one, that crosses seas', '大型船').
+sense(m_presents, 'presents', 'gifts, more than one',         '贈り物（複数）').
+sense(m_presents, 'presence', 'being there',                  '存在・出席').
+sense(m_sport,    'sport',    'a game you play',              'スポーツ').
+sense(m_sport,    'support',  'hold it up, or back someone',  '支える').
+sense(m_coffee,   'coffee',   'the dark drink',               'コーヒー').
+sense(m_coffee,   'copy',     'make another one the same',    'コピー').
+
 % --- Loanword traps ------------------------------------------------------
 % The ja gloss is JAPANESE.  It used to hold "what the katakana means",
 % in English -- 'apartment building' filed under ja -- which made
@@ -151,6 +267,17 @@ requires(no_katakana_reading, Id) :- trap(Id, _, _, _, _).
 item(sound_contrasts, skill, en, preschool, own(contrast)).
 gloss(sound_contrasts, en, 'hears every contrast above').
 requires(sound_contrasts, Id) :- contrast(Id, _, _, _).
+
+% The reading half, and the reason this rung can be finished on a
+% machine with no voice at all.  Every confusion feeds it, exactly as
+% every contrast feeds the one above: the two criteria are about the
+% same merges from opposite sides -- thirteen contrasts asked by ear,
+% twelve pairs of words asked on paper -- and the tutor says which of
+% the two it could not ask.
+item(written_confusions, skill, en, preschool, own(contrast)).
+gloss(written_confusions, en, 'tells apart the words that sound alike').
+gloss(written_confusions, ja, '同じように聞こえる語を書き分ける').
+requires(written_confusions, Id) :- mixed(Id, _, _, _).
 
 item(final_consonants, skill, en, preschool, own(contrast)).
 gloss(final_consonants, en, 'ends a word without adding a vowel').

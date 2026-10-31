@@ -7,7 +7,7 @@
 %   item(Id, Kind, Lang, Level, Source)
 %       Id      a flat atom, the item's IDENTITY.  An item is not its
 %               spelling: hi_a is the identity, 'あ' is one of its forms.
-%       Kind    grapheme | sound | word | pattern | skill
+%       Kind    grapheme | sound | word | pattern | skill | confusion
 %       Lang    ja | en
 %       Level   a ladder node (ladder/3 below), never an integer
 %       Source  provenance, always: own(kana) | jmdict('1358280') |
@@ -274,6 +274,31 @@ pair(none, '', '').
 
 pairs :- pair(C, A, B), C \== none, lp_take(pr(C, A, B)), fail.
 pairs.
+
+% WRITTEN confusions: two spellings a learner merges on paper because
+% their ears merge them, and what each spelling means.  Guarded for the
+% same reason as pair/3.
+%
+% Deliberately separate from pair/3 even though a confusion also yields
+% one.  A pair exists to be PLAYED -- it is how a sound contrast becomes
+% askable, and it needs a voice.  A confusion is asked by showing a
+% meaning and offering the two spellings, which needs nothing but a
+% screen; the fourth argument records WHY the two merge, and is a
+% contrast id wherever one of the declared contrasts explains it.
+%
+% It is not a `requires` edge to that contrast, and must not become one.
+% Telling `rice` from `lice` in writing is the easier half of the same
+% problem and is where a learner starts; gating it behind hearing the
+% contrast would put the harder task first and -- with no voice
+% installed -- behind a door that cannot be opened.
+mix(none, '', '', none).
+sense(none, '', '', '').
+
+mixes :- mix(I, A, B, Why), I \== none, lp_take(mx(I, A, B, Why)), fail.
+mixes.
+
+senses :- sense(I, W, En, Ja), I \== none, lp_take(sn(I, W, En, Ja)), fail.
+senses.
 
 % The characters a written form may hold that are not kana in their own
 % right.  Guarded for the same reason -- the English graph declares none.

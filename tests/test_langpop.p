@@ -468,6 +468,13 @@ check_true('mastered', lp_mastered_on("hi_a", "read"));
 check('and now on the ladder', t_rev("hi_a")(1), 1);
 check_true('due a day out, not now', t_rev("hi_a")(2) > lp_now_ms());
 check('so nothing is owed yet', lp_review_due(), []);
+;;; WHEN TO COME BACK.  Nothing owed today is not the same as nothing
+;;; left to do, and a tutor whose queue is empty should say which day
+;;; the next review falls on rather than "nothing here can be checked by
+;;; typing", which reads as a tool that has run out.
+check_true('the next one is a day out',
+           lp_review_soonest() > 0
+           and lp_review_soonest() =< lp_day_ms);
 
 ;;; A day later.
 t_due_now("hi_a");
@@ -489,6 +496,7 @@ check_true('burned', lp_burned("hi_a", "read"));
 check('with no next time', t_rev("hi_a")(2), false);
 check('and never owed again', lp_review_due(), []);
 check_true('still mastered', lp_mastered_on("hi_a", "read"));
+check('and nothing is coming round for it', lp_review_soonest(), false);
 
 ;;; A review that goes wrong needs no special arithmetic: the ordinary
 ;;; update takes the belief under MASTERY, and the item walks back into
@@ -698,6 +706,26 @@ check('and so is a criterion whose content is not built',
 check('an excused criterion is not also counted as met',
       t_met(t_row("audio", 0, 800, 50, "word", false, false, false)), false);
 
+;;; A MEASURED SET WHERE NOT ONE MEMBER CAN BE ASKED.  Reached from the
+;;; other side than the vocabulary criterion above, and it was the live
+;;; one: sound_contrasts is measured over contrasts that live on `hear`
+;;; alone, so with no voice installed it scored 0% over 0 reviews for
+;;; ever and held the English pre-school rung shut -- a tutor reporting
+;;; its own missing speaker as a student's failure.
+check_false('a contrast cannot be asked here', lp_askable_here("s_r_l"));
+check_true('while a written confusion can', lp_askable_here("m_rice"));
+"en" -> lp_lang;
+lvars erows = lp_status_rows(), er, esc = false, ewc = false;
+for er in erows do
+    if er(1) = 'sound_contrasts' then er -> esc endif;
+    if er(1) = 'written_confusions' then er -> ewc endif;
+endfor;
+check('the contrasts are reported as needing audio', esc(2), "audio");
+check_true('and so excused', t_excused(esc));
+check('the confusions are measured, not excused', ewc(2), "measured");
+check('over all twelve of them', ewc(8), 12);
+"ja" -> lp_lang;
+
 ;;; The ladder, and the top of it.
 "ja" -> lp_lang;
 "preschool" -> lp_level;
@@ -760,6 +788,55 @@ check('two options', length(opts2), 2);
 check('the answer points at the English meaning',
       opts2(strnumber(hd(ans2))) sys_>< '',
       lp_gloss_of("t_service", "en") sys_>< '');
+
+;;; ---------------------------------------- the confusions, on paper
+;;; The reading half of a merge.  A learner whose ears do not separate
+;;; /r/ from /l/ does not separate `rice` from `lice` in writing either,
+;;; and that half needs no speaker, no microphone and no audio cache --
+;;; which is what the English pre-school rung was missing: two of its
+;;; three criteria could not be asked at all, so the level could not be
+;;; left however well its student read.
+check('a written confusion is its own kind', lp_kind("m_rice"), "confusion");
+check('read first, heard second', lp_channels("m_rice"), [read hear]);
+check('so reading is what gates it', lp_primary("m_rice"), "read");
+check_true('and it is askable here', lp_drillable("m_rice"));
+
+lvars (sh3, pr3, ans3, opts3) = lp_question("m_rice", "read");
+check('asked as a choice', sh3, "pick");
+check('between the two spellings', length(opts3), 2);
+lvars o3a = opts3(1) sys_>< '', o3b = opts3(2) sys_>< '';
+check_true('which are the pair, in some order',
+           (o3a = 'rice' and o3b = 'lice')
+           or (o3a = 'lice' and o3b = 'rice'));
+;;; The prompt is the Japanese sense of whichever side is being asked.
+;;; A pre-school learner cannot be asked to read an English definition
+;;; in order to prove they can read an English word.
+lvars (aen, aja) = lp_sense_of("m_rice", opts3(strnumber(hd(ans3))));
+check('and the prompt is that word, in Japanese', pr3, aja sys_>< '');
+check('with the English kept for the card', aen sys_>< '',
+      'the grain you eat');
+
+;;; EITHER SIDE, in turn.  Two questions and not one: which word means
+;;; 米, and which means シラミ, are different questions to a learner who
+;;; knows only one of the two words.
+check('two questions, not one', lp_probe_breadth("m_rice"), 2);
+[] -> lp_journal;
+lvars (, p4, , ) = lp_question("m_rice", "read");
+conspair({% "m_rice", "read", 1, "right", 100, lp_now_ms(), "learn" %},
+         lp_journal) -> lp_journal;
+lvars (, p5, , ) = lp_question("m_rice", "read");
+check_true('the side turns over', p4 /= p5);
+[] -> lp_journal;
+
+;;; The cause is recorded and is NOT a prerequisite edge.  Gating the
+;;; reading on hearing the contrast would put the harder task first, and
+;;; on a machine with no voice it would be a door that cannot open.
+check_false('no edge to the contrast it comes from',
+            member("s_r_l", lp_edges_of("m_rice")));
+;;; And the item's gloss is the contrast's, which is why the fourth
+;;; argument of mix/4 is an id and not prose.
+check('the gloss explains the merge', lp_gloss_of("m_rice", "ja"),
+      lp_gloss_of("s_r_l", "ja"));
 
 ;;; ------------------------------------------------ kana into romaji
 ;;; This exists because every imported Japanese item was UNASKABLE.
@@ -1795,12 +1872,17 @@ check_true('probeable agrees', lp_probeable("w_neko", "read"));
 check_false('and refuses the channel nothing can check',
             lp_probeable("w_neko", "hear"));
 
-;;; The twelve sound contrasts are not a missing probe either -- the
-;;; probe is not missing, the microphone is.  Reported as a bug the first
-;;; time this ran, which was wrong.
+;;; The sound contrasts are not a missing probe either -- the probe is
+;;; not missing, the microphone is.  Reported as a bug the first time
+;;; this ran, which was wrong.
+;;;
+;;; Thirteen since s_ts was added for `presents` against `presence`; it
+;;; was twelve, and the number is checked rather than the shape because
+;;; a contrast that quietly stopped being counted is the failure this
+;;; guards against.
 lvars asc = arow("en", "preschool", 'sound_contrasts');
 check('sound contrasts need audio', asc(4), "needs_audio");
-check('all twelve are in the graph', asc(5), 12);
+check('all thirteen are in the graph', asc(5), 13);
 
 ;;; coverage/2 held three English rungs closed for as long as nothing
 ;;; measured it.  With the frequency import it is arithmetic: what the
@@ -1858,6 +1940,16 @@ enddefine;
 ;;; state of this build, not a defect in the ladder.
 check('ja preschool is blocked only by audio',
       rung("ja", "preschool")(4), "needs_audio");
+
+;;; And so is English pre-school, now that it has a criterion a learner
+;;; can finish without a voice.  Blocked only by audio is NOT the same
+;;; as blocked: the engine excuses a criterion nothing here can measure
+;;; and moves the student up, so --audit saying `not yet` of this rung
+;;; contradicted it.  It now reports both answers -- the rung can be
+;;; left, and part of it will not have been measured when it is.
+check('en preschool is blocked only by audio too',
+      rung("en", "preschool")(4), "needs_audio");
+check('which is four criteria, not three', rung("en", "preschool")(3), 4);
 
 ;;; B1 declared one criterion, coverage(reading, 0.95), and nothing
 ;;; measures coverage -- the same missing door A1 had, differently

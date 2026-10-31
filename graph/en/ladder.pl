@@ -49,6 +49,15 @@ floors_known(Level) :- floor(en, Level, _, _).
 exit(en, preschool, sound_contrasts,       0.90, 3000).
 exit(en, preschool, no_katakana_reading,   0.85, 3000).
 exit(en, preschool, final_consonants,      0.85, 3000).
+% Added 2026-10-31.  The three criteria above were all the rung had, and
+% two of them were unaskable without a voice: this level had nothing a
+% student could finish on an ordinary laptop, which is a rung that
+% cannot be left however well its student reads.  The written
+% confusions are the same merges asked on paper, so the threshold is
+% the reading one (0.85) and not hearing's 0.90 -- a choice on a page is
+% an easier question than a sound in the air, and saying otherwise
+% would make the easier criterion the harder one to pass.
+exit(en, preschool, written_confusions,    0.85, 4000).
 
 % --- Counts, by channel ---------------------------------------------------
 % graph/ja/ladder.pl argues this at length and the argument is the same

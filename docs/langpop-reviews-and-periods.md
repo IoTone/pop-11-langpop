@@ -228,6 +228,28 @@ tips it over. The oracle found it through the ladder, which schedules on
 mastery and so reported items being reviewed at exactly 0.75 and exactly
 0.50: the two caps, named in the violation.
 
+## Two things the ladder found afterwards
+
+**A set nothing can ask held a rung shut.** `sound_contrasts` is
+measured over thirteen contrasts that live on `hear` alone, so with no
+voice installed it was *measured*: 0% over 0 reviews, for ever. The
+`vocabulary(N, hear)` branch of `lp_status_rows` had said `audio` for
+exactly this since the channels were split; the item-set branch had not,
+and nothing noticed because the English rung had never been reachable
+anyway. A measured criterion where not one member is askable on any
+channel this build can check now reports `audio` and is excused by name.
+
+**A run that stops when the queue empties cannot climb the ladder.**
+The gaps widen to 28 days, so the first empty moment comes long before
+stage 2 -- and the harness reported rungs as unfinished when all that
+was missing was the next day. The engine now answers "when is the next
+one owed" (`lp_review_soonest`, `next_review_in` in `status`), the TUI
+and the client say it, and the oracle waits for it. Which is a feature
+first and a test second: a tutor with nothing to ask should say
+"nothing today, two more tomorrow" rather than *nothing here can be
+checked by typing*, which reads as a tool that has run out rather than a
+student who is up to date.
+
 ## Still arguable
 
 | # | thing | current | why it is arguable |
@@ -240,3 +262,5 @@ mastery and so reported items being reviewed at exactly 0.75 and exactly
 | 6 | goals | the rung's criteria *are* the goals | deliberately no second scoring system; if a period wants a target it should be drawn from the gap to the criteria, not invented |
 | 7 | advancement | automatic, and immediate | WaniKani levels you up; a tutor that waited to be asked would be hiding the thing the student is working for. But it means a rung can be passed mid-session, which nobody has watched a real student react to yet |
 | 8 | excusing a criterion with no items | excused | right while a graph is being built; once `--audit` says a rung is complete, an empty criterion is a *bug* and excusing it hides one |
+| 9 | excusing a criterion no channel can ask | excused, reported as `audio` | the right answer on a laptop with no voice, and the wrong one on a laptop that *has* a voice and a missing cache: the first is the tool's limit, the second is a build step nobody ran, and the row says `audio` for both |
+| 10 | `next_review_in` | reported in milliseconds | a client that wants "come back Tuesday" has to do the arithmetic, and it is the only field in `status` that is not already in the student's own units |

@@ -402,6 +402,48 @@ endfor;
 check_true('a measured criterion is still there', mrow and true);
 check('measured over reviews, which need a floor', mrow('need'), 69);
 
+;;; And when the next review comes round, so a client with nothing to
+;;; ask can say "nothing today, two more tomorrow".
+check_true('the next review is dated',
+           pst('next_review_in') == json_null
+           or isinteger(pst('next_review_in')));
+
+;;; THE KEY THAT WAS OFFERED, not one recomputed afterwards.
+;;;
+;;; A `pick` turns its options over on every call so that a student
+;;; cannot learn the position, and a written confusion also chooses
+;;; which of its two sides to ask -- so a question is not a pure
+;;; function of its item, and lp_m_answer was rebuilding it to mark the
+;;; answer.  The key it built was not always the key the student had
+;;; been shown.
+;;;
+;;; It survived in the learning phase because lp_plan and lp_choose ask
+;;; lp_question too, on their way to choosing, so the turnovers between
+;;; asking and grading came out even.  Injecting a review made one more
+;;; call and reversed the parity: every other English answer was marked
+;;; wrong, including the ones the oracle had just been told were right.
+;;; One extra call is all it takes, so that is what this does.
+result('langpop/register', jsonrpc_obj([% 'student_id', 'picker',
+                                          'language', 'en' %])).erase;
+vars psid = result('langpop/session.open',
+                   jsonrpc_obj([% 'student_id', 'picker' %]))('session_id');
+vars pq = result('langpop/next', jsonrpc_obj([% 'session_id', psid %]));
+check('an English question is a choice', pq('shape'), 'pick');
+check('between two options', length(datalist(pq('options'))), 2);
+;;; The key, as the session remembers it -- which is the thing under
+;;; test: the grading has to use this and not build another.
+vars pitem = consword(pq('item') sys_>< ''),
+    pkey = hd(lp_session(consword(psid sys_>< ''))(11)(3)) sys_>< '';
+;;; Somebody else asks the same question in between.  This is exactly
+;;; what the review injection did.
+lp_question(pitem, consword(pq('channel') sys_>< '')) -> (, , , );
+vars pa = result('langpop/answer',
+                 jsonrpc_obj([% 'session_id', psid, 'item', pq('item'),
+                                'answer', pkey %]));
+check('the answer is marked against the question that was asked',
+      pa('correct'), true);
+check('and recorded', pa('recorded'), true);
+
 ;;; A short answer is never treated as a slip, so nothing hints that it
 ;;; was close.
 vars sl3 = result('langpop/answer',

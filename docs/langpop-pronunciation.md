@@ -155,12 +155,50 @@ trusting a score.
 - `graph/resources.pl` — `r_forvo_ja`, `r_minimal_rl`:
   the catalogue already points at where a human can hear the difference
 
-## Two item kinds this needs that the graph does not have
+## Two item kinds this needs that the graph did not have
 
-Raised 2026-10-30, not built. Both are English-for-a-Japanese-reader
-problems, and both are *minimal pair* work rather than vocabulary.
+Raised 2026-10-30. Both are English-for-a-Japanese-reader problems, and
+both are *minimal pair* work rather than vocabulary. The first is now
+built on the reading channel; the second still waits on a microphone.
 
-### 1. English words that sound the same, or nearly
+### 1. English words that sound the same, or nearly -- BUILT 2026-10-31
+
+The reading half of this is built: `mix/4` in `graph/en/items.pl`, item
+kind `confusion`, channels `[read hear]`, twelve of them, and
+`exit(en, preschool, written_confusions, 0.85, 4000)`. The question is
+`pick`: the Japanese sense of one side, the two spellings as options,
+either side asked in turn. It needs no speaker, no microphone and no
+audio cache -- which is why it is what unstuck the English rung, where
+two of three criteria wanted a voice and the level could not be left
+however well its student read.
+
+Two things it is careful about. It is **not** another channel of the
+contrast that causes it: a contrast is a fact about perception, measured
+by playing a sound, and folding them together would let a reading answer
+stand as evidence of hearing. `sound_contrasts` still says `needs_audio`
+on a machine with no voice, honestly, and is excused by name. And the
+cause is recorded (the fourth argument, a contrast id) but is **not** a
+`requires` edge: telling `rice` from `lice` on paper is the easier half
+and is where a learner starts, so gating it behind hearing the contrast
+would put the harder task first and, with no voice installed, behind a
+door that cannot open.
+
+`presents`/`presence` needed a thirteenth contrast, `s_ts`, which is the
+honest reading of it: a word-final /ts/ is not a sound Japanese is short
+of -- ツ is ordinary -- but it is not a sound Japanese allows to *close*
+a word, so the plural, the possessive and the third person all go quiet
+together. `coffee`/`copy` is filed as `katakana_near` rather than
+under a contrast: コーヒー and コピー are two ordinary Japanese words,
+fluently known and plainly different, and the merge is in the katakana
+rather than in the phonology -- a contrast invented for it would be
+making a claim about English it cannot support.
+
+Still missing: the **hearing** half, which is one line of content away
+(`pair/3` is derived from `mix/4`, so every confusion is already
+audible once a voice is installed) and the carrier-sentence version
+below.
+
+#### The note this was built from, kept
 
 *presents* and *presence*; *rice* and *lice*; *sink* and *think*;
 *coffee* and *copy*. The gap is not meaning and not spelling -- the

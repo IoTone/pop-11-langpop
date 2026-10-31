@@ -478,7 +478,53 @@ did what the section above predicted, in order:
    every one is hear-gated and unaskable, which is the pronunciation
    gap, not the student.
 
-8. **Smaller observations, not yet acted on:** a reported-but-never-
+8. **The answer key was recomputed, not remembered.** A `pick` turns
+   its options over on every call so a student cannot learn the
+   position, and `lp_m_answer` rebuilt the question to mark the answer
+   -- so the key it built was not always the key the student had been
+   shown. It survived in the learning phase because `lp_plan` and
+   `lp_choose` ask `lp_question` too, on their way to choosing, so the
+   turnovers between asking and grading came out even; injecting a
+   review made one more call and reversed the parity. Half of every
+   English answer was then marked wrong, including the ones the oracle
+   had just been told were right. The question in flight now lives in
+   the session beside the clock and the channel, for the same reason
+   they do. Pinned in the server suite -- the test makes one extra
+   `lp_question` call between asking and answering, which is all it
+   takes.
+
+9. **A set nothing could ask held a rung shut.** `sound_contrasts` is
+   measured over thirteen contrasts that live on `hear` alone, so on a
+   machine with no voice it was measured, scored 0% over 0 reviews, and
+   could never be met: a tutor reporting its own missing speaker as a
+   student's failure. The `vocabulary(N, hear)` branch had said
+   `audio` for this since the channels were split; the item-set branch
+   had not. Now a measured criterion where not one member is askable on
+   any channel this build can check reports `audio` and is excused by
+   name, and English pre-school finishes.
+
+10. **The English rung had nothing a learner could finish.** Two of its
+   three criteria needed a voice, so the level could not be left
+   however well its student read. The fix was content, and it was the
+   user's own observation: the words that sound the same. A written
+   confusion (`mix/4`) is the reading half of a merge -- show what one
+   of `rice`/`lice` means, offer both spellings -- and needs no
+   speaker, no microphone and no cache. Twelve of them, a thirteenth
+   contrast (`/ts/`, for *presents* against *presence*), and a fourth
+   criterion. `en preschool` now passes and the student advances to
+   a1, where 100 words exist of 500 wanted: the same honest curation
+   wall `ja n5` reports, reached from the other ladder.
+
+11. **The harness had to learn to come back tomorrow.** A run that
+   stops the first time the queue is empty never sees review stage 2 --
+   the gaps widen to 28 days -- so it reported rungs as unfinished when
+   all that was missing was the next day. `ora_wait` waits for
+   `next_review_in`, and only for a gap that is short in real time,
+   which with a real 24-hour day is never. The server reports that
+   number because a client with nothing to ask should say "nothing
+   today, two more tomorrow" rather than sounding like it has run out.
+
+12. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
@@ -487,7 +533,10 @@ did what the section above predicted, in order:
 Soak state: seeds 1-5 (ja) and 1-3 (en) all pass, deterministically.
 ~1300 turns to exhaust ja pre-school's typed pool from empty before
 reviews existed; ~2650 with them, which is the ladder being climbed four
-rungs deep on every item and then burned.
+rungs deep on every item and then burned; ~5700 with advancement. The
+English runs went from ~100 turns to ~1900 once there was something on
+the rung a learner could finish and the harness would come back the
+next day for it.
 
 ---
 

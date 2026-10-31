@@ -230,6 +230,19 @@ define show_status();
         printf(', %p waiting to come round again', [% p(st, 'reviews_due') %]);
     endif;
     printf('\n');
+    ;;; Nothing owed today is not nothing left to do, and the server
+    ;;; says which day the next one falls on so a client can tell a
+    ;;; student to come back rather than sounding like it has run out.
+    ;;;
+    ;;; A real day, in a client, deliberately: --day-ms scales the
+    ;;; server's clock for a test and a client is not told about it, so
+    ;;; against a scaled server this says "1 day" and is wrong by design
+    ;;; rather than by accident.
+    lvars soon = p(st, 'next_review_in');
+    if (p(st, 'reviews_due') or 0) == 0 and isinteger(soon) and soon > 0 then
+        printf('    nothing owed today -- the next review comes round in %p day(s)\n',
+               [% max(1, round(soon / 86400000)) %]);
+    endif;
     ;;; The month as it has actually gone, and a schedule only when the
     ;;; server offers one -- it says nothing when the student is keeping
     ;;; up, and so does this.

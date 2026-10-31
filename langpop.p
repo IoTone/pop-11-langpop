@@ -186,6 +186,10 @@ enddefine;
 define lp_channels(item) -> chs;
     lvars item, k = lp_kind(item);
     if     k == "sound"    then [hear speak]
+    ;;; A written confusion reads first and is heard second, and the
+    ;;; order is the whole point: it is the half of a merge that can be
+    ;;; asked with no voice installed, so `read` is its gate.
+    elseif k == "confusion" then [read hear]
     elseif k == "pattern"  then [produce]
     elseif k == "word"     then [read hear speak]
     elseif k == "grapheme" then [read speak]
@@ -1110,6 +1114,27 @@ enddefine;
 ;;; to see at the top of a session.
 define lp_review_count() -> n;
     lvars n = length(lp_review_due());
+enddefine;
+
+;;; HOW LONG UNTIL THE NEXT ONE IS OWED, in milliseconds, or false when
+;;; nothing is on the ladder at all.  Zero when something is owed now.
+;;;
+;;; A tutor with nothing left to ask today should say when to come back
+;;; rather than "nothing here can be checked by typing", which reads as
+;;; a tool that has run out rather than a student who is up to date.
+define lp_review_soonest() -> ms;
+    lvars ms = false, item, ch, r, now = lp_now_ms();
+    for item in lp_items do
+        for ch in [% lp_primary(item), "hear" %] do
+            lp_review_of(item, ch) -> r;
+            nextunless(r and r(2));
+            nextunless(lp_mastered_on(item, ch));
+            nextunless(lp_drillable_on(item, ch));
+            if r(2) <= now then 0 -> ms; return;
+            elseif not(ms) or r(2) - now < ms then r(2) - now -> ms;
+            endif;
+        endfor;
+    endfor;
 enddefine;
 
 ;;; How many of a set are SETTLED: burned on their gate channel, which
@@ -2404,6 +2429,88 @@ define lp_pair_question(item) -> (shape, prompt, answer, options);
     endif -> (shape, prompt, answer, options);
 enddefine;
 
+;;; ---------------------------------------------- written confusions
+;;; mix(Id, A, B, Why) and sense(Id, Word, En, Ja) from the graph: two
+;;; spellings this learner merges, and what each of them means.  See the
+;;; section in graph/en/items.pl for why this is an item of its own and
+;;; not another channel of the contrast that causes it.
+vars lp_mixes = newproperty([], 16, false, "perm"),
+     lp_senses = newproperty([], 64, false, "perm"),
+     lp_mixes_ready = false;
+
+;;; The sense key is INTERNED, and consing a list here would have been
+;;; the same bug the oracle's burn counter had: a property compares keys
+;;; with ==, and two equal lists are never ==, so every lookup would
+;;; have missed and every confusion would have read as senseless.
+define lp_sense_key(item, word) -> k;
+    lvars item, word, k = consword(item sys_>< '/' sys_>< word);
+enddefine;
+
+define lp_mixes_load();
+    lvars m, sn;
+    returnif(lp_mixes_ready);
+    true -> lp_mixes_ready;
+    clearproperty(lp_mixes); clearproperty(lp_senses);
+    for m in lp_ask("mixes", 0) do
+        {% prolog_full_deref(prolog_arg(2, m)),
+           prolog_full_deref(prolog_arg(3, m)),
+           prolog_deref(prolog_arg(4, m)) %}
+            -> lp_mixes(prolog_deref(prolog_arg(1, m)));
+    endfor;
+    for sn in lp_ask("senses", 0) do
+        {% prolog_full_deref(prolog_arg(3, sn)),
+           prolog_full_deref(prolog_arg(4, sn)) %}
+            -> lp_senses(lp_sense_key(prolog_deref(prolog_arg(1, sn)),
+                                      prolog_full_deref(prolog_arg(2, sn))));
+    endfor;
+enddefine;
+
+define lp_mix_of(item) -> mx;
+    lvars item, mx;
+    lp_mixes_load();
+    lp_mixes(item) -> mx;
+enddefine;
+
+define lp_sense_of(item, word) -> (en, ja);
+    lvars item, word, sn, en, ja;
+    (false, false) -> (en, ja);
+    lp_mixes_load();
+    lp_senses(lp_sense_key(item, word)) -> sn;
+    returnunless(sn);
+    (sn(1), sn(2)) -> (en, ja);
+enddefine;
+
+;;; WHICH SPELLING MEANS THIS.  The reading half of a merge, and the one
+;;; question on the English pre-school rung that needs no audio at all.
+;;;
+;;; Shaped as `pick` and not as `type`, deliberately, and for the
+;;; opposite reason to the Japanese branch below: typing is the stronger
+;;; probe in general, but a learner asked to WRITE the word for 米 is
+;;; being asked to spell from memory, which is a different skill and one
+;;; this item has no claim on.  The confusion is a choice between two
+;;; words that both exist, so the question is that choice.
+;;;
+;;; Both turnovers are here for the reason lp_pair_question argues at
+;;; length.  Which side is asked follows how often the item has been
+;;; asked, and which position the answer sits in follows lp_flip, so
+;;; neither the word nor the key can be learned instead of the contrast.
+define lp_mix_question(item) -> (shape, prompt, answer, options);
+    lvars item, shape, prompt, answer, options, mx, said, other, en, ja;
+    ("none", '', [], []) -> (shape, prompt, answer, options);
+    lp_mix_of(item) -> mx;
+    returnunless(mx);
+    if lp_asked(item) mod 2 == 0 then (mx(1), mx(2)) else (mx(2), mx(1))
+    endif -> (said, other);
+    lp_sense_of(item, said) -> (en, ja);
+    returnunless(ja or en);
+    lp_flip + 1 -> lp_flip;
+    if lp_flip mod 2 == 1 then
+        ("pick", (ja or en) sys_>< '', ['1'], [% said, other %])
+    else
+        ("pick", (ja or en) sys_>< '', ['2'], [% other, said %])
+    endif -> (shape, prompt, answer, options);
+enddefine;
+
 ;;; A LISTENING QUESTION IS THE SAME ANSWER KEY WITH A DIFFERENT
 ;;; STIMULUS.  The reading question shows あ and wants `a`; the listening
 ;;; question plays あ and wants `a`.  Only the prompt changes, so the
@@ -2432,7 +2539,10 @@ define lp_hear_question(item) -> (shape, prompt, answer, options);
     ;;; A sound contrast has no written form of its own -- it is not a
     ;;; word -- so there is no reading question to swap the stimulus of.
     ;;; It is asked through the two words it keeps apart.
-    if lp_kind(item) == "sound" then
+    ;;; A confusion is asked through its pair too -- the same two words,
+    ;;; played instead of shown -- which is what the derived pair/3 in
+    ;;; graph/en/items.pl is for.
+    if lp_kind(item) == "sound" or lp_kind(item) == "confusion" then
         lp_pair_question(item) -> (shape, prompt, answer, options);
         return;
     endif;
@@ -2524,6 +2634,8 @@ define lp_question(item, ch) -> (shape, prompt, answer, options);
                     -> (shape, prompt, answer, options);
             endif;
         endif;
+    elseif k == "confusion" then
+        lp_mix_question(item) -> (shape, prompt, answer, options);
     elseif k == "word" and lp_ilang(item) == "en" then
         lp_gloss_of(item, "en") -> en;
         lp_gloss_of(item, "ja") -> ja;
@@ -3526,6 +3638,28 @@ define lp_status_rows() -> rows;
             endif -> row;
         else
             lp_ask(c, "criterion_items", 1) -> items;
+            ;;; NOT ONE OF THEM CAN BE ASKED HERE.  The same claim the
+            ;;; vocabulary branch above makes with `audio`, reached from
+            ;;; the other side: sound_contrasts is measured over thirteen
+            ;;; contrasts that live on `hear` alone, so on a machine with
+            ;;; no voice it was measured, scored 0% over 0 reviews, and
+            ;;; held the English pre-school rung shut for ever -- which
+            ;;; is a tutor reporting its own missing speaker as a
+            ;;; student's failure.
+            ;;;
+            ;;; `audio` because every case of it in the graph today is a
+            ;;; speaker or a microphone; what it means is that no channel
+            ;;; this build can check is one the set can be asked on.
+            lvars askable = 0, i2;
+            for i2 in items do
+                if lp_askable_here(i2) then askable + 1 -> askable endif;
+            endfor;
+            if items /== [] and askable == 0 then
+                {% "audio", 0, length(items), length(items), "item" %} -> row;
+                rows <> [{% lp_term_str(c), row(1), row(2), row(3), row(4),
+                            row(5), false, false, false %}] -> rows;
+                nextloop;
+            endif;
             ;;; Reviews, this period.  Not everything ever answered: see
             ;;; lp_measure_in for why that number cannot be passed.
             lp_measure_in(items, ms, lp_period_start, "review")
@@ -3720,6 +3854,14 @@ define lp_status();
     lvars owed = lp_review_count();
     if owed > 0 then printf(', %p waiting to come round again', [% owed %]) endif;
     printf('\n');
+    ;;; Nothing owed today is not the same as nothing left to do, and a
+    ;;; student who has just mastered everything in sight should be told
+    ;;; when to come back rather than left to wonder.
+    lvars soon = lp_review_soonest();
+    if owed == 0 and soon and soon > 0 then
+        printf('    nothing owed today -- the next review comes round in %p day(s)\n',
+               [% max(1, round(soon / lp_day_ms)) %]);
+    endif;
     ;;; HOW THE MONTH HAS ACTUALLY GONE, and a schedule only if it has
     ;;; gone badly.  The offer is built out of what this student has
     ;;; already managed -- see lp_schedule_advice -- so it is something
@@ -3825,6 +3967,17 @@ define lp_probeable(item, ch) -> yes;
     lp_drillable_on(item, ch) -> yes;
 enddefine;
 
+;;; CAN THIS BUILD ASK ABOUT IT AT ALL, on any channel it has.  One item
+;;; at a time, which is what a criterion measured over a set needs: a set
+;;; where not one member can be asked is not a student's failure, it is
+;;; the tool's, and lp_status_rows says so rather than printing 0%.
+define lp_askable_here(item) -> yes;
+    lvars item, ch, yes = false;
+    for ch in lp_channels(item) do
+        if lp_probeable(item, ch) then true -> yes; return endif;
+    endfor;
+enddefine;
+
 ;;; How many DIFFERENT questions this item can be asked.  One, for
 ;;; anything with a written form; for a skill whose probe is generated,
 ;;; as many as there is material in the graph.
@@ -3832,6 +3985,12 @@ define lp_probe_breadth(item) -> n;
     lvars item, n = 1;
     if lp_kind(item) == "skill" and lp_probe_of(item) then
         length(lp_probe_material(item)) -> n;
+    elseif lp_kind(item) == "confusion" and lp_mix_of(item) then
+        ;;; Two, and not the one pair: a confusion is asked from either
+        ;;; side -- which word means 米, and which means シラミ -- and
+        ;;; they are two different questions to a learner who has
+        ;;; learned only one of the two words.
+        2 -> n;
     elseif lp_kind(item) == "sound" and lp_pairs_of(item) /== [] then
         ;;; One question per confusion pair, which is why four pairs were
         ;;; written for most contrasts: AUDIT_THIN is three.
@@ -3996,21 +4155,36 @@ define lp_audit_rungs() -> rows;
     endfor;
 enddefine;
 
+;;; A RUNG BLOCKED ONLY BY AUDIO CAN STILL BE LEFT, and saying "not yet"
+;;; of it contradicted the engine, which excuses a criterion nothing here
+;;; can measure and moves the student up.  Two different questions were
+;;; being answered with one word: can this rung be left (yes), and will
+;;; everything on it have been measured when it is (no).  Both are worth
+;;; printing and only the first is a blocker.
 define lp_audit_rungs_show();
-    lvars r, rows = lp_audit_rungs(), bad = 0;
+    lvars r, rows = lp_audit_rungs(), bad = 0, excused = 0;
     printf('\n  %p%p%p%p\n',
            [% lp_pad('lang', 6), lp_pad('level', 11),
               lp_pad('criteria', 10), 'can it be left?' %]);
     for r in rows do
-        unless r(4) == "ok" then bad + 1 -> bad endunless;
+        if     r(4) == "ok" then
+        elseif r(4) == "needs_audio" then excused + 1 -> excused;
+        else bad + 1 -> bad;
+        endif;
         printf('  %p%p%p%p\n',
                [% lp_pad(r(1), 6), lp_pad(r(2), 11), lp_pad(r(3), 10),
                   if r(4) == "ok" then 'yes'
                   elseif r(4) == "no_exit" then 'NO -- it declares no exit criterion'
+                  elseif r(4) == "needs_audio" then
+                      'yes -- with an audio criterion excused, so partly unmeasured'
                   else 'not yet -- ' <> (r(4) sys_>< '') endif %]);
     endfor;
-    printf('\n  %p of %p rungs can be left as the graph stands.\n',
+    printf('\n  %p of %p rungs can be left as the graph stands',
            [% length(rows) - bad, length(rows) %]);
+    if excused > 0 then
+        printf(', %p of them with something nothing here can measure', [% excused %]);
+    endif;
+    printf('.\n');
 enddefine;
 
 define lp_audit_show();

@@ -659,7 +659,7 @@ define lp_audio_level(level, rate) -> (made, cached, skipped);
         ;;; the voice installed and the level rendered.  Collected first
         ;;; and deduplicated, because `berry` separates two contrasts and
         ;;; wants one file.
-        if lp_kind(i) == "sound" then
+        if lp_kind(i) == "sound" or lp_kind(i) == "confusion" then
             for pr in lp_pairs_of(i) do
                 for w in pr do
                     unless member(w, words) then words <> [^w] -> words

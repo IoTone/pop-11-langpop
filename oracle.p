@@ -168,6 +168,25 @@ define ora_truth(item, shape, prompt, options) -> t;
                 endif;
             endfor;
         endif;
+    elseif shape = 'pick' and lp_kind(item) == "confusion" then
+        ;;; A written confusion is asked from either side -- which word
+        ;;; means 米, which means シラミ -- so unlike every other pick
+        ;;; the STIMULUS varies, and asking the local lp_question would
+        ;;; have recomputed a different side half the time and called
+        ;;; the server wrong for answering its own question.  Read from
+        ;;; the prompt instead, exactly as a counting probe is: whichever
+        ;;; offered word carries that sense is the answer.
+        ;;;
+        ;;; Which is the test this shape needed: a question nothing
+        ;;; outside the server can mark is a question nothing outside
+        ;;; the server can check.
+        for i from 1 to length(options) do
+            lp_sense_of(item, options(i) sys_>< '') -> (a, m);
+            if (m or a)
+            and lp_norm((m or a) sys_>< '') = lp_norm(prompt sys_>< '') then
+                [% i sys_>< '' %] -> t; quitloop;
+            endif;
+        endfor;
     elseif shape = 'pick' then
         ;;; The local coin flip need not match the server's, so the match
         ;;; is on the TEXT of the right option, mapped to the server's
@@ -382,6 +401,46 @@ define ora_study() -> did;
     c + (1.0 - c) * ora_learn -> ora_comp(itemw);
 enddefine;
 
+;;; ------------------------------------------------- come back tomorrow
+;;; A student with nothing left to answer and no homework outstanding
+;;; does not stop learning -- they close the laptop and come back when
+;;; the next review is owed.  The harness does the same, and without it
+;;; the review ladder past its first rung is unreachable in a run: the
+;;; gaps widen to 28 days, so a harness that stops the first time the
+;;; queue is empty never sees stage 2, never burns an item, and reports
+;;; a rung as unfinished when all that was missing was the next day.
+;;;
+;;; Capped twice, and the first cap is the one that matters: it waits
+;;; only for a gap that is SHORT IN REAL TIME, so with a real 24-hour
+;;; day it never waits at all and cannot make a run hang -- only
+;;; --day-ms brings it into play.  6000ms is that cap, and the number
+;;; has a reason: the last gap is 28 days and the scratch server runs at
+;;; 200ms a day, so a harness refusing to wait longer than four seconds
+;;; would stop one rung short of every burn.
+lconstant ORA_WAIT_MS = 6000, ORA_WAITS = 400;
+vars ora_waited = 0;
+
+define ora_wait() -> did;
+    lvars did = false, res, ms;
+    returnif(ora_waited >= ORA_WAITS);
+    ora_rpc('langpop/status', jsonrpc_obj([% 'session_id', ora_sid %])) -> res;
+    returnunless(res);
+    ora_p(res, 'next_review_in') -> ms;
+    returnunless(isinteger(ms));
+    ;;; ZERO MEANS ONE IS OWED RIGHT NOW, which happens when a review
+    ;;; came due in the moment between `next` saying there was nothing
+    ;;; and this asking: go round again rather than stopping, and let
+    ;;; the same counter bound it in case the server will not serve what
+    ;;; it says it owes.
+    if ms == 0 then
+        ora_waited + 1 -> ora_waited; true -> did; return;
+    endif;
+    returnunless(ms > 0 and ms <= ORA_WAIT_MS);
+    ora_waited + 1 -> ora_waited;
+    syssleep(1 + (ms div 10));          ;;; centiseconds
+    true -> did;
+enddefine;
+
 ;;; ------------------------------------------------------------- one turn
 ;;; Returns true while there is anything left to answer.
 define ora_turn() -> more;
@@ -396,6 +455,8 @@ define ora_turn() -> more;
         ;;; nothing to type: ask for homework instead, and only when the
         ;;; tutor has none either is the rung exhausted for this harness
         ora_study() -> more;
+        ;;; And if there is no homework either, come back tomorrow.
+        unless more then ora_wait() -> more endunless;
         if not(more) and ora_verbose then
             printf(';;; next: %p\n', [% ora_p(q, 'note') %]);
         endif;
@@ -819,6 +880,8 @@ define ora_report();
               ora_stats("report") %]);
     printf('%p learning questions about mastered items (%p of them requeued)\n',
            [% ora_stats("learn_known"), ora_stats("learn_known_requeued") %]);
+    printf('%p day(s) waited for the next review to come round\n',
+           [% ora_waited %]);
     printf('%p of them reviews; %p items burned\n',
            [% ora_stats("review"),
               length([% appproperty(ora_passed,

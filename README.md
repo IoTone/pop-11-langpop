@@ -56,8 +56,20 @@ current period, because measured over a lifetime they read what it cost
 somebody to learn rather than what they know. A rung is finished when
 every criterion for it is met -- or excused, by name, when nothing on
 this machine can measure it -- and the student moves up there and then.
-The numbers that settled all this are in
-`docs/langpop-reviews-and-periods.md`.
+With nothing owed today it says which day the next review falls on,
+rather than that it has run out. The numbers that settled all this are
+in `docs/langpop-reviews-and-periods.md`.
+
+The English rung needed one more thing before any of that could be
+finished: **the words that sound the same**. Two of its three criteria
+wanted a voice, so a student with no microphone could not leave
+pre-school however well they read. A written confusion -- `mix/4`:
+`rice` against `lice`, `presents` against `presence`, `coffee` against
+`copy` -- is the reading half of a merge, asked by showing what one of
+them means and offering both spellings. It needs no speaker and no
+cache, and it is deliberately not another channel of the sound contrast
+that causes it: a contrast is measured by playing a sound, and a reading
+answer is no evidence of hearing. See `docs/langpop-pronunciation.md`.
 
 This repository was carved out of
 [IoTone/poplog](https://github.com/IoTone/poplog) with its history
@@ -153,15 +165,18 @@ teach a syllabary, a sound contrast and a sentence pattern.
 | `graph/ja/kana.pl` | both syllabaries, voiced included, confusable pairs, mora skills | 138 kana |
 | `graph/ja/items.pl` | 50 starter words, kana-only, 3 patterns | 53 |
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
-| `graph/en/items.pl` | 12 sound contrasts, 12 loanword traps | 27 |
+| `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
 | `graph/en/a1.pl` | 100 A1 words with Japanese glosses, hand-written | 100 |
 | `graph/ja/picks/n5.pl` | which words are N5, by upstream key — the curation | 148 picks |
 | `graph/*/generated/*.pl` | imported content, a build product, never committed | 251 + 100 |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
 
-270 committed items, 521 once the content is built; 12 ladder levels,
-17 exit criteria, no integrity violations either way.
+340 committed items, 613 once the content is built; 12 ladder levels,
+40 exit criteria, no integrity violations either way. (Both counts are
+what `./langpop --check` prints with and without
+`graph/*/generated/`; they had drifted, and are measured here rather
+than remembered.)
 
 Four things make it a graph rather than a table with arrows drawn on it:
 

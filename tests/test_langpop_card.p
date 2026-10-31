@@ -63,6 +63,15 @@ check('a sound contrast shows the IPA', term sys_>< '', '/r/ - /l/');
 check('with the Japanese explanation above',
       reading sys_>< '', 'ラ行では区別されない');
 
+;;; And a WRITTEN confusion shows both words, because the half left out
+;;; is the one the learner reaches for by mistake.  It drew `rice` alone
+;;; over the /r/-/l/ gloss, which is a contrast card with no contrast on
+;;; it.
+lp_card_term("m_rice") -> (term, reading);
+check('a confusion shows both spellings', term sys_>< '', 'rice / lice');
+check('with the merge underneath',
+      reading sys_>< '', 'ラ行では区別されない');
+
 ;;; A skill has no written form at all, and nothing is better than a
 ;;; blank card.
 lp_card_term("mora_count") -> (term, reading);
