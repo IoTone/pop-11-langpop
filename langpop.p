@@ -26,25 +26,24 @@ uses define_prolog;
 uses utf8;
 
 ;;; ------------------------------------------------------------- the heap
-;;; Poplog's default popmemlim is 1,500,000 words, about 12MB, and that is
-;;; not enough for this program for two reasons that compound.
-;;;
-;;; The graph is resident: 1,635 items once the imported content is built,
-;;; with their forms, glosses and edges.  And lp_save writes the student's
-;;; whole profile on EVERY answer -- json_generate pushes the characters
-;;; and consstring takes them off the stack -- so the cost of a save grows
-;;; with the journal, which grows with every answer and is never trimmed,
-;;; because the reading resets and the record does not.
-;;;
-;;; At about 7,600 journal entries the profile is 450KB and a save fails
-;;; with MEMORY LIMIT (popmemlim) EXCEEDED, which the server reports to
-;;; the client as an internal error.  An oracle run long enough to climb
-;;; N5 now reaches that, where before the word list was large enough to
-;;; make the climb long, it did not.
+;;; Poplog's default popmemlim is 1,500,000 words, about 12MB, which is
+;;; not enough for this program.  The graph is resident -- 1,635 items
+;;; once the imported content is built, with their forms, glosses and
+;;; edges -- and loading it puts the heap above three and a half million
+;;; words before a student has answered anything.
 ;;;
 ;;; 24,000,000 words is about 190MB: generous for a tutor, and still a
-;;; guard rather than no limit at all.  It does not make the save cheap
-;;; -- see DESIGN_NOTES.md, which records the growth itself as open.
+;;; guard rather than no limit at all.
+;;;
+;;; It used to be covering a second fault as well.  lp_save wrote the
+;;; whole profile on every answer, and the profile held every answer, so
+;;; the saving a session did was the square of its length; at about 7,600
+;;; entries a save exhausted even this limit.  The journal is a file of
+;;; its own now (see lp_journal_flush), and a save is flat: measured over
+;;; 25,000 answers, the profile stays at 127KB and the save at 4.8ms,
+;;; while the journal costs one appended line.  What still grows is
+;;; lp_journal in memory, which is one vector per answer and is what this
+;;; limit is now the headroom for.
 24000000 -> popmemlim;
 
 ;;; ------------------------------------------------------------- locating
@@ -1550,11 +1549,126 @@ define lp_roll_add(user, display);
     lp_write_file(lp_home() <> 'roll.json', json_generate(r));
 enddefine;
 
+;;; --------------------------------------------- the journal of its own
+;;; WHY THE ANSWERS ARE NOT IN THE PROFILE.
+;;;
+;;; lp_save writes the whole profile, and the profile used to hold every
+;;; answer the student had ever given.  A save happens on every answer,
+;;; so the cost of saving grew with the number of answers already saved:
+;;; the writing a session did was the square of its length.  At about
+;;; 7,600 entries the generated JSON is 450KB and the save exhausted the
+;;; heap, which the server reported as an internal error in the middle
+;;; of a lesson.
+;;;
+;;; The answers are a LOG -- entries are appended and never revised --
+;;; so they belong in a file that is appended to.  What stays in the
+;;; profile is the student's current state: the beliefs, the ladder, the
+;;; period, the settings.  Every one of those is bounded by the size of
+;;; the graph rather than by how long the student has been learning, so
+;;; the profile write is a fixed cost and the journal write is one line.
+;;;
+;;; One line per answer, tab separated, in the order the answers were
+;;; given.  Not JSON, because a log is read a line at a time and every
+;;; field here is an identifier or a number, so there is nothing to
+;;; quote.  A line with more fields than this version knows is read for
+;;; the ones it knows, which is how the phase was added to an entry
+;;; that had six.
+define lp_journal_path(user) -> p;
+    lvars user, p = lp_home() <> (user sys_>< '') <> '.journal';
+enddefine;
+
+;;; The journal PAIR that was last written, not a count of entries.
+;;; lp_journal is newest first and every answer conses onto the front,
+;;; so the entries added since the last write are exactly those in front
+;;; of this pair, and finding it is how the flush below knows what is
+;;; new.  A count could not tell an answer from an answer that was
+;;; undone and replaced; the pair can, because ":oops" restores the
+;;; older list and the pair that was marked is then not in it at all.
+vars lp_journal_mark = [];
+
+define lp_journal_line(e) -> s;
+    lvars e, s;
+    (e(1) sys_>< '') <> '\t' <> (e(2) sys_>< '') <> '\t' <> (e(3) sys_>< '')
+        <> '\t' <> (e(4) sys_>< '') <> '\t' <> (e(5) sys_>< '')
+        <> '\t' <> (e(6) sys_>< '') <> '\t' <> (lp_jphase(e) sys_>< '')
+        <> '\n' -> s;
+enddefine;
+
+;;; One line back into an entry, or false if the line is not one.  A
+;;; short line is not an error to report: a log can end mid-write if the
+;;; process died there, and the right thing is to keep the answers that
+;;; are whole.
+define lp_journal_entry(line) -> e;
+    lvars line, i, start = 1, len = length(line), f;
+    false -> e;
+    [% for i from 1 to len + 1 do
+           if i > len or subscrs(i, line) == `\t` then
+               substring(start, i - start, line); i + 1 -> start;
+           endif;
+       endfor %] -> f;
+    returnunless(length(f) >= 6);
+    {% consword(f(1)), consword(f(2)), strnumber(f(3)) or 0,
+       consword(f(4)), strnumber(f(5)) or 0, strnumber(f(6)) or 0,
+       if length(f) >= 7 and f(7) /= '' then consword(f(7))
+       else "learn" endif %} -> e;
+enddefine;
+
+;;; The file into a newest-first list, because that is the order
+;;; lp_journal is in.  The file itself is oldest first, which is what
+;;; appending to it gives.
+define lp_journal_read(user) -> j;
+    lvars user, s = lp_read_file(lp_journal_path(user)), j = [],
+          i, start = 1, len, e;
+    returnunless(s);
+    length(s) -> len;
+    for i from 1 to len + 1 do
+        if i > len or subscrs(i, s) == `\n` then
+            lp_journal_entry(substring(start, i - start, s)) -> e;
+            if e then conspair(e, j) -> j endif;
+            i + 1 -> start;
+        endif;
+    endfor;
+enddefine;
+
+;;; Write what is not written yet.  Normally that is an append of the one
+;;; entry the last answer added.  The file is written whole instead when
+;;; the marked pair is not in the list -- after an ":oops", which makes
+;;; the file one answer longer than the truth -- and when there is no
+;;; mark, which is a new student, a profile that held its own answers, or
+;;; a test that emptied the journal by hand.
+define lp_journal_flush();
+    lvars path, new = [], l = lp_journal, dev, e, c;
+    returnunless(lp_user);
+    lp_journal_path(lp_user) -> path;
+    until l == [] or l == lp_journal_mark do
+        conspair(hd(l), new) -> new;            ;;; new is oldest first
+        tl(l) -> l;
+    enduntil;
+    lp_ensure_home();
+    if l == lp_journal_mark and lp_journal_mark /== []
+    and sys_file_exists(path) then
+        returnif(new == []);
+        discappend(path) -> dev;
+    else
+        [] -> new;
+        for e in lp_journal do conspair(e, new) -> new endfor;
+        discout(path) -> dev;
+    endif;
+    for e in new do
+        for c in_string lp_journal_line(e) do dev(c) endfor;
+    endfor;
+    dev(termin);
+    lp_journal -> lp_journal_mark;
+enddefine;
+
 define lp_save();
     lvars o = newmapping([], 16, false, true),
           b = newmapping([], 256, false, true),
-          j = [], e, a;
+          e, a;
     returnunless(lp_user);
+    ;;; The answers first, and in their own file: if anything below
+    ;;; fails, the work of the session is still on disk.
+    lp_journal_flush();
     lp_user sys_>< '' -> o('user');
     lp_display -> o('display');
     lp_lang sys_>< '' -> o('lang');
@@ -1562,12 +1676,6 @@ define lp_save();
     appproperty(lp_beliefs,
         procedure(k, v); v -> b(k sys_>< '') endprocedure);
     b -> o('beliefs');
-    for e in lp_journal do
-        conspair({% e(1) sys_>< '', e(2) sys_>< '', e(3),
-                    e(4) sys_>< '', e(5), e(6), lp_jphase(e) sys_>< '' %},
-                 j) -> j;
-    endfor;
-    consvector(#| for e in j do e endfor |#) -> o('journal');
     ;;; The period is two numbers and the ladder is a map, and both are
     ;;; state the journal cannot reconstruct: where the student's own
     ;;; month started, and when each mastered item is next owed.
@@ -1617,6 +1725,10 @@ define lp_load_profile(user) -> found;
     ;;; sitting in the globals.  lp_beliefs is safe either way because
     ;;; lp_bkey puts the student in the key.
     [] -> lp_journal; [] -> lp_assigns; [] -> lp_corrections;
+    ;;; Cleared with the journal: an unmarked journal is written whole,
+    ;;; which is the safe thing to do when it is not known what the file
+    ;;; holds.
+    [] -> lp_journal_mark;
     ;;; Cleared with the journal and for the same reason: the server is
     ;;; long-lived, and another student's reviews must not be owed by
     ;;; whoever binds next.
@@ -1634,6 +1746,12 @@ define lp_load_profile(user) -> found;
         appproperty(o('beliefs'),
             procedure(k, v); v -> lp_beliefs(consword(k)) endprocedure);
     endif;
+    ;;; The answers come out of the journal file, unless this profile is
+    ;;; one that still holds them itself.  A profile with a journal field
+    ;;; was written by a version that kept the answers there, so it is
+    ;;; the later record of the two and any file beside it is stale by
+    ;;; construction.  The mark is left empty either way, so the first
+    ;;; save writes the file whole and the field is gone from then on.
     if o('journal') then
         for i from 1 to length(o('journal')) do
             o('journal')(i) -> e;
@@ -1647,6 +1765,9 @@ define lp_load_profile(user) -> found;
                         if length(e) >= 7 then consword(e(7) sys_>< '')
                         else "learn" endif %}, lp_journal) -> lp_journal;
         endfor;
+    else
+        lp_journal_read(user) -> lp_journal;
+        lp_journal -> lp_journal_mark;
     endif;
     ;;; Assignments outlive the session on purpose: the whole point of
     ;;; assigning work is that it is done BETWEEN sessions and reported

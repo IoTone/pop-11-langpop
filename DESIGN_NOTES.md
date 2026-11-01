@@ -18,6 +18,7 @@ it. That is the general lesson and the reason two of the tools exist.
 - [Sound](#sound)
 - [Printing](#printing)
 - [Content tranches](#content-tranches)
+- [The journal is a log, so it is a file](#the-journal-is-a-log-so-it-is-a-file)
 - [Poplog behaviours worth knowing](#poplog-behaviours-worth-knowing)
 - [Three things found in the Poplog tree](#three-things-found-in-the-poplog-tree)
 - [What the protocol front end cost](#what-the-protocol-front-end-cost)
@@ -60,6 +61,36 @@ left every rung reading as unfinished; it now waits — "come back tomorrow"
 right now* (an interval that came due between asking for a question and
 asking for the status) as nothing owed, and ended the run anyway. Both arms
 are needed.
+
+**A third: the starvation check disagreed with itself.** The oracle flags
+any ready item it was never offered, which is how a scheduler hole would
+show. Seed 42 began failing that check at 9,000 answers — and then passing
+it, on the same tree, with the same seed and the same content. Three runs
+reached 373, 392 and 412 of the 800 N5 words; the two that got furthest
+each left exactly one item unoffered, `w_sengetsu` once and `w_kyuu` once.
+Both are words waiting on a kanji, and both were unlocked in the last few
+hundred turns of the run that flagged them.
+
+So the check was measuring the budget, not the scheduler. How far a run
+gets is a function of wall-clock speed, because the scratch server runs a
+200ms day and the review ladder is measured in days — a quieter machine
+climbs further in the same number of answers, unlocks more items, and is
+more likely to end holding one it had no turns left to ask. **A gate that
+is a function of machine load is not a gate**, and this one was reporting
+progress as a defect: the run that got furthest was the run that failed.
+
+An item is starved when the scheduler had the chance to offer it and did
+not, so the chance is now what is measured. The ready pool is sampled once,
+halfway through the budget, and only an item that was ready *then* and was
+never offered after counts. A run that stops before halfway leaves the
+sample empty and claims nothing, which is right — it stopped because there
+was nothing left to ask, which is the opposite of starvation.
+
+The same seed given 14,000 answers rather than 9,000 **finishes the rung**:
+804 of 800 words read, the run ending at 12,518 turns because it had run
+out of things to ask. That is worth recording for its own sake. It is the
+first time a simulated student has reached the N5 reading criterion, rather
+than the graph merely holding enough words for one to be able to.
 
 ---
 
@@ -1053,22 +1084,22 @@ Poplog's default `popmemlim` is 1,500,000 words — about 12MB — which is
 simply too small for this program, so it is raised to 24,000,000, about
 190MB. Generous for a tutor, and still a guard rather than no limit.
 
-**That is the symptom fixed and not the design.** Writing the whole
+**That was the symptom fixed and not the design.** Writing the whole
 profile after every answer is O(n²) in journal length over a session, and
 nothing bounds the journal. It had never mattered because no rung held
 enough content for a run to get that long: the N5 word list is what made
-the climb long enough to reach it. The options, none of them taken here —
+the climb long enough to reach it. Three options —
 
 - append journal entries to a file of their own instead of rewriting the
-  profile, which keeps every entry and makes a save O(1);
+  profile, which keeps every entry and makes a save flat;
 - save every N answers rather than every one, which risks losing work on
   a crash and is the wrong trade for a tutor;
 - trim the journal, which loses the record that the review ladder, the
   day's sheet and the audit all read.
 
-The first is the right one. It is a change to how a profile is stored,
-which is a migration, so it wants its own piece of work rather than being
-folded into a vocabulary tranche.
+The first is the right one, and it is
+[a section of its own](#the-journal-is-a-log-so-it-is-a-file) below: it is
+a change to how a student is stored, not anything the N5 words did.
 
 ### The Japanese frequency list cannot attest a word, and it cannot measure coverage
 
@@ -1120,6 +1151,90 @@ word the graph has taught since the first commit. 32 of the 50 pre-school
 words have a kanji form the corpus uses, and together they are 5.72% of the
 corpus — more than everything the graph credited in Japanese at the time. No
 new identity, no gloss, no level decision, no key. A spelling.
+
+---
+
+## The journal is a log, so it is a file
+
+What was in the profile was not all of a kind. The beliefs, the review
+ladder, the period and the settings are the student's **state**: current
+values, revised in place, and all of them bounded by the size of the graph
+— there cannot be more beliefs than there are items and channels. The
+journal is a **log**: entries are appended in order and never revised, and
+it is bounded by nothing at all.
+
+Rewriting a log to add a line to it is the mistake, so the journal now has
+a file of its own, `~/.langpop/<student>.journal`, one line per answer,
+tab separated, oldest first:
+
+```
+hi_a    read    1    right    1240    1762000123456    learn
+w_mizu  read    1    near     3010    1762000131002    review
+```
+
+Not JSON, because a log is read a line at a time and every field is an
+identifier or a number, so there is nothing to quote. A line with more
+fields than the reader knows is read for the fields it does know, which is
+how the phase was added to an entry that had six. A line with fewer than
+six is dropped rather than reported: a log can end in the middle of a
+line, because the process writing it can stop in the middle of a line, and
+the right thing is to keep the answers that are whole.
+
+**What tells an append from a rewrite.** A flush has to know which entries
+are new. A count of what is on disk would be the obvious way and it is
+wrong, because `:oops` makes the file one answer longer than the truth.
+What is held instead is the journal **pair** that was last written.
+`lp_journal` is newest first and every answer conses onto the front, so
+the entries added since the last write are exactly those in front of that
+pair, and the shared tail means finding it costs one comparison per new
+entry. After an undo the marked pair is not in the list at all — the undo
+restored the older list, which does not contain it — the walk runs off the
+end, and the file is written whole. The pair is doing the work a version
+number would do, for free, because a list that shares structure already
+records its own history.
+
+**Two students at once.** The server switches the engine's globals per
+request, so the mark could have been the wrong thing to keep in a global
+of its own. It is not, because `lp_load_profile` builds the journal list
+afresh from the file and marks it: whichever student binds next, the mark
+names exactly what their file already holds, and their next answer is one
+appended line. A switch costs the read it always cost — the profile used
+to carry the journal, so the same bytes came off the disk either way.
+
+**Migrating.** A profile written before this holds its answers in a
+`journal` field. That profile was written by the version that kept them
+there, so it is the later record of the two and a journal file beside it
+is stale by construction: the field wins, the mark is left empty, and the
+first save writes the file whole and drops the field. Nothing has to be
+converted by hand and nothing is lost if a student is opened by the old
+version in between.
+
+**What it measured.** Over 25,000 answers, each one recorded and saved:
+
+| answers | record | save | profile | journal file | heap |
+|---|---|---|---|---|---|
+| 5,000 | 7 µs | 2,524 µs | 126,965 B | 257 KB | 978K words |
+| 10,000 | 8 µs | 4,775 µs | 126,965 B | 514 KB | 1,038K |
+| 15,000 | 8 µs | 4,830 µs | 126,965 B | 771 KB | 1,149K |
+| 20,000 | 7 µs | 4,708 µs | 126,965 B | 1,028 KB | 1,175K |
+| 25,000 | 8 µs | 4,854 µs | 126,474 B | 1,286 KB | 1,286K |
+
+The profile is the same size byte for byte from 5,000 answers on, because
+by then every item in the graph has a belief and there is nothing left to
+add. The rise to 4.8ms and the flat line after it are that filling up and
+then being full: the cost is bounded by the graph, which is what the
+change was for. For comparison, the journal that was taken out of the
+profile cost **10,551 µs and 560,658 bytes to generate at 9,000 entries**,
+and both of those numbers were still climbing.
+
+**What still grows.** `lp_journal` is resident, one seven-element vector
+per answer, and the heap column above is it — 300,000 words over 25,000
+answers. That is now what `popmemlim` is headroom for rather than the
+save. It is a long way from mattering: a student answering two hundred
+questions a week reaches 25,000 in two and a half years, and a session
+only ever loads one student. Reading the journal lazily, or holding only
+the current period and the scheduled items, is the next thing if it ever
+does.
 
 ---
 

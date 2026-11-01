@@ -131,8 +131,14 @@ belief that the student is ready for, breaking ties by whichever has been
 asked about least. `:why` shows the derivation — what the item requires,
 where the fact came from, and where the student stands on it.
 
-Student records live in `~/.langpop/`, one JSON file per student. There is
-no password; this is a local tool.
+Student records live in `~/.langpop/`, two files per student. The JSON file
+holds what they are believed to know — the beliefs, the review ladder, the
+period, the settings they chose. The `.journal` file beside it holds every
+answer they have ever given, one tab-separated line per answer, oldest
+first: item, channel, evidence tier, outcome, how long it took, when, and
+whether it was learning or review. It is plain text on purpose, because it
+is the audit, and `grep`, `cut` and `sort` are the right tools for an
+audit. There is no password; this is a local tool.
 
 ---
 

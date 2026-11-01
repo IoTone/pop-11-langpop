@@ -29,7 +29,8 @@
      - save and reload is a fixed point: every so often the run forces
        the server to rebind the student from disk, twice, and the second
        reload must change nothing the first one left;
-     - no starvation: the run reports any ready item never offered.
+     - no starvation: the run reports any item that was ready halfway
+       through and was never offered after.
 
    A failing run prints its seed, and the seed is the bug report.
 */
@@ -802,6 +803,49 @@ define ora_sample() -> l;
                 endprocedure);
 enddefine;
 
+;;; WHO COUNTS AS STARVED, and why it is not simply "never offered".
+;;;
+;;; An item is starved when the scheduler had the chance to offer it and
+;;; did not.  An item that became ready near the END of the run never had
+;;; that chance: the budget stopped, not the scheduler.  Counting those
+;;; made the check depend on how far a run happened to get, and how far a
+;;; run gets depends on the speed of the machine, because the scratch
+;;; server runs a 200ms day and the review ladder is measured in days.
+;;;
+;;; It showed up as a seed that passed and failed on the same tree.
+;;; Three runs of ja seed 42 at 9,000 answers reached 373, 392 and 412 of
+;;; the 800 words; the two that got furthest each left exactly one item
+;;; unoffered -- w_sengetsu once and w_kyuu once, both of them words
+;;; waiting on a kanji, both unlocked in the last few hundred turns --
+;;; and the one that got least far passed.  The same seed with 14,000
+;;; answers finishes the rung at 804 words and offers everything.
+;;;
+;;; So the ready pool is sampled once, halfway through the budget, and an
+;;; item is only a violation if it was ready THEN and was never offered
+;;; after.  A run that stops before halfway stops because there was
+;;; nothing left to ask, which is the opposite of starvation, and leaves
+;;; the sample empty: nothing is claimed either way.
+vars ora_ready_early = false;
+
+define ora_mark_ready_early();
+    lvars res, i, p = newproperty([], 1024, false, "perm");
+    ora_rpc('langpop/plan',
+            jsonrpc_obj([% 'session_id', ora_sid, 'limit', 100000 %])) -> res;
+    returnunless(res);
+    for i in datalist(ora_p(res, 'items') or {}) do
+        true -> p(consword(ora_p(i, 'item') sys_>< ''));
+    endfor;
+    p -> ora_ready_early;
+enddefine;
+
+;;; Whether the scheduler ever had the chance to offer this item: it was
+;;; ready halfway through, so the rest of the budget was its chance.  No
+;;; sample means no claim -- the run stopped before halfway, which it
+;;; only does when there is nothing left to ask.
+define ora_had_a_chance(item) -> yes;
+    lvars item, yes = (ora_ready_early and ora_ready_early(item) and true);
+enddefine;
+
 define ora_report();
     lvars res, c, items, i, missing = [], ready = 0;
     ora_rpc('langpop/status', jsonrpc_obj([% 'session_id', ora_sid %])) -> res;
@@ -848,6 +892,9 @@ define ora_report();
     ;;; and is taught by assignment, so `next` not offering it is the
     ;;; design, not a scheduler hole.  It is still printed, because a
     ;;; rung whose remaining pool is entirely unaskable is worth seeing.
+    ;;;
+    ;;; And only the items that were ready HALFWAY THROUGH count, for the
+    ;;; reason ora_mark_ready_early gives.
     lvars unaskable = [];
     ora_rpc('langpop/plan',
             jsonrpc_obj([% 'session_id', ora_sid, 'limit', 100000 %])) -> res;
@@ -857,6 +904,7 @@ define ora_report();
         for i in items do
             lvars iw = consword(ora_p(i, 'item') sys_>< '');
             nextunless(ora_offered(iw) == 0);
+            nextunless(ora_had_a_chance(iw));
             if lp_drillable(iw) then conspair(iw, missing) -> missing;
             else conspair(iw, unaskable) -> unaskable;
             endif;
@@ -954,6 +1002,7 @@ define ora_main();
     repeat ora_budget times
         n + 1 -> n;
         quitunless(ora_turn());
+        if n == ora_budget div 2 then ora_mark_ready_early() endif;
         if n mod ora_fp_every == 0 and ora_sample() /== [] then
             ora_fixed_point(ora_sample());
         endif;

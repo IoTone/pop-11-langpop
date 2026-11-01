@@ -2207,6 +2207,110 @@ check('and nothing is scheduled', lp_review_of("hi_a", "read"), false);
 check('with the period not yet started', lp_period_start, false);
 sysdelete(oldp).erase;
 
+;;; --------------------------------------------- the journal of its own
+;;; The answers are a log, so they are appended to a file of their own
+;;; instead of being rewritten inside the profile on every answer.  What
+;;; these check is that the append really is an append: the writing a
+;;; save does must not grow with the number of answers already saved,
+;;; which is the defect that exhausted the heap at 7,600 of them.
+
+;;; Lines in a file, which here is answers in a journal.
+define jlines(s) -> n;
+    lvars s, c, n = 0;
+    returnunless(s)(0);
+    for c in_string s do if c == `\n` then n + 1 -> n endif endfor;
+enddefine;
+
+"logger" -> lp_user;
+'Logger' -> lp_display;
+"ja" -> lp_lang;
+[] -> lp_journal; [] -> lp_journal_mark; [] -> lp_assigns;
+clearproperty(lp_reviews);
+lvars jpath = lp_journal_path("logger");
+if sys_file_exists(jpath) then sysdelete(jpath).erase endif;
+lp_record("hi_a", "read", 1, "right", 100);
+lp_save();
+check_true('the answers are in a file of their own', sys_file_exists(jpath));
+check('one answer, one line', jlines(lp_read_file(jpath)), 1);
+check_false('and not in the profile',
+            json_parse(lp_read_file(lp_profile_path("logger")))('journal'));
+
+;;; Two more answers and two more lines -- and the first line is still
+;;; the bytes it already was, which is what tells an append from a
+;;; rewrite that happens to produce the same thing.
+lvars firstline = lp_read_file(jpath);
+lp_record("hi_i", "read", 1, "near", 200);
+lp_save();
+lp_record("hi_u", "read", 1, "wrong", 300);
+lp_save();
+check('three answers, three lines', jlines(lp_read_file(jpath)), 3);
+check('the first line was never rewritten',
+      issubstring(firstline, lp_read_file(jpath)), 1);
+
+;;; And back again, newest first, because that is the order lp_journal
+;;; is in and the file is the other way round.
+lvars had = lp_journal;
+[] -> lp_journal;
+check_true('the profile reloads', lp_load_profile("logger"));
+check('every answer came back', length(lp_journal), 3);
+check('newest first', lp_journal(1)(1), "hi_u");
+check('oldest last', lp_journal(3)(1), "hi_a");
+check('the outcome survives the round trip', lp_journal(2)(4), "near");
+check('so does the tier', lp_journal(2)(3), 1);
+check('and the latency', lp_journal(2)(5), 200);
+check('and the time it was answered', lp_journal(3)(6), had(3)(6));
+
+;;; An undone answer has to come OFF the file, and an append cannot take
+;;; anything off.  That is why the mark is a pair and not a count: after
+;;; ":oops" the marked pair is not in the list any more, and the file is
+;;; written whole.
+lp_undo_start("hi_o");
+lp_record("hi_o", "read", 1, "wrong", 400);
+lp_undo_stop();
+lp_save();
+check('the undone answer was written first', jlines(lp_read_file(jpath)), 4);
+check('and undoing it is allowed', lp_undo_last(), "hi_o");
+lp_save();
+check('the file is short again', jlines(lp_read_file(jpath)), 3);
+[] -> lp_journal;
+lp_load_profile("logger").erase;
+check('and the answer is gone for good', length(lp_journal), 3);
+check('with the right one at the front', lp_journal(1)(1), "hi_u");
+
+;;; A profile written before the journal was a file of its own holds the
+;;; answers itself.  Those are the record -- the version that wrote them
+;;; there is the one that wrote last -- so a file beside it is ignored,
+;;; and the first save moves them in and drops the field.
+lp_write_file(lp_profile_path("logger"),
+    '{"user":"logger","lang":"ja","level":"preschool","journal":'
+    <> '[["hi_ka","read",1,"right",100,1700000000000,"review"],'
+    <> '["hi_ki","read",1,"wrong",100,1700000000001]]}');
+check_true('an old profile loads', lp_load_profile("logger"));
+check('its answers are the ones in it', length(lp_journal), 2);
+check('the file beside it was ignored', lp_journal(1)(1), "hi_ki");
+lp_save();
+check('and the save moved them into the file',
+      jlines(lp_read_file(jpath)), 2);
+check_false('with nothing left in the profile',
+            json_parse(lp_read_file(lp_profile_path("logger")))('journal'));
+[] -> lp_journal;
+lp_load_profile("logger").erase;
+check('which reads back the same', length(lp_journal), 2);
+check('phase and all', lp_jphase(lp_journal(2)), "review");
+check('and an entry with no phase still reads as learning',
+      lp_jphase(lp_journal(1)), "learn");
+
+;;; A log can end in the middle of a line, because the process writing
+;;; it can stop in the middle of a line.  The answers that are whole are
+;;; kept and the part of one is not.
+lp_write_file(jpath, lp_journal_line(lp_journal(2)) <> 'hi_ku\tread\t1');
+[] -> lp_journal;
+lp_load_profile("logger").erase;
+check('a half-written last line is dropped', length(lp_journal), 1);
+check('and the whole ones are not', lp_journal(1)(1), "hi_ka");
+sysdelete(jpath).erase;
+[] -> lp_journal; [] -> lp_journal_mark;
+
 ;;; ------------------------------------------------------- recognition
 ;;; The teacher is allowed to MISremember.  Offering the nearest name and
 ;;; being corrected is how a person recognises somebody, and the

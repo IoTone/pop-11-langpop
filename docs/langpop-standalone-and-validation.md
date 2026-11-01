@@ -638,20 +638,45 @@ did what the section above predicted, in order:
    every answer and the journal is never trimmed, so at ~7,600 entries
    the profile is 450KB and `consstring` inside `json_generate` runs past
    Poplog's default `popmemlim` of 1.5M words. Raised to 24M words, and
-   seed 1 then passes at 9,000. **The design question is open and
-   recorded in DESIGN_NOTES.md:** a whole-profile write per answer is
-   O(n²) in journal length, and the right fix is to append journal
-   entries to a file of their own, which is a storage migration rather
-   than part of a content tranche. It had never mattered because no rung
+   seed 1 then passed at 9,000. It had never mattered because no rung
    held enough content for a run to get this long.
 
-16. **Smaller observations, not yet acted on:** a reported-but-never-
+   **Since fixed, and no longer the limit's doing.** The journal is a
+   file of its own, appended to one line per answer, and the profile
+   holds only the student's state -- all of which is bounded by the size
+   of the graph. Measured over 25,000 answers the profile stays at 127KB
+   and a save at 4.8ms, where the journal taken out of it cost 10.5ms
+   and 560KB to generate at 9,000 entries and was still climbing. The
+   raised `popmemlim` stays, for the reason that is actually true: the
+   resident graph alone puts the heap above 3.5M words. See
+   DESIGN_NOTES.md, *The journal is a log, so it is a file*.
+
+16. **The starvation check was measuring the budget, not the scheduler.**
+   ja seed 42 at 9,000 answers failed `1 askable ready items were never
+   offered` -- and passed the same check, on the same tree, with the same
+   seed. Three runs reached 373, 392 and 412 of the 800 N5 words; the two
+   that got furthest each left one item unoffered (`w_sengetsu`,
+   `w_kyuu`), both words waiting on a kanji and both unlocked in the last
+   few hundred turns. How far a run gets is a function of wall-clock
+   speed, because the scratch server runs a 200ms day, so the gate was a
+   function of machine load and was reporting progress as a defect.
+   Fixed: the ready pool is sampled halfway through the budget and only
+   an item ready *then* and never offered after counts. The same seed at
+   14,000 answers **finishes the rung** -- 804 of 800 words, ending at
+   12,518 turns with nothing left to ask, which is the first time a
+   simulated student has reached the criterion rather than the graph
+   merely holding enough for one to.
+
+17. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
    move it, exactly as `--audit` says.
 
-Soak state: seeds 1-5 (ja) and 1-3 (en) all pass, deterministically.
+Soak state: seeds 1-5 (ja) and 1-3 (en) all pass. Not *deterministically*
+-- finding 16 is what that word was hiding. The answers a seed gives are
+deterministic; how many of them a run fits into its budget is not, because
+the simulated day is 200ms of real time.
 ~1300 turns to exhaust ja pre-school's typed pool from empty before
 reviews existed; ~2650 with them, which is the ladder being climbed four
 rungs deep on every item and then burned; ~5700 with advancement. The

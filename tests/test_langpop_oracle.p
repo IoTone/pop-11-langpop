@@ -105,4 +105,21 @@ else
     printf(';;; hi_shi has no confusable partner -- confusion not checked\n');
 endif;
 
+;;; ---------------------------------------------------------- starvation
+;;; An item that was never offered is only a scheduler hole if the
+;;; scheduler had the chance to offer it.  The sample taken halfway
+;;; through the run is what decides that, and the gate has to be shut
+;;; when there is no sample: three runs of the same seed disagreed about
+;;; the same graph before it was, because how far a run gets depends on
+;;; the speed of the machine it runs on.
+check_false('with no sample, nothing is claimed starved',
+            ora_had_a_chance("hi_a"));
+lvars early = newproperty([[hi_a ^true]], 8, false, "perm");
+early -> ora_ready_early;
+check_true('an item ready halfway through had its chance',
+           ora_had_a_chance("hi_a"));
+check_false('one that was not ready then did not',
+            ora_had_a_chance("hi_ka"));
+false -> ora_ready_early;
+
 test_summary();
