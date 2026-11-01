@@ -1205,6 +1205,80 @@ The first is the right one, and it is
 [a section of its own](#the-journal-is-a-log-so-it-is-a-file) below: it is
 a change to how a student is stored, not anything the N5 words did.
 
+### A2 English, 531 words to 1081, 2026-11-01
+
+A1 reading was finishable and A2 was short by 469, so the rung got 550
+hand-written rows: work, travel, health, money, school, the law, and the
+verbs and adjectives that describe change rather than things. 185 of the
+550 are verbs. `vocabulary(1000, read)` reads **1081 of 1000, all
+askable, ok**, and the whole graph is 2185 items.
+
+The rows were built as data and validated before a line of Prolog was
+written, which caught three collisions with A1 that would otherwise have
+reached the file: `require` glossed 必要とする, which is A1's `need`;
+`appreciate` glossed 感謝する, which is A1's `thank`; and `practise`,
+which is A1's `practice` in the other spelling. Also thirteen British
+spellings — A1 has color, favorite and theater, and a TOEIC candidate
+meets American English.
+
+**Two words were already taught, and taught better.** The suite failed on
+興奮した: `excited` was written as A2 vocabulary while `graph/en/items.pl`
+already holds it as the katakana trap `t_tension`. Looking for others of
+the same shape found `service`, held as `t_service`, and that one is
+worse than a duplicate. The gloss written for it here was サービス — which
+is the exact misunderstanding the trap exists to correct, since a
+Japanese サービス is something given free. A plain vocabulary row would
+have taught the error the rung below is there to undo. Both rows are
+gone.
+
+**And `service` tripped nothing.** The gloss check caught `excited` only
+because the two Japanese glosses happened to agree; `service` had a
+different gloss and went through clean. Two items of one kind presenting
+one English spelling is the same error one field over, so that is checked
+now — scoped to the same kind, because across kinds it is deliberate:
+`m_rice` drills rice/lice as a written confusion and `e_rice` teaches the
+word, and eight pairs do that on purpose.
+
+Two words have no pronunciation: CMUdict has `headache` but not
+`toothache` or `stomachache`. They stay, because `read` is the criterion
+that matters and works, and the importer now says which items it could
+not find — see below.
+
+**What the tranche says about coverage.** `coverage(reading, 0.95)` went
+from 519 words and short by 81 to 1071 words and short by 78. Five
+hundred and fifty words bought three points, which is the clearest
+evidence yet for what `docs/langpop-function-words.md` argues: what is
+left of reading coverage is not vocabulary. It is the articles, the
+auxiliaries and the prepositions, and no amount of A2 nouns reaches it.
+
+### An unresolved pick is not always a pick
+
+The A2 pronunciation import reported its two misses like this:
+
+```
+UNRESOLVED 101: 111(116) matches no entry
+UNRESOLVED 101: 111(109) matches no entry
+```
+
+Both lines name the same item as far as a reader can tell, and neither
+names it. 101 is `e`, 111 is `o`, 116 is `t`, 109 is `m`: `imp_report`
+was indexing a Pop-11 **word** as if it were a pick record, and a word
+subscripts to character codes. `e_toothache` has `o` at 5 and `t` at 6;
+`e_stomachache` has `o` and `m`.
+
+The two paths hand over different things and only one of them is a pick.
+The jmdict path reports the pick record — id, key kind, key — because a
+curator fixing a key needs to see the key. The cmudict path has no key:
+it enriches items the graph already holds, so all it can say is which
+item upstream does not know, and what it passes is the bare id. It reads
+`UNRESOLVED e_toothache: no entry upstream` now.
+
+Worth noting what kind of bug this is. Nothing was wrong with the import
+— the right 548 entries were written and verified back out of the graph
+— and nothing downstream was affected. What was broken was the one line
+a person has to read in order to act, which is the part of a tool that
+has no test unless someone writes one. There is one now.
+
 ### The Japanese frequency list cannot attest a word, and it cannot measure coverage
 
 The English tranche was *attested* against hermitdave/FrequencyWords —

@@ -49,6 +49,29 @@ for ii in lp_items do
 endfor;
 check('no two English words share a Japanese gloss', clash, []);
 
+;;; AND NOT THE SAME SPELLING EITHER, which is the same error one field
+;;; over and was not checked.  'service' and 'excited' were written into
+;;; graph/en/a2.pl as vocabulary while graph/en/items.pl already held
+;;; both as katakana traps -- two items of one kind presenting one
+;;; English word, which no question could tell apart.  Only `excited`
+;;; tripped the check above, and only because the two Japanese glosses
+;;; happened to agree; `service` went through clean.
+;;;
+;;; SAME KIND, because across kinds it is deliberate: m_rice drills
+;;; rice/lice as a written confusion and e_rice teaches the word, and
+;;; eight pairs do that on purpose.
+lvars enform = newproperty([], 2048, false, "perm"), fclash = [], ff;
+for ii in lp_items do
+    nextunless(lp_ilang(ii) == "en");
+    lp_form_of(ii, "latin") -> ff;
+    nextunless(ff);
+    ;;; sys_>< first: lp_form_of hands back a WORD, and <> on a word is
+    ;;; ILLEGAL ARGUMENTS FOR <>, which is this project's oldest trap.
+    (ff sys_>< '') <> '/' <> (lp_kind(ii) sys_>< '') -> ff;
+    if enform(ff) then fclash <> [^ff] -> fclash else ii -> enform(ff) endif;
+endfor;
+check('no two English items of one kind share a spelling', fclash, []);
+
 check('ja ladder', lp_levels("ja"), [preschool n5 n4 n3 n2 n1]);
 check('en ladder', lp_levels("en"), [preschool a1 a2 b1 b2 c1]);
 

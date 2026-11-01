@@ -35,9 +35,11 @@
 % A1 is TOEIC 120-225 (graph/en/ladder.pl).  It was a first tranche of
 % 100 words; it is 519 now, in two tranches, and exit(en, a1,
 % vocabulary(500, read), ...) is met -- the first English rung to be
-% finishable on its content rather than on an excuse.  The next count up
-% the ladder is exit(en, a2, vocabulary(1000, read), ...), so this file
-% is half of A2 as well and the rows below are not sorted by rung.
+% finishable on its content rather than on an excuse.
+%
+% The count above it, exit(en, a2, vocabulary(1000, read), ...), is
+% CUMULATIVE, so these 519 words are half of that denominator too.  They
+% used to be most of it; graph/en/a2.pl now holds the rest.
 
 item(Id, word, en, a1, own(a1_list)) :- a1(Id, _, _, _).
 form(Id, latin, Word) :- a1(Id, Word, _, _).

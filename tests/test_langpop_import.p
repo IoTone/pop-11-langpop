@@ -350,6 +350,23 @@ check_true('and names the glosses, which is what tells them apart',
 check_true('and the missing one',
            issubstring('UNRESOLVED t_missing', rep) /== false);
 
+;;; AND AN UNRESOLVED PICK IS NOT ALWAYS A PICK.  The cmudict path
+;;; enriches items the graph already holds, so it has no key to report
+;;; and hands over the bare id.  Reported as a pick record, that printed
+;;; p(1), p(5) and p(6) of a WORD -- character codes -- so toothache and
+;;; stomachache, neither of which is in CMUdict though headache is, came
+;;; out as `UNRESOLVED 101: 111(116)`, which names nothing.
+lvars idrep = imp_capture(procedure();
+    dlocal cucharout = imp_dev;
+    imp_report([[e_toothache not_found] [e_stomachache not_found]]);
+endprocedure);
+check_true('an unresolved id reports as the id',
+           issubstring('UNRESOLVED e_toothache', idrep) /== false);
+check_true('and so does the second one, distinguishably',
+           issubstring('UNRESOLVED e_stomachache', idrep) /== false);
+check('and no character code reaches the reader',
+      issubstring('111', idrep), false);
+
 ;;; ------------------------------------------------------------ collisions
 ;;; An id is an identity.  Two items sharing one would merge a student's
 ;;; beliefs about two different words, and nothing downstream could tell.

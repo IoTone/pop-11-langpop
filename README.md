@@ -172,6 +172,7 @@ outside that list is allowed in.
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
 | `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
 | `graph/en/a1.pl` | 519 A1 words with Japanese glosses, hand-written | 519 |
+| `graph/en/a2.pl` | the same for A2, whose count is measured over both | 550 |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
 | `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 876 items (ja); for English, facts only: 555 pronunciations, 519 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
@@ -620,8 +621,14 @@ method is needed.
 
 ## The English content
 
-**519 A1 words** in `graph/en/a1.pl`, with Japanese glosses, written by
-hand. The glosses are hand-written for a reason worth stating, because the
+**519 A1 words** in `graph/en/a1.pl` and **550 A2 words** in
+`graph/en/a2.pl`, with Japanese glosses, written by hand. A1 is concrete —
+family, food, animals, colors, the body, the house — and A2 is what you do
+with other people: work, travel, money, health, school, the law, and the
+verbs and adjectives for change rather than things. The A2 count is
+measured over both files, because a vocabulary criterion counts everything
+at or below its rung, so the thousand words A2 asks for are 519 plus 550
+plus the pre-school dozen. The glosses are hand-written for a reason worth stating, because the
 obvious shortcut does not work: JMdict read backwards — find the entries
 whose English gloss is `water`, take their Japanese headwords — returns
 水分, お水 and ウォーター and never 水. An exact match on a gloss is not a
@@ -892,9 +899,13 @@ separation the confusion items exist to maintain.
 
 The English word list is attested against
 [hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords)
-(OpenSubtitles). **Attested, not selected.** Every word in `a1.pl` appears
-in the frequency list and in CMUdict, which is a mechanical way of catching
-a spelling that is archaic, mistyped or invented.
+(OpenSubtitles). **Attested, not selected.** Every word in `a1.pl` and
+`a2.pl` appears in the frequency list, which is a mechanical way of
+catching a spelling that is archaic, mistyped or invented — the A2 rows
+are 2.96% of that corpus between them. Nearly every one is in CMUdict
+too, and the exceptions are worth knowing about: CMUdict has `headache`
+but not `toothache` or `stomachache`, so those two words are taught and
+read but cannot contribute a pronunciation.
 
 Selection stays a curation question, and the ranks say why: `insect` is
 8,551st in film dialogue, `pencil` 5,821st, `vegetable` 7,532nd, and all

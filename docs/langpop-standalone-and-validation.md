@@ -667,7 +667,22 @@ did what the section above predicted, in order:
    simulated student has reached the criterion rather than the graph
    merely holding enough for one to.
 
-17. **Smaller observations, not yet acted on:** a reported-but-never-
+17. **A2 English, and what it says about coverage.** 550 hand-written
+   rows took `vocabulary(1000, read)` to 1081 of 1000, all askable, ok.
+   Two rows had to be withdrawn: `excited` and `service` are already
+   taught as katakana traps, and the gloss written for `service` was
+   サービス -- the exact misunderstanding `t_service` exists to correct.
+   Only `excited` tripped a check, and only because the two Japanese
+   glosses happened to agree, so "no two English items of one kind share
+   a spelling" is now checked too. **The coverage figure barely moved:**
+   `coverage(reading, 0.95)` went from short by 81 to short by 78. Five
+   hundred and fifty words bought three points, which is the strongest
+   evidence yet that what is left of reading coverage is function words
+   and not vocabulary -- see docs/langpop-function-words.md, still
+   awaiting the owner's marks on articles, dummy `it`, `be` and
+   `do`/`have`.
+
+18. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can

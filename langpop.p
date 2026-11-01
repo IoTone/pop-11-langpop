@@ -498,7 +498,7 @@ lconstant GRAPH_FILES = ['graph/schema.pl' 'graph/resources.pl'
                          'graph/ja/ladder.pl' 'graph/ja/kana.pl'
                          'graph/ja/items.pl'
                          'graph/en/ladder.pl' 'graph/en/items.pl'
-                         'graph/en/a1.pl'];
+                         'graph/en/a1.pl' 'graph/en/a2.pl'];
 
 ;;; The imported levels.  Each of these is a BUILD PRODUCT written by
 ;;; import.p out of upstream reference data; none is committed, and the
@@ -524,7 +524,9 @@ lconstant GRAPH_GENERATED = ['graph/ja/generated/n5-kanji.pl'
                              'graph/ja/generated/n5-words.pl'
                              'graph/en/generated/a1-sounds.pl'
                              'graph/en/generated/preschool-sounds.pl'
-                             'graph/en/generated/a1-frequency.pl'];
+                             'graph/en/generated/a1-frequency.pl'
+                             'graph/en/generated/a2-sounds.pl'
+                             'graph/en/generated/a2-frequency.pl'];
 
 define lp_generated_files() -> l; lvars l = GRAPH_GENERATED; enddefine;
 

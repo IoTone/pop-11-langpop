@@ -1116,7 +1116,23 @@ define imp_report(unresolved);
     for u in unresolved do
         lvars p = hd(u), why = hd(tl(u));
         n fi_+ 1 -> n;
-        if why == "not_found" then
+        if not(isvector(p)) then
+            ;;; AN UNRESOLVED PICK IS NOT ALWAYS A PICK.  The jmdict path
+            ;;; reports the pick record -- id, key kind, key -- because a
+            ;;; curator fixing a key needs to see the key.  The cmudict
+            ;;; path has no key: it enriches items the graph already
+            ;;; holds, so all it can say is which item upstream does not
+            ;;; know, and what it hands over is the bare id.
+            ;;;
+            ;;; Indexing that as a pick record printed p(1), p(5) and
+            ;;; p(6) OF A WORD, and a Pop-11 word subscripts to character
+            ;;; codes, so `toothache` and `stomachache` -- neither of
+            ;;; which is in CMUdict, though `headache` is -- came out as
+            ;;; `UNRESOLVED 101: 111(116)` and `UNRESOLVED 101:
+            ;;; 111(109)`.  Both lines name the same item as far as a
+            ;;; reader can tell, and neither names it.
+            printf('UNRESOLVED %p: no entry upstream\n', [% p %]);
+        elseif why == "not_found" then
             printf('UNRESOLVED %p: %p(%p) matches no entry\n',
                    [% p(1), p(5), p(6) %]);
         else
