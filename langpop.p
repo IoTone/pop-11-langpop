@@ -528,6 +528,27 @@ lconstant GRAPH_GENERATED = ['graph/ja/generated/n5-kanji.pl'
 
 define lp_generated_files() -> l; lvars l = GRAPH_GENERATED; enddefine;
 
+;;; WITHOUT THE IMPORTED CONTENT, and without moving a single file.
+;;;
+;;; The suites and --check are both required to pass on a tree where
+;;; nothing has been imported, because that is what a fresh clone is, and
+;;; it is the case that catches an assumption about content that happens
+;;; to be built.  The way to run it used to be to move
+;;; graph/*/generated/*.pl aside and back by hand, and that is a shell
+;;; dance with a hole in it: a restore that puts the English files in the
+;;; Japanese directory leaves a tree that still loads, still passes
+;;; --check with the same item count, and quietly drops 28 checks,
+;;; because a generated file that is not where the manifest says is
+;;; indistinguishable from one that was never built.  It happened here,
+;;; and the `ls | wc -l` that was meant to confirm the restore is what
+;;; hid it -- five files in one directory counts as five.
+;;;
+;;; So it is a switch now, and the files stay where they are.
+define lp_no_content() -> yes;
+    lvars v = systranslate('LANGPOP_NO_CONTENT'), yes;
+    (v and v /= '' and v /= '0' and true) -> yes;
+enddefine;
+
 ;;; Load the graph, optionally holding one generated file back.  The
 ;;; importer is why that argument exists: it reads the graph to check that
 ;;; an id is not already taken, and its own previous output would
@@ -540,6 +561,7 @@ define lp_load_except(skip);
         src <> '\n% ==== ' <> f <> '\n' <> s -> src;
     endfor;
     for f in GRAPH_GENERATED do
+        nextif(lp_no_content());
         nextif(skip and f = skip);
         lp_read_file(langpop_dir <> f) -> s;
         nextunless(s);                  ;;; not built: see above

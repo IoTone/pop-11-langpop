@@ -974,5 +974,21 @@ lp_voices_load();
 lp_voice_test(false) -> (va, vd, vab);
 check('no scorer means no checks, not a pass', va, 0);
 
+;;; ------------------------------------------------- the real scorer
+;;; EVERYTHING ABOVE USES A FAKE VOICE AND A FAKE SCORER, which is what
+;;; lets this suite run on a machine with no sound at all -- and it means
+;;; nothing above has an opinion about the bands the real scorer decides
+;;; by.  Those bands were set once from a single threshold with a
+;;; symmetric band around it, and the band turned out to be the only
+;;; thing stopping three dropped beats from being CREDITED.  So the
+;;; scorer carries its own self-test over every ratio `--voicetest`
+;;; measured, and it is run from here, where it cannot be forgotten.
+;;;
+;;; pop_status is the wait status and not the exit code, so a child that
+;;; exits 1 leaves 256 there; zero is the only value either reading
+;;; agrees on, which is all this needs.
+sysobey('python3 -I ' <> HERE <> '../tools/score-morae.py --selftest');
+check('the real scorer agrees with its own measurements', pop_status, 0);
+
 sysobey('rm -rf ' <> tmpdir);
 test_summary();

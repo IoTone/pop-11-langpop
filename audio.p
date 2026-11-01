@@ -895,20 +895,34 @@ define lp_vt_score(item, path, said, expect, want, note) -> got;
         return;
     endif;
     outcome -> got;
+    ;;; ABSTAINING IS SAFE IN BOTH DIRECTIONS, and only two outcomes are
+    ;;; not.  Crediting a dropped beat tells a student they said something
+    ;;; they did not say; marking a held beat wrong is the false negative
+    ;;; this project refuses.  `near` is neither: it moves no belief and
+    ;;; says so to the student.  This used to count an abstention on a
+    ;;; held beat as a disagreement, which made the test fail on the one
+    ;;; thing the scorer is designed to do when it cannot tell.
     if outcome == want then 'ok'
-    elseif want == "wrong" and outcome == "near" then 'abstained -- borderline'
+    elseif outcome == "near" then 'abstained -- borderline'
     else '** DISAGREE **'
     endif -> label;
     printf('  %p  %p  (%p): want %p, got %p  %p\n',
            [% item, said, note, want, outcome, label %]);
-    unless outcome == want then
-        if detail then printf('      the scorer said: %p\n', [^detail]) endif;
-    endunless;
+    ;;; The measurement for EVERY case, not only the ones the test is
+    ;;; unhappy about.  This is the only instrument that puts the scorer
+    ;;; against a real voice, so what it measured is the output that
+    ;;; matters -- a verdict that agrees for the wrong reason, or one that
+    ;;; agrees with no margin, both read as `ok` without it.  Two
+    ;;; disagreements turned out to be one band chosen without reference
+    ;;; to where the populations actually sit, which could not be seen
+    ;;; from the rows that printed.
+    if detail then printf('      %p\n', [^detail]) endif;
 enddefine;
 
 define lp_voice_test(rate) -> (agree, disagree, abstain);
     lvars rate, agree = 0, disagree = 0, abstain = 0, i, text, why, expect,
-          path, made, twin, changed, controls = 0, cfg, val, ok, got;
+          path, made, twin, changed, controls = 0, cfg, val, ok, got,
+          held = 0, holds = 0;
     dlocal pop_file_versions = false;
     unless lp_audio_ready(lp_lang) then
         printf('voicetest: no voice for %p in %p\n',
@@ -937,15 +951,19 @@ define lp_voice_test(rate) -> (agree, disagree, abstain);
         lp_morae(text) -> expect;
         nextunless(expect >= 2);
         if lp_sokuon_detectable(i) then
+            holds + 1 -> holds;
             ;;; The word as written must come back RIGHT.
             lp_audio_make(i, rate) -> (path, made, why);
             if why then
                 printf('  %p  %p: could not render (%p)\n', [% i, text, why %]);
                 disagree + 1 -> disagree;
-            elseif lp_vt_score(i, path, text, expect, "right", 'as written')
-                   == "right"
-            then agree + 1 -> agree
-            else disagree + 1 -> disagree
+            else
+                lp_vt_score(i, path, text, expect, "right", 'as written')
+                    -> got;
+                if got == "right" then agree + 1 -> agree; held + 1 -> held
+                elseif got == "near" then abstain + 1 -> abstain
+                else disagree + 1 -> disagree
+                endif;
             endif;
             ;;; And the learner error must come back WRONG.
             lp_degeminate(text) -> (twin, changed);
@@ -1000,15 +1018,28 @@ define lp_voice_test(rate) -> (agree, disagree, abstain);
         printf('voicetest: nothing to test for %p -- the only machine-scored\n',
                [% lp_lang %]);
         printf('voicetest: production task so far is the Japanese held beat.\n');
+    elseif disagree == 0 and held * 2 < holds then
+        ;;; Safe and useless is still a failure.  A scorer that abstains
+        ;;; on most held beats never credits a student who said the word
+        ;;; correctly, and every check above would read as an abstention
+        ;;; while it did so.  So the count is asserted, not just printed.
+        printf('voicetest: nothing credited that should not be, but only %p of %p\n',
+               [% held, holds %]);
+        printf('voicetest: held beats were CREDITED.  The scorer is abstaining on\n');
+        printf('voicetest: most of what it should recognise, which is safe and useless.\n');
+        1 -> disagree;
     elseif disagree == 0 then
         printf('voicetest: %p checks, %p agree, nothing credited that should not be.\n',
                [% agree + abstain, agree %]);
+        printf('voicetest: %p of %p held beats credited.\n', [% held, holds %]);
         if abstain > 0 then
-            printf('voicetest: %p dropped-beat renders came back `near`: this voice\'s\n',
+            printf('voicetest: %p renders came back `near`, which credits nothing and\n',
                    [^abstain]);
-            printf('voicetest: natural gaps sit at the borderline.  An abstention never\n');
-            printf('voicetest: credits the beat, so nothing is unsafe -- but those words\n');
-            printf('voicetest: are where the threshold most wants human ears.\n');
+            printf('voicetest: penalises nothing.  THE TWO POPULATIONS OVERLAP on this\n');
+            printf('voicetest: voice: a held beat has been measured as low as 0.99 of a\n');
+            printf('voicetest: mora and a dropped one as high as 1.27, so no threshold\n');
+            printf('voicetest: separates them and the words in that band are where the\n');
+            printf('voicetest: scorer most wants human ears.  See DESIGN_NOTES.md.\n');
         endif;
         printf('voicetest: this validates the machinery on this installation, not the\n');
         printf('voicetest: threshold against learner speech -- a TTS voice is nobody\'s\n');

@@ -1598,7 +1598,7 @@ Aoi> :speak w_kitte
   Say it: きって
   (enter to record, and hold the small っ)  ->
   The held beat is there: 200 ms of silence against a 130 ms mora.
-  (machine verdict, confidence 0.399 -- capped at 0.77, because a
+  (machine verdict, confidence 0.184 -- capped at 0.77, because a
    confident model is still a model)
 ```
 
@@ -1610,7 +1610,17 @@ build does not attempt. The calibration behind the one measurement, and
 why the obvious plan of counting beats does not work, is in
 [DESIGN_NOTES.md](DESIGN_NOTES.md).
 
-**Some words it declines rather than guessing.** いっしょ is `[iʃːo]` —
+**It will sometimes decline a pronunciation that was correct**, and a
+student who said the word properly deserves an answer about why. The beat
+is measured against the word's own average beat, and the two populations
+overlap: しゅっぱつ holds its beat for a full 170 ms, which is right, but its
+other beats are long too, so the ratio lands among the words that dropped
+it. Rather than guess, the scorer says *I could not tell* and moves no
+belief in either direction. Seven of the thirty-nine checks in
+`--voicetest` come back that way on this machine's voice, and those words
+are where a teacher's ear is worth more than the measurement.
+
+**Some words it declines on principle.** いっしょ is `[iʃːo]` —
 the mora is a lengthened `[ʃ]` with energy all the way through, so there
 is no silence to time. That is a fact about Japanese, and the engine knows
 the following kana, so it says so instead of asking a question it cannot
@@ -1890,6 +1900,7 @@ should review it. Lines cycle round-robin.
 
 ```sh
 ./langpop test                          # every suite
+LANGPOP_NO_CONTENT=1 ./langpop test     # as a fresh clone, nothing imported
 ./langpop oracle --seed 42 --answers 3000
 ./langpop oracle --place --skill 0.9
 ```
@@ -1897,7 +1908,18 @@ should review it. Lines cycle round-robin.
 The suites cover the engine, the protocol, the importer, the cards, the
 sheets, the audio and the dump. They pass with the imported content and
 without it, and the second case is the one that catches an assumption about
-content that happens to be built.
+content that happens to be built. `LANGPOP_NO_CONTENT=1` holds the
+generated files back at load time rather than moving them, so the two runs
+differ by a switch and not by the state of the working tree: 614 checks and
+1,635 items with the content, 521 and 759 without.
+
+One number worth knowing before you read a failing oracle: the scratch
+server runs a 200ms day so that the review ladder actually advances, which
+means how far a run gets inside its answer budget depends on how busy the
+machine is. The answers a seed gives are deterministic; the distance is
+not. Three runs of ja seed 42 at 9,000 answers reached 371, 392 and 412 of
+the 800 N5 words. 9,000 is not enough to finish that rung — about 12,500
+is.
 
 `oracle.p` is a seeded student that climbs the ladder over JSON-RPC,
 asserting the engine's invariants at every answer — a belief that moved the

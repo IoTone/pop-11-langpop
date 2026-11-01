@@ -495,8 +495,27 @@ words with `lp_morae/1` as ground truth:
 | no geminate | 181 | 0.00 – 0.90 |
 | no geminate, scored as if it had one | 41 | **`wrong` 41/41** |
 
-Threshold 1.1, normalised by the word's own mean mora length so the
-speaker's rate cancels out and no calibration utterance is needed.
+Normalised by the word's own mean mora length, so the speaker's rate
+cancels out and no calibration utterance is needed.
+
+**The 181 above are real words, and that is the catch.** A learner who
+drops the beat says きぷ for きっぷ, which is not a word — and a voice
+rendering that form puts its own transition where the beat was. Over the
+sixteen held-beat words of `--voicetest`, both pronunciations rendered:
+
+| | n | gap ÷ mean mora |
+| --- | --- | --- |
+| the beat as written | 16 | 0.99 – 1.56 |
+| the beat dropped | 16 | 0.00 – 1.27 |
+
+Those **overlap**, so there is no single threshold. しゅっぱつ holds its beat
+for 170 ms against a 172 ms mora — right, and a ratio of 0.99 — because
+its other morae are long; きぷ, two morae of 63 ms, shows an ordinary
+80 ms transition as 1.27 of a mora, because deleting a mora shortens the
+word and shrinks the denominator. So the scorer has two edges and
+declines what falls between them: **1.30** credits the beat, below
+**0.95** refuses it, and the band between is `near`, which moves no
+belief. Both edges sit outside both measured populations.
 
 **っ before a fricative is not a silence.** いっしょ is `[iʃːo]` — a
 lengthened `[ʃ]` with energy throughout — so the gap is 0 ms and nothing

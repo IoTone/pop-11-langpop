@@ -1048,6 +1048,8 @@ words, which run 1.33 to 1.55, against controls at 0.00 to 0.90. The
 threshold of 1.1 separates them exactly as documented. Nothing was wrong
 with the scorer, the threshold or the mora count.
 
+*That last sentence did not survive a larger word set — see below.*
+
 The fault was in the suite's own fake voice, which decides whether to
 hand back a held-beat recording with `grep -q っ` — the **hiragana** small
 tsu. Every geminate word in the graph was native vocabulary when that
@@ -1059,6 +1061,108 @@ either script now.
 Worth the half hour: the measurement ruled out three plausible culprits
 before a line changed, and the one that was actually wrong would not have
 been found by reading the failing assertion.
+
+### The two populations overlap, so one threshold cannot separate them
+
+`--voicetest` came back with two disagreements, しゅっぱつ and サッカー, each
+one said correctly and each scored `near`. The same discipline as last
+time: measure first. But the test printed its measurement only for the
+rows it was unhappy about, which is backwards for an instrument whose
+whole job is calibration — a verdict that agrees with no margin reads as
+`ok`. It prints the measurement for every case now, and that is what made
+the rest of this visible.
+
+All thirty-two timed renders, as gap ÷ mean mora:
+
+| | n | range |
+|---|---|---|
+| the beat as written | 16 | 0.99 – 1.56 |
+| the beat dropped | 16 | 0.00 – 1.27 |
+
+**They overlap between 0.99 and 1.27, so no threshold separates them.**
+Two mechanisms, both visible in the numbers:
+
+- **A short word inflates the dropped ratio.** きぷ is two morae of 63 ms,
+  so an ordinary 80 ms transition is 1.27 of a mora. Deleting a mora
+  shortens the word, which shrinks the denominator — the measure is
+  contaminated by the thing it is measuring.
+- **A long word depresses the held ratio.** しゅっぱつ has the longest mean
+  mora here at 172 ms and holds its beat for 170 ms, which is one mora and
+  phonetically right, for a ratio of 0.99. The threshold assumed the
+  synthesised geminate silence runs longer than the mean mora; that is
+  true when the other morae are short and false when they are not.
+
+The calibration this threshold came from was **181 real words** with no
+geminate, topping out at 0.90. A learner who drops the beat is not saying
+another real word — they are saying きぷ for きっぷ — and that is the
+population the scorer actually faces. It was never measured, because the
+only renders of it are the ones `--voicetest` makes.
+
+**What was actually dangerous.** The scorer abstained when
+`|ratio − 1.1| / 1.1 < 0.15`, a band of 0.935 to 1.265. きぷ, a *dropped*
+beat, measures 1.27 — it abstained only because the rounding fell that
+way. One millisecond the other side and the test would have reported a
+dropped beat CREDITED, which is the one verdict the scorer must never
+produce. The symmetric band was carrying three of these: もと and コプ at
+1.13 and きぷ at 1.27 are all above 1.1, and all three would be credited
+by the threshold alone.
+
+So the single threshold is now two edges, with the band between them
+declined rather than guessed: **1.30** credits the beat, below **0.95**
+refuses it. Both sit outside both measured populations. On the measured
+set the verdicts are identical — the same 14 of 16 held beats credited,
+the same 7 abstentions — and きぷ's margin goes from 0.005 to 0.03.
+
+**And the test's own contract was asymmetric.** A dropped beat coming
+back `near` was accepted as a safe abstention; a held beat coming back
+`near` was a disagreement. Both are abstentions and neither is unsafe:
+`near` moves no belief and tells the student so. Only two outcomes are
+unsafe — a dropped beat credited, and a held beat marked wrong — and
+those are what the test asserts now. Which leaves one way to pass by
+doing nothing, so the count of held beats *credited* is asserted too: a
+scorer abstaining on more than half of them is safe and useless, and
+would otherwise have read as a clean run.
+
+**Nothing in `./langpop test` had an opinion about any of this.** The
+audio suite uses a fake voice and a fake scorer, which is what lets it
+run on a machine with no sound — and means the bands were covered only by
+`--voicetest`, which needs a voice. The scorer now carries a `--selftest`
+over every ratio measured here, run from the audio suite where it cannot
+be forgotten. Against the old single threshold it fails with five lines,
+naming the three credits and the false negative.
+
+### Running without the content was a shell dance with a hole in it
+
+The suites and `--check` both have to pass on a tree where nothing has been
+imported, because that is what a fresh clone is. The way to run that was to
+move `graph/*/generated/*.pl` aside, run, and move them back. I did that,
+and the restore put the three English files into the **Japanese**
+directory.
+
+Nothing complained. A generated file that is not where the manifest says it
+is cannot be told from one that was never built — the loader skips a
+missing generated file deliberately, so an unimported tree loads — and the
+item count did not move either, because the English *items* are in the
+tracked `graph/en/a1.pl` and those three files carry sounds and attestation.
+`--check` reported the same 1,635 items and no violations. What actually
+changed was 28 checks in the main suite quietly not running, 614 down to
+586.
+
+Two things made that hard to see. The confirmation I ran was
+`ls graph/ja/generated/*.pl graph/en/generated/*.pl | wc -l`, which printed
+5 — five files in one directory counts as five, and the failing glob went
+to stderr. And 28 happened to be exactly the number of checks the journal
+tests had just added, so the drop read as though those had stopped running.
+
+So the file-moving is gone. `LANGPOP_NO_CONTENT=1` holds the generated
+files back in `lp_load_except`, where the single-file skip already lived,
+and the two runs now differ by a switch rather than by the state of the
+working tree. It reproduces both figures exactly — 759 items and 521
+checks — with nothing moved.
+
+The general shape is worth keeping: **a verification step that mutates the
+tree can leave the tree wrong, and the check that it restored correctly is
+itself a thing that can be wrong.** A switch has neither failure.
 
 ### The save got expensive, and the heap ran out
 
