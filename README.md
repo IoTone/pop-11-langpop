@@ -2046,6 +2046,18 @@ the list. N5 reading is met; its listening half needs `--audio n5` run once
 with a voice installed. The English A2 word count is the largest gap, and
 the English function words are the largest gap in *coverage*.
 
+**What the two front ends do not share.** `./langpop` and
+`./langpop client` are the same engine, but the commands are typed into two
+different programs and the lists have drifted. `:time` is the live one: the
+sitting clock is in `client.p` only, so typing it into the in-process tutor
+gets *I do not know ":time"*. It belongs in both — **to fix**. The in-process
+tutor also has `:place`, `:oops`, `:aids`, `:sheet`, `:chart`, `:zine`,
+`:say`, `:rate`, `:mic`, `:speak` and `:level`, none of which the client
+offers, and that direction is the honest test of the API rather than an
+oversight: each one is a protocol method the client has not been given a
+reason to call yet. The clock is the other direction, which is the one worth
+closing.
+
 **What is deliberately absent.** No model in the teaching loop. No generated
 content in the repository. No spaced-repetition scheduling beyond the
 four-step ladder described above. Judging is exact match on a string, which
