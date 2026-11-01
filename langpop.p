@@ -522,6 +522,8 @@ lconstant GRAPH_FILES = ['graph/schema.pl' 'graph/resources.pl'
 ;;; importer now refuses the write instead (see lp_generated_files).
 lconstant GRAPH_GENERATED = ['graph/ja/generated/n5-kanji.pl'
                              'graph/ja/generated/n5-words.pl'
+                             'graph/ja/generated/n4-kanji.pl'
+                             'graph/ja/generated/n4-words.pl'
                              'graph/en/generated/a1-sounds.pl'
                              'graph/en/generated/preschool-sounds.pl'
                              'graph/en/generated/a1-frequency.pl'
@@ -5423,7 +5425,7 @@ define lp_main();
     lvars args = poparglist, a, user = false, display = false,
           batch = false, checkonly = false, auditonly = false,
           sheetonly = false, audioonly = false, rate = false,
-          voicetest = false, rest = [];
+          voicetest = false, vtitem = false, rest = [];
     find_dir() -> langpop_dir;
     until args == [] do
         hd(args) -> a;
@@ -5446,7 +5448,22 @@ define lp_main();
         elseif a = '--zine' then "zine" -> sheetonly; tl(args) -> args;
         elseif a = '--audio' then
             consword(hd(tl(args))) -> audioonly; tl(tl(args)) -> args;
-        elseif a = '--voicetest' then true -> voicetest; tl(args) -> args;
+        elseif a = '--voicetest' then
+            true -> voicetest; tl(args) -> args;
+            ;;; An optional ITEM after it, because whether a verdict is
+            ;;; right depends on the word -- see lp_vt_only in audio.p --
+            ;;; and because the question a teacher actually has is about
+            ;;; one word that came out wrong.
+            ;;;
+            ;;; Held in a local and not put straight into lp_vt_only:
+            ;;; audio.p is compiled lazily, below, and the declaration
+            ;;; there initialises the variable, so a flag that assigned
+            ;;; it here would be wiped between the argument and the test
+            ;;; that reads it.  Which is what the first version did --
+            ;;; `--voicetest w_gakkou` tested all 118 words.
+            if args /== [] and not(issubstring('--', hd(args)) == 1) then
+                consword(hd(args)) -> vtitem; tl(args) -> args;
+            endif;
         elseif a = '--rate' then
             consword(hd(tl(args))) -> rate; tl(tl(args)) -> args;
         else conspair(a, rest) -> rest; tl(args) -> args;
@@ -5477,6 +5494,7 @@ define lp_main();
     ;;; microphone is touched, so it runs anywhere the voice does.
     if voicetest then
         lp_load_audio();
+        if vtitem then vtitem -> lp_vt_only endif;
         lvars va, vd, vab;
         lp_voice_test(rate) -> (va, vd, vab);
         return;

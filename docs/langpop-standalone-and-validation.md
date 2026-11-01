@@ -682,7 +682,30 @@ did what the section above predicted, in order:
    awaiting the owner's marks on articles, dummy `it`, `be` and
    `do`/`have`.
 
-18. **Smaller observations, not yet acted on:** a reported-but-never-
+18. **N4 Japanese, and three things that broke with it.** The rung's two
+   criteria are both met: `kanji(284, read)` from one KANJIDIC2 command
+   (old level 3, 181 characters, and 103 + 181 is exactly what the
+   ladder asked for), and `vocabulary(1500, read)` at 1572 of 1500,
+   1514 askable, from 749 hand-written picks. Validating the picks as
+   data before writing any Prolog is what the tranche cost least:
+   325 of 1,074 drafted rows were words the graph already teaches, and
+   90 more had an id whose romaji was not the word's reading.
+
+   None of the three failures that followed was in the import. `--check`
+   went to 288 seconds of CPU, because `violation(cycle(I))` asked
+   `reaches(I, I)` of all 3,115 items and `reaches/2` enumerates paths;
+   two guards (an item on a cycle has an edge in and an edge out) take
+   it to 28 seconds on the same graph, with the same verdict. A voice-test fixture that renders one wav
+   and runs it over every geminate in the graph was measuring the
+   vocabulary rather than the scorer -- a 90 ms gap is a dropped beat in
+   a three-mora word and a held one in a six-mora word -- so
+   `lp_vt_only` and `--voicetest <item>` now let a caller name the word.
+   And 以 (もっ(て)) was the first character whose kun reading holds a
+   geminate: the display brackets were reaching both the voice and
+   `lp_morae`, and at four morae instead of three a *dropped* beat came
+   back credited.
+
+19. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
@@ -716,7 +739,7 @@ later one.
 | 2 | the carve; verify 44 commits; delete from Poplog with a pointer | new repo's suites pass from a fresh clone |
 | 3 | ~~a ceiling report~~ already built: it is `--audit` | nothing to do |
 | 4 | the oracle student over JSON-RPC, and the invariant assertions | `ja preschool` climbs from empty, reproducibly, from a seed |
-| 5 | the okurigana fix and the n5 word tranche to 800 | ~~`ja n5` climbs~~ the reading half does (2026-10-31, 773 picks, 823 words, 804 askable); the listening half wants `--audio n5` |
+| 5 | the okurigana fix and the n5 word tranche to 800 | ~~`ja n5` climbs~~ the reading half does (2026-10-31, 773 picks, 823 words, 804 askable); the listening half wants `--audio n5`. N4's reading half followed (2026-11-01, 749 picks, 1572 words, and its 284 kanji by rule) |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
 | 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |
 

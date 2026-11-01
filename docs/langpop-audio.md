@@ -540,6 +540,16 @@ microphone is touched, so it runs anywhere the voice does — including CI
 with a stub voice, which is how the suite exercises it (and the suite
 also sabotages the voice to prove the test can fail).
 
+`--voicetest <item>` does the same for one word. That exists because a
+verdict's rightness depends on the word and not only on the voice: a 90 ms
+gap is a dropped beat against きって's three morae, where the mora is
+117 ms, and a *held* beat against しょうがっこう's six, where it is 58 ms.
+A fixture that renders one wav and runs it over the whole graph is
+therefore measuring the vocabulary, which is how the suite's borderline
+check came to fail the day N4's words arrived rather than the day the
+scorer changed. It is also the question a teacher has: one word sounded
+wrong, and this says what the chain made of it.
+
 Three tallies, because the first run against a real voice showed they
 are three facts: **agree**, **DISAGREE** (the chain credited a dropped
 beat, or missed a held one — a failure), and **abstained** (the dropped

@@ -95,6 +95,98 @@ define split2(s) -> (a, b);
     endif;
 enddefine;
 
+;;; ------------------------------------------------------ the sitting clock
+;;; WHAT THIS CLOCK IS NOT.  The header above says the client cannot time
+;;; the student, and that stands: the clock that scores an ANSWER starts
+;;; on the server at langpop/next, because latency sits in the exit
+;;; criteria and a criterion whose stopwatch is held by the client is
+;;; worth nothing -- test_langpop_server.p pins that down by sending a
+;;; dishonest figure and checking the reply says latency_source server.
+;;;
+;;; What a client may own is the clock the student can SEE.  How long
+;;; this sitting has run is not evidence about any item, nobody is graded
+;;; on it, and it is the one number the server cannot supply: the server
+;;; knows when the session was opened and not whether the person is still
+;;; in the chair.
+;;;
+;;; Real wall clock, like the day count in :status and for the same
+;;; reason.  --day-ms scales the server's day for a test and does not
+;;; tell the client about it, so this measures minutes of the student's
+;;; afternoon and makes no claim at all about the tutor's calendar.
+vars
+    lp_t0 = false,            ;;; when this sitting started, in ms
+    lp_answered = 0,          ;;; questions answered during it
+    lp_goal_min = false,      ;;; sitting length :status last suggested
+    lp_goal_said = false,     ;;; so the nudge arrives once, not per answer
+;
+
+;;; The client's own clock, as the client has its own yes(): it may know
+;;; the protocol and nothing else about the tutor, so it cannot call
+;;; langpop.p's lp_now_ms.  sys_microtime is wall clock; systime is CPU
+;;; time and barely moves while a human types.
+define lp_elapsed_ms() -> ms;
+    lvars ms;
+    if lp_t0 then (sys_microtime() div 1000) - lp_t0 else 0 endif -> ms;
+enddefine;
+
+;;; m:ss while a sitting is a sitting, and h m once it stops being one.
+;;; The zero pad matters more than it looks: 9:5 reads as nine minutes
+;;; five seconds to nobody.
+define lp_clock(ms) -> s;
+    lvars ms, s, secs = ms div 1000, m, r;
+    secs div 60 -> m; secs rem 60 -> r;
+    if m >= 60 then
+        sprintf('%ph%p%pm', [% m div 60,
+                               if m rem 60 < 10 then '0' else '' endif,
+                               m rem 60 %]) -> s;
+    else
+        sprintf('%p:%p%p', [% m, if r < 10 then '0' else '' endif, r %]) -> s;
+    endif;
+enddefine;
+
+;;; The schedule already says how long a sitting should be -- :status
+;;; prints it as "a suggestion: 20 minutes a day" and the figure comes
+;;; from the server's own consistency report.  Having asked the student
+;;; for twenty minutes it would be rude not to notice the twentieth, and
+;;; a learner who is told when they have done the day's share is a
+;;; learner who stops at a sensible place rather than at a wrong answer.
+define lp_goal_check();
+    if lp_goal_min and not(lp_goal_said)
+    and lp_elapsed_ms() >= lp_goal_min * 60000 then
+        true -> lp_goal_said;
+        printf('\n  (%p minutes -- that is the sitting the schedule asked for.'
+               <> '  Stopping here is fine; so is carrying on.)\n',
+               [% lp_goal_min %]);
+    endif;
+enddefine;
+
+define show_time();
+    lvars ms = lp_elapsed_ms();
+    unless lp_t0 then printf('  no sitting open\n'); return endunless;
+    printf('\n  %p at the keyboard, %p question(s) answered\n',
+           [% lp_clock(ms), lp_answered %]);
+    ;;; Seconds per question is not a score and is not sent anywhere; it
+    ;;; is the number that tells a student they have spent the sitting
+    ;;; reading the screen rather than answering it.  Half a minute in
+    ;;; before it says anything, because a pace over two questions is
+    ;;; not a pace, and rounding one up to "about 1 seconds" reads like
+    ;;; a bug in the clock.
+    if lp_answered > 0 and ms >= 30000 then
+        printf('    about %p seconds a question\n',
+               [% round(ms / (lp_answered * 1000)) %]);
+    endif;
+    if lp_goal_min then
+        if ms >= lp_goal_min * 60000 then
+            printf('    the schedule asked for %p minutes; done\n',
+                   [% lp_goal_min %]);
+        else
+            printf('    the schedule asked for %p minutes; %p to go\n',
+                   [% lp_goal_min,
+                      lp_clock(lp_goal_min * 60000 - ms) %]);
+        endif;
+    endif;
+enddefine;
+
 define help();
     printf('\n  <enter>          the next thing to learn\n');
     printf('  :plan            what is ready now\n');
@@ -103,6 +195,7 @@ define help();
     printf('  :card <item>     ask the tutor to draw it\n');
     printf('  :assign          something to do away from the keyboard\n');
     printf('  :report <n> ok | 17/20\n');
+    printf('  :time            how long this sitting has run\n');
     printf('  :quit            close the session and stop\n');
 enddefine;
 
@@ -135,6 +228,10 @@ define ask_one();
         jsonrpc_obj([% 'session_id', lp_sid, 'item', item,
                        'answer', trim(line) %])) -> ans;
     returnunless(ans);
+    ;;; Counted here and not at the question: a prompt the student walked
+    ;;; away from is not a question they answered, and this number is
+    ;;; divided by to get a pace.
+    lp_answered + 1 -> lp_answered;
     if p(ans, 'correct') then
         printf('  %p\n', [% p(ans, 'reply') %]);
     elseif p(ans, 'mistook_form') then
@@ -143,6 +240,7 @@ define ask_one();
     else
         printf('  %p  It is %p.\n', [% p(ans, 'reply'), p(ans, 'expected') %]);
     endif;
+    lp_goal_check();
 enddefine;
 
 define show_plan();
@@ -252,6 +350,11 @@ define show_status();
                [% p(cy, 'days_worked'), p(cy, 'days_elapsed') %]);
         p(cy, 'advice') -> ad;
         if ad then
+            ;;; Kept, so :time can hold the answer up against it.  The
+            ;;; client does not invent a target and does not nag for
+            ;;; one: it has a target only once the student has asked
+            ;;; for :status.
+            p(ad, 'minutes') -> lp_goal_min;
             if p(ad, 'shape') = 'daily' then
                 printf('    a suggestion: %p minutes a day would keep up with it\n',
                        [% p(ad, 'minutes') %]);
@@ -370,6 +473,11 @@ define client_main();
     rpc('langpop/session.open', jsonrpc_obj([% 'student_id', user %])) -> sess;
     returnunless(sess);
     p(sess, 'session_id') -> lp_sid;
+    ;;; The sitting starts at the greeting rather than at connect: the
+    ;;; minutes before it are the student typing their name, and they are
+    ;;; not study.
+    sys_microtime() div 1000 -> lp_t0;
+    0 -> lp_answered;
     printf('%p\n', [% p(sess, 'greeting') %]);
     printf('%p -- %p, level %p, %p ready.\n',
            [% p(sess, 'display_name'), p(sess, 'language'),
@@ -377,7 +485,9 @@ define client_main();
     help();
 
     repeat
-        printf('\n%p> ', [^lp_teacher]);
+        ;;; The clock lives in the prompt because a student who has to
+        ;;; ask what time it is has already lost track of it.
+        printf('\n%p %p> ', [% lp_teacher, lp_clock(lp_elapsed_ms()) %]);
         sysflush(popdevout);
         readline() -> line;
         quitif(line == termin);
@@ -396,6 +506,7 @@ define client_main();
                 if arg = '' then printf('  :card <item id>\n') else show_card(arg) endif
             elseif cmd = 'assign' then do_assign()
             elseif cmd = 'report' then do_report(arg)
+            elseif cmd = 'time' then show_time()
             else printf('  I do not know ":%p".  Try :help\n', [^cmd])
             endif;
         else
@@ -406,6 +517,10 @@ define client_main();
     lvars bye = rpc('langpop/session.close',
                     jsonrpc_obj([% 'session_id', lp_sid %]));
     if bye then printf('\n%p\n', [% p(bye, 'signoff') %]) endif;
+    ;;; After the signoff, not instead of it.  The tutor says goodbye;
+    ;;; the client says what the sitting was.
+    printf('  %p at the keyboard, %p question(s) answered.\n',
+           [% lp_clock(lp_elapsed_ms()), lp_answered %]);
     jsonrpc_close(lp_conn);
 enddefine;
 

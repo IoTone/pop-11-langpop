@@ -379,13 +379,27 @@ check('a fresh id is not', length(imp_collisions(ws)), 0);
 ;;; level whose content was never built.  Both have no items.
 check_true('content_built answers for a level that was imported',
            not(lp_gens == []) == not(lp_gens == []));
-;;; n4 rather than pre-school, which was the original example and
-;;; stopped being true the day the loanword traps were enriched from
-;;; CMUdict -- a test that asserts "nobody has imported this yet" has a
-;;; shelf life, and the fix is to name a level nobody is about to.
+;;; NO LEVEL IS NAMED HERE ANY MORE.  Pre-school was the original
+;;; example and stopped being true the day the loanword traps were
+;;; enriched from CMUdict; n4 replaced it with a comment saying the fix
+;;; was "to name a level nobody is about to" import, and n4's kanji were
+;;; imported a week later.  A check that names the unimported level dates
+;;; from the day it was written, so this one FINDS one instead: the
+;;; property under test is that a level with no stamp reports none, and
+;;; any stampless level demonstrates it.
+;;;
+;;; If there are no stampless levels left the check FAILS rather than
+;;; passing vacuously, because at that point it is measuring nothing and
+;;; whoever got the ladder fully imported should be the one to retire it.
+lvars gl = [], lv, ls = [];
+for lv in lp_gens do gl <> [% hd(tl(tl(lv))) %] -> gl endfor;
+for lv in lp_levels("ja") <> lp_levels("en") do
+    unless member(lv, gl) then ls <> [^lv] -> ls endunless;
+endfor;
+check_true('some level is still unimported, or this check is spent', ls /== []);
 check_true('a level nobody has imported says so',
-           not(any(lp_gens, procedure(g); lvars g;
-               hd(tl(tl(g))) == "n4" endprocedure)));
+           ls /== [] and not(any(lp_gens, procedure(g); lvars g;
+               g(3) == hd(ls) endprocedure)));
 
 
 ;;; -------------------------------------------------------------- CMUdict

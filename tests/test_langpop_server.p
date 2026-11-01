@@ -479,8 +479,13 @@ enddefine;
 vars ac = aurow('kanji(2230, read)');
 check('N1 kanji is short', ac('verdict'), 'short');
 check('it says what was wanted', ac('wanted'), 2230);
+;;; The ARITHMETIC and not a number: short_by was `> 2000` until n4's
+;;; kanji were imported and the shortfall fell to 1946.  Every count on
+;;; the ladder shrinks as content arrives, so a threshold here measures
+;;; how much curation has happened rather than whether the field is the
+;;; subtraction the client was promised.
 check_true('and how short, so a client need not subtract',
-           ac('short_by') > 2000);
+           ac('short_by') == ac('wanted') - ac('askable'));
 check('on the right rung', ac('level'), 'n1');
 
 vars ah = aurow('vocabulary(50, hear)');

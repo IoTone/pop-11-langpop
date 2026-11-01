@@ -1204,8 +1204,23 @@ if lp_ilang("k_65e5") then
     check_true('but the kana are', member("hi_a", hira));
     check('and the syllabary axis lives only at pre-school',
           lp_place_levels(ax_named('recognise hiragana')), [preschool]);
-    check('while vocabulary is searched from the top down',
-          lp_place_levels(ax_named('vocabulary')), [n5 preschool]);
+    ;;; The vocabulary axis is searched at whichever levels have a word
+    ;;; worth asking about, hardest first.  WHICH levels those are is a
+    ;;; fact about how much content is built -- it read [n5 preschool]
+    ;;; until N4's 749 words arrived and will read [n3 n4 n5 preschool]
+    ;;; the day N3 does -- so what is pinned here is the ORDER, which is
+    ;;; the thing placement depends on: start hard and come down, or a
+    ;;; test of twelve questions spends them all below the student.
+    lvars vlv = lp_place_levels(ax_named('vocabulary')), vi, vdesc = true;
+    check_true('vocabulary is searched at more than one level',
+               length(vlv) > 1);
+    for vi from 1 to length(vlv) - 1 do
+        unless lp_level_index(vlv(vi)) > lp_level_index(vlv(vi + 1)) then
+            false -> vdesc;
+        endunless;
+    endfor;
+    check_true('while vocabulary is searched from the top down', vdesc);
+    check('and comes down as far as pre-school', last(vlv), "preschool");
 
     ;;; Sampling spreads across a real difficulty scale where there is
     ;;; one -- four probes along a frequency rank instead of 103.

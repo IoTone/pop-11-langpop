@@ -159,7 +159,29 @@ violation(requires_from_above(I, Pre)) :-
     item(I, _, Lang, Li, _), item(Pre, _, Lang, Lp, _),
     ladder(Lang, Ni, Li), ladder(Lang, Np, Lp), Np > Ni.
 
-violation(cycle(I)) :- item(I, _, _, _, _), reaches(I, I).
+% An item on a cycle has at least one edge OUT of it and at least one
+% edge INTO it, so the two guards in front of reaches/2 lose no cycle --
+% and they are the difference between a report that takes five minutes
+% and one that takes seconds.
+%
+% reaches/2 enumerates PATHS and not reachable nodes, so the cost of this
+% check was (number of items) x (paths below one item) x (cost of a
+% requires/2 lookup).  Nearly every item in a vocabulary graph is a leaf
+% of that relation in one direction or the other -- a word is required by
+% nothing, a kana requires nothing -- and neither kind can be on a cycle.
+% Pruning them took the N4 graph's check from 288 seconds of CPU to 28,
+% and what the cost now grows with is the roll-ups and the characters
+% rather than the vocabulary.
+%
+% The two guards are predicates with a cut rather than bare goals,
+% because a bare requires(I, _) leaves a choice point per edge and would
+% report one cycle once per path into it.
+violation(cycle(I)) :-
+    item(I, _, _, _, _), requires_something(I), required_by_something(I),
+    reaches(I, I).
+
+requires_something(I) :- requires(I, _), !.
+required_by_something(I) :- requires(_, I), !.
 
 violation(item_without_form(I)) :-
     item(I, Kind, _, _, _), Kind \== skill, \+ form(I, _, _).

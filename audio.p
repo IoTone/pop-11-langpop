@@ -198,6 +198,19 @@ define lp_audio_ready(lang) -> yes;
 enddefine;
 
 ;;; ------------------------------------------------------- what to say
+;;; The reading as the mouth says it, with the okurigana brackets gone:
+;;; やす(い) -> やすい.  Not simply cut at the bracket -- import.p's header
+;;; records what cutting cost, and the whole word is what a learner of
+;;; 会 (あ(う)) actually hears.
+define lp_strip_notation(s) -> t;
+    lvars s, c, n = 0;
+    for c in_string s do
+        nextif(c == `(` or c == `)`);
+        c; n fi_+ 1 -> n;
+    endfor;
+    consstring(n) -> t;
+enddefine;
+
 ;;; A pattern's form carries a BLANK -- これは___です -- and a voice
 ;;; reading it aloud would say the underscores or swallow them silently.
 ;;; Either way the student hears a sentence that is not the item, so the
@@ -217,6 +230,27 @@ define lp_audio_text(item) -> (text, why);
     (text sys_>< '') -> text;
     if issubstring('_', text) then
         false -> text; 'has_blank' -> why;
+    endif;
+    ;;; THE BRACKETS ARE FOR THE EYE.  A kanji's kun reading arrives from
+    ;;; KANJIDIC2 as やす(い) or もっ(て) -- import.p's imp_kun turns
+    ;;; upstream's dot into brackets so that a card can show what the
+    ;;; character says and what the word around it adds (see its header).
+    ;;; That is display notation and nothing else, and two things here
+    ;;; read it as text:
+    ;;;
+    ;;;   the voice, which is handed '(' and ')' to pronounce, and
+    ;;;   lp_morae, which counts every codepoint that is not small kana --
+    ;;;   so もっ(て) measured FOUR morae where もって has three.
+    ;;;
+    ;;; The second one is the dangerous one, because the mora count is the
+    ;;; denominator the geminate scorer divides by.  At four, a dropped
+    ;;; beat in 以 (もっ(て)) came back CREDITED: 90 ms of silence against
+    ;;; a 68 ms mora is a ratio of 1.32, over the 1.30 edge, and the voice
+    ;;; test duly reported a disagreement the day n4's kanji arrived.  以
+    ;;; is the first character on the ladder whose kun reading holds a
+    ;;; geminate, which is why 103 n5 kanji never showed it.
+    if text and issubstring('(', text) then
+        lp_strip_notation(text) -> text;
     endif;
 enddefine;
 
@@ -919,6 +953,24 @@ define lp_vt_score(item, path, said, expect, want, note) -> got;
     if detail then printf('      %p\n', [^detail]) endif;
 enddefine;
 
+;;; ONE ITEM, when the caller names one.
+;;;
+;;; What a fixture can set up is "this voice does X to a word", and
+;;; whether X is right or wrong depends on the WORD: a 90 ms gap is a
+;;; dropped beat against a three-mora word (the mora is 117 ms) and a
+;;; held one against a six-mora word (the mora is 58 ms).  So a test
+;;; that renders one wav and runs it over every geminate in the graph is
+;;; measuring the vocabulary and not the scorer -- the borderline check
+;;; below passed for a month and broke the day N4's words arrived, on
+;;; しょうがっこう and four others long enough to turn the fixture's
+;;; dropped beat into a held one.
+;;;
+;;; It is a switch and not an argument because lp_voice_test is called
+;;; from the CLI, from the tests and from the audio report, and three
+;;; call sites should not have to pass false.  `--voicetest <item>` sets
+;;; it, which is also what a teacher wants when one word sounds wrong.
+vars lp_vt_only = false;
+
 define lp_voice_test(rate) -> (agree, disagree, abstain);
     lvars rate, agree = 0, disagree = 0, abstain = 0, i, text, why, expect,
           path, made, twin, changed, controls = 0, cfg, val, ok, got,
@@ -945,6 +997,7 @@ define lp_voice_test(rate) -> (agree, disagree, abstain);
            [% cfg(2), cfg(3), lp_audio_rate_of(rate), lp_lang %]);
     for i in lp_items do
         nextunless(lp_ilang(i) == lp_lang);
+        nextunless(lp_vt_only == false or i == lp_vt_only);
         nextunless(member("speak", lp_channels(i)));
         lp_audio_text(i) -> (text, why);
         nextif(why);

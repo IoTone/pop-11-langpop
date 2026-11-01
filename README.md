@@ -34,6 +34,7 @@ phone app would not have.
 ./langpop --zine --user bob  # a booklet to fold
 ./langpop --audio preschool  # make the sound files
 ./langpop --voicetest        # check the voice against the scorer
+./langpop --voicetest w_gakkou   # ... or just the one word that sounded wrong
 
 # B: the same session, over a protocol
 ./langpop server --port 7801 &
@@ -48,6 +49,7 @@ phone app would not have.
 ## Contents
 
 - [Installing](#installing)
+- [From scratch, as a Japanese learner](#from-scratch-as-a-japanese-learner)
 - [A session](#a-session)
 - [How the curriculum is built](#how-the-curriculum-is-built)
   - [An item is not its spelling](#an-item-is-not-its-spelling)
@@ -98,10 +100,69 @@ source](https://github.com/IoTone/poplog/blob/master/INSTALL). langpop
 probes for both libraries at startup and names the release it needs
 rather than failing part-way through compiling.
 
-A fresh clone holds 759 items. The content imported from reference
+A fresh clone holds 1,309 items. The content imported from reference
 sources is not kept in git — it is regenerated on demand (see [Adding
 content from a reference source](#adding-content-from-a-reference-source))
 — and every test suite passes with it and without it.
+
+---
+
+## From scratch, as a Japanese learner
+
+Nothing below needs any content to be imported first: hiragana, katakana and
+the first fifty words are committed to the repository, which is enough for
+the first several weeks.
+
+```sh
+git clone https://github.com/IoTone/pop-11-langpop
+cd pop-11-langpop
+./langpop --check          # the graph is sound, and names what is short
+./langpop --user you --lang ja
+```
+
+That is the whole of it. The first session will ask for a name, guess at
+hiragana, and stop when you stop. `--lang ja` is the Western learner's
+Japanese; `--lang en` is the other direction, English for a Japanese test
+taker, and a student is registered in one of them.
+
+**The first week** is kana, because everything above it requires them. An
+empty line asks for the next thing; `:chart hiragana` prints the table on one
+page if you would rather look at it than be asked. `:why hi_ka` says why that
+character came up now.
+
+**When the kana are solid** the first words arrive by themselves — a word
+requires the kana that spell it, so the graph opens them rather than a
+syllabus deciding a date. `:status` is the honest answer to "how am I doing":
+it prints this level's exit criteria measured over the last 28 days, not a
+streak.
+
+**To go past the committed fifty words** import the N5 and N4 content. It
+needs two files from the EDRDG — `JMdict_e` and `kanjidic2.xml` — and four
+commands, and takes about a minute:
+
+```sh
+./langpop import --source kanjidic --file kanjidic2.xml --level n5 --jlpt 4
+./langpop import --source kanjidic --file kanjidic2.xml --level n4 --jlpt 3
+./langpop import --source jmdict --file JMdict_e --picks graph/ja/picks/n5.pl
+./langpop import --source jmdict --file JMdict_e --picks graph/ja/picks/n4.pl
+```
+
+That is 1,572 words and 284 characters: N5 and N4 reading in full. The
+licences and what each command does are under [Adding content from a
+reference source](#adding-content-from-a-reference-source), and
+`./langpop --audit` says what every rung still wants afterwards.
+
+**Sound is a separate build**, because it is a few hundred files and it is
+yours: `./langpop --audio n5` renders every N5 word with the system voice
+under `~/.langpop/audio/`. Until it is run, listening questions have nothing
+to play and `--audit` says so rather than asking them.
+
+**What to expect at the keyboard.** Being asked a character a day after
+getting it right is the review ladder working, not a bug — the gap widens
+each time it is right and resets when it is wrong. `:oops` takes back an
+answer that was a typing slip. `later` puts a question off until the end of
+the session. `:assign` gives something to do away from the screen and
+`:report` records how it went.
 
 ---
 
@@ -169,15 +230,16 @@ outside that list is allowed in.
 | `graph/ja/kana.pl` | both syllabaries, voiced included, confusable pairs, mora skills | 138 kana |
 | `graph/ja/items.pl` | 50 starter words, kana-only, 3 sentence patterns | 53 |
 | `graph/ja/picks/n5.pl` | which words are N5, by reference key — the curation | 773 picks |
+| `graph/ja/picks/n4.pl` | the same for N4, whose count is measured over both | 749 picks |
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
 | `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
 | `graph/en/a1.pl` | 519 A1 words with Japanese glosses, hand-written | 519 |
 | `graph/en/a2.pl` | the same for A2, whose count is measured over both | 550 |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
-| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 876 items (ja); for English, facts only: 555 pronunciations, 519 frequencies |
+| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 1,806 items (ja); for English, facts only: 1,103 pronunciations, 1,069 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
 
-759 committed items, 1,635 once the imported content is built; 12 ladder
+1,309 committed items, 3,115 once the imported content is built; 12 ladder
 levels, 40 exit criteria, no integrity violations either way. Those are
 the figures `./langpop --check` prints.
 
@@ -588,6 +650,16 @@ opposite case and *is* asked, prompted as the katakana and answered in
 romaji, because reading コーヒー as koohii is a genuine exercise that
 learners get wrong.
 
+**N4** holds the next 181 characters and the next 749 words — 284 and 1,572
+cumulatively, which is what the rung's criteria measure, and both of them
+are met. The two halves came from opposite places. The characters needed no
+curation: KANJIDIC2's `<jlpt>` field holds the pre-2010 four-level syllabus,
+old level 3 is the one that became N4, and 103 + 181 is exactly the 284 the
+ladder asks for. The words are a judgment, because JLPT has published no
+word list since 2010 and JMdict carries no level marking, so
+`graph/ja/picks/n4.pl` names them by hand the way N5's file does and the
+ladder's provenance says `estimate(community)`.
+
 **Answers may be typed in Latin letters.** An answer is a *list* of
 acceptable spellings, canonical first — about four per item, from the kana
 as written, the same folded to hiragana, and the romaji of each. So
@@ -757,13 +829,18 @@ whose id is `k_<codepoint>`, and a codepoint is not anybody's opinion.
 ```sh
 tools/fetch-upstream.sh ~/langpop-upstream
 
-# KANJIDIC2 carries the level, so the selection is a RULE
+# KANJIDIC2 carries the level, so the selection is a RULE.
+# Old level 4 became N5 and old level 3 became N4.
 ./langpop import --source kanjidic \
     --file ~/langpop-upstream/kanjidic2.xml --level n5 --jlpt 4
+./langpop import --source kanjidic \
+    --file ~/langpop-upstream/kanjidic2.xml --level n4 --jlpt 3
 
 # JMdict does not, so the selection is a PICK LIST
 ./langpop import --source jmdict \
     --file ~/langpop-upstream/JMdict_e --picks graph/ja/picks/n5.pl
+./langpop import --source jmdict \
+    --file ~/langpop-upstream/JMdict_e --picks graph/ja/picks/n4.pl
 
 # CMUdict creates no items; it enriches English words already declared
 ./langpop import --source cmudict \
@@ -772,7 +849,7 @@ tools/fetch-upstream.sh ~/langpop-upstream
 
 | Source | Licence | Knows | So the selection is |
 | --- | --- | --- | --- |
-| KANJIDIC2 | CC BY-SA 4.0 | the JLPT level of a character | a **rule** — `--jlpt 4` |
+| KANJIDIC2 | CC BY-SA 4.0 | the JLPT level of a character | a **rule** — `--jlpt 4`, `--jlpt 3` |
 | JMdict | CC BY-SA 4.0 | readings and meanings, no level | a **pick list** |
 | CMUdict | 2-clause BSD | how an English word is pronounced | **nothing** — it enriches |
 
@@ -1752,6 +1829,14 @@ worthless. The reply says which clock was used (`latency_source: "server"`),
 and the client's own figure is a fallback for a caller that never asked a
 question — a batch import, a test.
 
+The one clock the client *does* own is the sitting: `:time` says how long
+this session has run and how many questions were answered in it. That is not
+evidence about any item and is sent nowhere — it is the number the server
+cannot supply, because the server knows when the session was opened and not
+whether the student is still in the chair. When `:status` has been asked and
+the schedule suggested a sitting length, the client says so once on reaching
+it.
+
 **The tier is decided from the evidence, not chosen.** A client reports `ok`
 or `17/20`; the server decides that the first is tier 3 and the second tier
 2. Anything else is refused rather than quietly filed as compliance, because
@@ -1764,8 +1849,8 @@ Errors are typed, so a client can tell a mistake it made from a bug in here:
 `-32003` no such item, `-32004` no such assignment, `-32005` that rendering
 style does not exist yet.
 
-`client.p` holds no graph, no beliefs and no judgement — 288 lines of asking
-and printing. That is the only honest test of an API: the reference client
+`client.p` holds no graph, no beliefs and no judgement — 530 lines of asking,
+printing and one clock. That is the only honest test of an API: the reference client
 has no private door.
 
 ### The teacher is allowed to misremember
@@ -1916,13 +2001,13 @@ LANGPOP_NO_CONTENT=1 ./langpop test     # as a fresh clone, nothing imported
 ./langpop oracle --place --skill 0.9
 ```
 
-The suites cover the engine, the protocol, the importer, the cards, the
-sheets, the audio and the dump. They pass with the imported content and
-without it, and the second case is the one that catches an assumption about
-content that happens to be built. `LANGPOP_NO_CONTENT=1` holds the
-generated files back at load time rather than moving them, so the two runs
-differ by a switch and not by the state of the working tree: 614 checks and
-1,635 items with the content, 521 and 759 without.
+The suites cover the engine, the protocol, the client's clock, the importer,
+the cards, the sheets, the audio and the dump. They pass with the imported
+content and without it, and the second case is the one that catches an
+assumption about content that happens to be built. `LANGPOP_NO_CONTENT=1`
+holds the generated files back at load time rather than moving them, so the
+two runs differ by a switch and not by the state of the working tree: 617
+checks and 3,115 items with the content, 522 and 1,309 without.
 
 One number worth knowing before you read a failing oracle: the scratch
 server runs a 200ms day so that the review ladder actually advances, which

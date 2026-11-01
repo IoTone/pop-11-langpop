@@ -79,6 +79,23 @@ check('a skill has no spoken form', why, 'no_spoken_form');
 lp_audio_text("no_such_thing_at_all") -> (text, why);
 check('an unknown item is unknown', why, 'no_such_item');
 
+;;; A KANJI'S KUN READING carries okurigana brackets -- もっ(て) -- and the
+;;; brackets are for the eye.  They used to reach both the voice and
+;;; lp_morae, and the mora count is what the geminate scorer divides by:
+;;; at four morae instead of three, a DROPPED beat in 以 scored as held.
+check('the kun brackets are notation and are not said',
+      lp_strip_notation('もっ(て)'), 'もって');
+check_true('the display form keeps them',
+           lp_kind("k_4ee5") == false
+           or issubstring('(', lp_form_of("k_4ee5", "hiragana") sys_>< '')
+              /== false);
+if lp_kind("k_4ee5") then
+    lp_audio_text("k_4ee5") -> (text, why);
+    check_true('and what the voice is handed has none',
+               why == false and issubstring('(', text) == false);
+    check('so the mora count is the word\'s', lp_morae(text), 3);
+endif;
+
 ;;; A sound contrast carries IPA and no word.  /l/ is a sound, not
 ;;; something a voice can be asked to pronounce on its own -- it is heard
 ;;; through the words that exercise it, which the graph already links.
@@ -948,13 +965,23 @@ check_true('the word as written is kept -- the same render :say plays',
 ;;; the abstain count is the calibration signal the summary reports.
 ;;; 90ms: against a four-mora expectation the mora is (260+90)/4 = 87ms,
 ;;; so the ratio sits inside the near band; against three it stays wrong.
+;;;
+;;; WHICH IS WHY THIS NAMES ITS WORD.  がっこう has four morae and the
+;;; arithmetic above is about がっこう; run over the whole graph the same
+;;; wav is a held beat in any word of five morae or more, and when N4's
+;;; words arrived しょうがっこう, いっこだて, ひゃっかてん, ひょっとして
+;;; and いっぱんに duly reported disagreements that were the fixture's
+;;; and not the scorer's.
 lvars vtmid = tmpdir <> 'vtmid.wav';
 wav_write(vtmid, 16000, [[130 8000] [90 0] [130 8000]]);
 lp_write_file(vtvoice,
     'if grep -qE "っ|ッ" "$1"; then cp ' <> held <> ' "$2"; else cp '
     <> vtmid <> ' "$2"; fi\n');
+"w_gakkou" -> lp_vt_only;
 lp_voice_test(false) -> (va, vd, vab);
+false -> lp_vt_only;
 check('a borderline gap is never a disagreement', vd, 0);
+check_true('and it was actually measured', va + vd + vab > 0);
 check_true('but it is counted, because it is where the threshold is soft',
            vab > 0);
 

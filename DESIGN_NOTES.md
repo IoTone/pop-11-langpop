@@ -1251,6 +1251,137 @@ evidence yet for what `docs/langpop-function-words.md` argues: what is
 left of reading coverage is not vocabulary. It is the articles, the
 auxiliaries and the prepositions, and no amount of A2 nouns reaches it.
 
+### N4 Japanese, one half counted and the other judged, 2026-11-01
+
+The rung came in two pieces that could hardly have been less alike.
+
+**The kanji needed no curation at all.** KANJIDIC2 carries a `<jlpt>` field
+holding the pre-2010 four-level syllabus; old level 3 is the one that became
+N4, and counting it gives 181 characters. With N5's 103 that is 284 — which
+is exactly the number `graph/ja/ladder.pl` already asked for, because the
+count was read off the same field when the ladder was written. One command:
+
+    ./langpop import --source kanjidic --file <dir>/kanjidic2.xml \
+         --level n4 --jlpt 3
+
+and `kanji(284, read)` went from *short by 181* to **ok**, 284 of 284
+askable.
+
+**The words are an estimate, and 749 of them.** JLPT has published no word
+list since 2010 and JMdict carries no level marking, so "which 1500 words
+are N4" is a teaching claim a human has to make. With N5's 773 and the fifty
+at pre-school the rung now holds 1572 words, 1514 of them askable, against
+`vocabulary(1500, read)` — **ok**.
+
+#### What validating the picks as data was worth
+
+1,074 candidates were drafted as a two-column file — id and lookup key — and
+checked against JMdict *before any Prolog was written*. The check asked four
+things of each row: that the key resolves to exactly one entry, that the
+entry's reading is the romaji the id claims, that neither the id nor any
+spelling of the word is already in the graph, and that the id is not used
+twice. What it found:
+
+| | |
+|---|---|
+| 276 | words the graph already teaches, by id |
+| 49 | words the graph already teaches, under another spelling |
+| 90 | ids whose romaji was not the word's reading |
+| 75 | keys naming more than one JMdict entry |
+| 15 | words whose every kanji spelling upstream tags as rare |
+| 7 | forms that are not words at all |
+
+The first two lines are the important ones. 325 of the drafted picks were
+words a student may already have beliefs about, and minting a second
+identity for one of them would split those beliefs in half with nothing
+downstream able to tell. `import.p` refuses that collision too — but it
+refuses it at build time, after the file is written and committed, and the
+point of checking first is that the file never contains the row.
+
+The reading check earned its place as well: 住宅 is *juutaku* and not
+*jutaku*, 掃除機 is *soujiki*, 底面 is *teimen* and not *sokomen*. An id
+that misreads its own word is a lie the journal then repeats forever.
+
+Of the 75 ambiguous keys, 69 were resolved to a sequence number by reading
+the candidates' glosses and 6 were left out, because 詩 is a headword of
+both うた and the poem, 虹 of both the rainbow and 二次 (*second*), and a
+curator who guesses at that is worse than one who skips it.
+
+#### An id should not describe grammar
+
+An early draft wrote 連絡 as `w_renraku_suru`. That is a claim about
+grammar and not an identity: 連絡 is a noun whichever way it is used, and
+する belongs to the pattern layer. Stripping the suffix also showed what it
+had been hiding — several of those nouns were already picked at N5, and the
+suffix had been concealing the collision from the very check that exists to
+catch it.
+
+### Three things the import broke, and none of them the import
+
+The suites were green before the tranche and three of them failed after it.
+Every one was a test or a default that had quietly depended on how much
+content the graph held.
+
+**`--check` went from seconds to 288 of them.** `violation(cycle(I))`
+asked `reaches(I, I)` of every item in the graph, and `reaches/2`
+enumerates *paths* rather than reachable nodes — so the cost was items ×
+paths-below-an-item × the cost of a `requires/2` lookup, and the import
+raised the first and third of those at once. The fix is two guards:
+an item on a cycle has an edge out of it and an edge into it, and in a
+vocabulary graph almost nothing has both. A word is required by nothing
+and a kana requires nothing, so most of the 3,115 starts are excluded and
+no cycle is lost. Measured: 288 seconds of CPU before, 28 after, on the
+same graph and with the same verdict. It is the arithmetic that was
+wrong, not the check.
+
+Both guards are predicates with a cut rather than bare goals, because a
+bare `requires(I, _)` leaves a choice point per edge and would report one
+cycle once per path into it.
+
+**A voice-test fixture was measuring the vocabulary.** The borderline
+scenario renders one 130/90/130 ms wav and asserts that the whole graph's
+geminate words come back as abstentions. Whether a 90 ms gap is a dropped
+beat depends on the word: against きって's three morae the mora is 117 ms
+and the gap is plainly short, against しょうがっこう's six it is 58 ms and
+the gap is a *held beat*. N4 brought five words long enough to cross that
+line and the fixture reported five disagreements of its own making. So
+`lp_vt_only` now lets a caller name one item — the scenario says がっこう,
+which is the word its arithmetic was always about — and `--voicetest
+<item>` exposes the same switch, because the question a teacher has is
+about the one word that sounded wrong.
+
+**Two tests named a level nobody had imported yet.** One asserted that
+`n4` has no content stamp; its own comment said the fix for the previous
+version "is to name a level nobody is about to" import, and n4's kanji
+were imported a week later. It now *finds* a stampless level instead of
+naming one, and fails rather than passing vacuously if the ladder ever
+runs out of them. The other asserted that N1's kanji shortfall is over
+2,000; it fell to 1,946. That check now asserts the arithmetic —
+`short_by == wanted - askable` — which is what the field was ever
+promising a client.
+
+### The brackets were for the eye, and the voice was reading them
+
+KANJIDIC2 writes a kun reading as `やす.い`, and `imp_kun` turns the dot
+into brackets — やす(い) — so that a card can show what the character says
+and what the word around it adds. That is display notation, and two
+things were reading it as text: the voice, which was handed `(` and `)`
+to pronounce, and `lp_morae`, which counts every codepoint that is not
+small kana.
+
+The second one is the dangerous one, because the mora count is the
+denominator the geminate scorer divides by. 以 reads もっ(て), which
+`lp_morae` measured as four morae where もって has three, and at four a
+*dropped* beat came back credited: 90 ms of silence against a 68 ms mora
+is a ratio of 1.32, over the 1.30 edge that was set two commits earlier
+with a 6× margin on the words then in the graph. 以 is the first
+character on the ladder whose kun reading holds a geminate, which is why
+103 N5 kanji never showed it — and it arrived with old JLPT level 3.
+
+`lp_audio_text` now strips the brackets, which is right for both readers:
+やすい is what the mouth says, and three is what もって measures. 115
+characters carry a bracketed reading, 85 of them new.
+
 ### An unresolved pick is not always a pick
 
 The A2 pronunciation import reported its two misses like this:
@@ -1418,6 +1549,16 @@ does.
 
 ## Poplog behaviours worth knowing
 
+**A declaration with an initialiser runs, so a lazily compiled file resets
+whatever it declares.** `--voicetest <item>` was written as `consword(...) ->
+lp_vt_only` in langpop.p's argument loop, which is the obvious thing and
+silently did nothing: `audio.p` is compiled further down the same procedure,
+`vars lp_vt_only = false` there *executes*, and the flag was wiped between
+being parsed and being read — `./langpop --voicetest w_gakkou` dutifully
+tested all 118 words. The fix is a local, copied across after
+`lp_load_audio()`. In a program that compiles its optional halves on demand,
+an argument may only touch variables that already exist when it is parsed.
+
 **`prolog_compile` has reconsult semantics per predicate.** A second file
 that defines `item/5` silently replaces the clauses the first one gave it,
 and `:- dynamic` does not change that. A seven-file graph loaded
@@ -1563,3 +1704,41 @@ terminal session that never showed; a server serves whoever asks, so binding
 to a student who does not exist used to leave the last one's work sitting in
 the globals. Beliefs were never at risk — the belief key includes the student
 — but the rest was.
+
+### The one clock the client is allowed to hold
+
+The protocol gives the server the stopwatch on purpose: `langpop/next`
+starts it, `langpop/answer` stops it, and the reply says `latency_source:
+"server"` so a client cannot quietly become the authority on how fast a
+student answered. Every pre-school exit criterion has a millisecond budget,
+and a budget measured by the thing being measured is not a budget.
+
+Adding a session timer meant deciding whether that line had just been
+crossed, and it had not, because there are two clocks and they answer
+different questions. *How long did that answer take* is evidence about an
+item, is written to the journal, and decides whether a rung is passed — the
+server's. *How long have I been sitting here* is evidence about nothing, is
+sent nowhere, and the server cannot answer it even in principle: it knows
+when the session was opened, and not whether the person is still in the
+chair. A client that cannot tell a student they have been at it for forty
+minutes is not protecting anything.
+
+So the clock starts at the greeting rather than at connect — the minutes
+spent typing a name are not study — and the elapsed time sits in the prompt,
+because a student who has to ask what time it is has already lost track of
+it.
+
+One thing it is allowed to be opinionated about. `:status` already prints a
+sitting length, from the server's own consistency report: *a suggestion: 20
+minutes a day would keep up with it*. Having asked for twenty minutes it
+would be strange not to notice the twentieth, so the client keeps the figure
+when it sees it and says so on reaching it — once, because a nudge on every
+answer afterwards is a nag, and the student is being told something they
+were just told. It does not invent a target, and until `:status` has been
+asked it has none.
+
+The suite is the first one `client.p` has ever had, and it tests the three
+things in the client that are not a printf of something the server said: the
+duration formatting, the pace arithmetic, and that the nudge fires once.
+A clock that renders nine minutes five seconds as `9:5` is wrong in a way no
+server test can see.
