@@ -832,7 +832,42 @@ did what the section above predicted, in order:
    the one door the pool exists to hold shut. Settled once, by the
    dialogue order, at every rung.
 
-26. **Smaller observations, not yet acted on:** a reported-but-never-
+26. **Every corpus's top is partly its own operating manual, and that
+   is why N1 does not need a better corpus.** The N2 rung was built by
+   changing corpora (finding 25), so the obvious move before reading
+   7,000 rows for N1 was to find the one that measures N1: written,
+   non-journalistic Japanese. Measured instead of assumed (2026-11-02).
+   The Wiktionary list drawn from the August 2022 Japanese Wikipedia
+   dump through the kagome analyser -- 20,000 LEMMAS rather than surface
+   forms, CC BY-SA 4.0, two pages fetched with `action=raw` and parsed
+   with one regexp -- ranks every word the subtitle corpus could not:
+   判断 at 823, 背景 at 1925, 段階 at 1941, 批判 at 1387, and 概念,
+   要素 and 現象 in the 2000s, while demoting 犯人 from the subtitle
+   corpus's rank 133 to 5134. The register shift is real.
+   **And its own top forty is the apparatus of editing an
+   encyclopedia**: 削除, 一覧, 項目, 執筆, 記載, 閲覧, 目次, 注釈,
+   掲載, 当該, and 存命 and 生年月日, which are infobox fields.
+   Subtitles give drama (殺人, 犯人, 捜査), newspapers give journalese
+   (同省, 与野党, 同夜), Wikipedia gives revision-history words. A
+   hand pass is not the price of a badly chosen corpus; it is the price
+   of using any corpus as a syllabus.
+   The arithmetic that settles it: of the 11,437 rows in the N1 pool the
+   newspaper ranks 10,307 and this list ranks 2,315, of which 2,198 are
+   ranked by both and 117 by Wikipedia alone -- and those 117 are mostly
+   place names. Sampled at three depths, the agreed tier is refused 27%,
+   43% and 45% of the time, so it yields about 1,355 of the 3,846 picks
+   N1 needs; the rest still has to come out of the newspaper tail at
+   30-65%. Total reading about 6,800 rows against 7,000-7,500 with the
+   newspaper alone. **The corpus was never the constraint.** What
+   binds is `vocabulary(10000, read)`, which `graph/ja/ladder.pl` marks
+   `estimate(community)`: at that size the criterion asks for most of
+   what any general corpus holds above the N2 line, specialist tail and
+   all. The second signal is worth having as a COLUMN a curator can see
+   -- agreement is a genuine quality mark at the top of the pool -- but
+   it is not worth an upstream dependency, so it is recorded here with
+   its recipe rather than wired in.
+
+27. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
@@ -871,6 +906,7 @@ later one.
 | 6 | the kanji column, all of it | done (2026-11-01): 650, 1023 and 2230 all read ok. N1 by rule, N3 and N2 by splitting old level 2 on school grade then newspaper frequency -- the one rung the source cannot answer, argued in langpop-n3-kanji.md. 5,061 items, no violations, `--check` 28s to 61s |
 | 6 | N2 vocabulary, 2,022 words | done (2026-11-02): 2,176 picks from 2,900 rows read, 724 refused. `vocabulary(6000, read)` ok with 154 askable to spare; every Japanese reading criterion below N1 now met; 9,741 items, no violations, `--check` 10.5s. The rung needed the OTHER corpus -- see finding 25 and langpop-n2-vocabulary.md |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
+| 8 | N1 vocabulary, 3,846 words | **not started, and costed before starting** (2026-11-02): about 6,800 rows to read by hand, 2.5x the N2 rung, and finding 26 says a third corpus does not shrink that. The kanji criterion is already met. The question to settle first is the 10,000 itself, which is `estimate(community)` |
 | 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |
 
 Phases 0--4 are days of small work (and 3 is none). Phase 5 upward is content, and that

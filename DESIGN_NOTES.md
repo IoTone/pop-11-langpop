@@ -2277,3 +2277,62 @@ word, which lands inside the scorer's `near` band. The scorer declining is
 the band working. What the test asserts now is that nothing is **credited**
 wrongly, that declining stays rare, and that a four-mora word is still
 decided outright.
+
+### The third corpus, and what it cost to find out it was not the answer
+
+N2 was built by changing corpora. So before reading seven thousand rows for
+N1, the thing to do was find the corpus that measures N1 — written,
+non-journalistic Japanese — rather than assume the newspaper would stretch.
+An hour, and the answer is no, with numbers.
+
+**What was looked at.** Leipzig's collection (CC BY 4.0, and its corpora are
+labelled by register, which is exactly the discipline this project wants)
+now sits behind a proof-of-work gate aimed at automated clients; that is a
+request not to fetch it this way, so it was not fetched. The novel and
+non-fiction lists at jiten.moe are CC BY-SA 4.0 and the right register, but
+are derived from commercial books, and the licence on a list does not settle
+the provenance of the texts under it. What was used is the Wiktionary list
+drawn from the August 2022 Japanese Wikipedia dump through the kagome
+analyser: CC BY-SA 4.0, the same share-alike the subtitle list already
+carries, source text that is itself freely licensed, two pages fetched with
+`action=raw`, one regexp to parse, 20,000 entries — and **lemmas rather
+than surface forms**, which is the defect that made N3 need a stem rule at
+all.
+
+**It is a real register shift.** It ranks every word the subtitle corpus
+could not: 判断 823, 批判 1387, 背景 1925, 段階 1941, with 概念, 要素 and
+現象 in the 2000s — and it demotes 犯人 from the subtitles' rank 133 to
+5134.
+
+**And its own top forty is the apparatus of editing an encyclopedia.**
+削除, 一覧, 項目, 執筆, 記載, 閲覧, 目次, 注釈, 掲載, 当該, 履歴 — and
+存命 and 生年月日, which are not words so much as infobox fields.
+
+Which is the generalisation worth keeping, now that there are three of
+them. Subtitles put drama at the top (殺人, 犯人, 捜査). Newspapers put
+journalese at the top (同省, 与野党, 同夜). Wikipedia puts its revision
+history at the top. **Every corpus's most frequent words are partly its own
+operating manual**, and the hand pass that follows the ranking is not the
+price of having chosen badly — it is the price of using any corpus as a
+syllabus. The N3 rung paid 12%, N2 paid 25%, and N1 will pay about 45%
+whichever of the three leads.
+
+**The arithmetic.** Of the 11,437 rows in the N1 pool the newspaper ranks
+10,307 and the Wikipedia list ranks 2,315 — 2,198 of them ranked by both,
+and 117 by Wikipedia alone, most of which are place names. Sampled at three
+depths, the agreed tier is refused 27%, 43% and 45% of the time: about 1,355
+picks out of the 3,846 the rung needs. The remaining 2,491 still come out of
+the newspaper tail at 30–65%. Six thousand eight hundred rows against
+seven thousand to seven and a half. The second opinion is worth having as a
+column a curator can see, because agreement at the top of the pool is a
+genuine quality mark; it is not worth an upstream dependency, so the recipe
+is written down and nothing was wired in.
+
+**So the constraint was never the corpus.** It is `vocabulary(10000,
+read)`, which `graph/ja/ladder.pl` marks `estimate(community)` — the same
+mark the other five rungs carry, and the only one of them big enough for the
+mark to matter. Ten thousand words asks for most of what a general corpus
+holds above the N2 line, specialist tail and all: 6,800 rows read to admit
+溶媒 and 砲台 along with 矛盾 and 衝撃. That is a decision about what N1
+MEANS, which is the owner's, and it is a better use of an hour than the
+first three hundred rows would have been.
