@@ -103,6 +103,37 @@ check('the teacher has a name', reg('teacher'), 'Aoi');
 vars reg2 = result('langpop/register', jsonrpc_obj([% 'student_id', 'rpcuser' %]));
 check_true('registering again finds the profile', reg2('returning'));
 check('and keeps the name it was given', reg2('display_name'), 'RPC User');
+check('and the language it was registered with', reg2('language'), 'ja');
+
+;;; A LANGUAGE THAT WAS ASKED FOR beats the one on file, here as on the
+;;; command line.  A returning student used to have the parameter
+;;; ignored entirely, which is why the client now sends one only when
+;;; it was given one: a client passing its own default would flip a
+;;; returning English student back to Japanese on every connect.
+vars reg3 = result('langpop/register',
+                   jsonrpc_obj([% 'student_id', 'rpcuser',
+                                  'language', 'en' %]));
+check('an asked-for language is honoured for a student already known',
+      reg3('language'), 'en');
+check_true('and it is still the same student', reg3('returning'));
+check('on a rung of the ladder they are now climbing',
+      reg3('level'), 'preschool');
+
+;;; The teacher follows the language.  Getting this wrong is the visible
+;;; half of the bug: the English teacher asking for hiragana.
+check('the teacher is the one who teaches it', reg3('teacher'), 'Mr Hill');
+
+;;; And it stuck, so a session opened after it is an English session.
+vars esess = result('langpop/session.open',
+                    jsonrpc_obj([% 'student_id', 'rpcuser' %]));
+check('the session agrees', esess('language'), 'en');
+
+;;; Back, and the Japanese rung was kept rather than overwritten.
+vars reg4 = result('langpop/register',
+                   jsonrpc_obj([% 'student_id', 'rpcuser',
+                                  'language', 'ja' %]));
+check('and back again', reg4('language'), 'ja');
+check('to the teacher who was there before', reg4('teacher'), 'Aoi');
 
 vars sess = result('langpop/session.open',
                    jsonrpc_obj([% 'student_id', 'rpcuser' %]));

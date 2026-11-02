@@ -194,12 +194,37 @@ where the fact came from, and where the student stands on it.
 
 Student records live in `~/.langpop/`, two files per student. The JSON file
 holds what they are believed to know — the beliefs, the review ladder, the
-period, the settings they chose. The `.journal` file beside it holds every
+period, the settings they chose, and the rung they have reached in *each*
+language they have studied. The `.journal` file beside it holds every
 answer they have ever given, one tab-separated line per answer, oldest
 first: item, channel, evidence tier, outcome, how long it took, when, and
 whether it was learning or review. It is plain text on purpose, because it
 is the audit, and `grep`, `cut` and `sort` are the right tools for an
 audit. There is no password; this is a local tool.
+
+### Which language a session is in
+
+`--lang` is an instruction and beats the language on file; with no flag, the
+profile's language stands, and a student the tutor has never met starts in
+Japanese. The flag is honoured out loud rather than quietly:
+
+```
+Welcome back. Let us continue where we stopped.
+dk, is it not?  Level a2.
+  (en this session, as you asked.  n5 is where you
+  were in ja, and it is kept.)
+```
+
+The rung is kept **per language**, because one level cannot answer for two
+ladders: a student who has reached N5 in Japanese is not at N5 in English,
+where there is no such rung. So each language resumes where it was left, and
+an evening of English costs nothing in Japanese. A language the student has
+never studied starts at the bottom of its own ladder.
+
+This is also why `./langpop client` sends a language only when it was given
+one. The server treats a language it is handed as an instruction, so a client
+that always sent its own default would flip a returning English student back
+to Japanese on every connect.
 
 ---
 
@@ -1966,6 +1991,7 @@ arrows into nothing.
 | `:report <n> ok` | done it (tier 3) |
 | `:report <n> 17/20` | done it, with a result (tier 2) |
 | `:level <name>` | move the goal |
+| `:time` | how long this sitting has run, and how many questions were in it |
 | `:quit` | save and stop |
 
 ---
@@ -2047,16 +2073,12 @@ with a voice installed. The English A2 word count is the largest gap, and
 the English function words are the largest gap in *coverage*.
 
 **What the two front ends do not share.** `./langpop` and
-`./langpop client` are the same engine, but the commands are typed into two
-different programs and the lists have drifted. `:time` is the live one: the
-sitting clock is in `client.p` only, so typing it into the in-process tutor
-gets *I do not know ":time"*. It belongs in both — **to fix**. The in-process
-tutor also has `:place`, `:oops`, `:aids`, `:sheet`, `:chart`, `:zine`,
-`:say`, `:rate`, `:mic`, `:speak` and `:level`, none of which the client
-offers, and that direction is the honest test of the API rather than an
-oversight: each one is a protocol method the client has not been given a
-reason to call yet. The clock is the other direction, which is the one worth
-closing.
+`./langpop client` are the same engine, and `:time` is now in both. The
+in-process tutor also has `:place`, `:oops`, `:aids`, `:sheet`, `:chart`,
+`:zine`, `:say`, `:rate`, `:mic`, `:speak` and `:level`, none of which the
+client offers — and that direction is the honest test of the API rather than
+an oversight: each is a protocol method the reference client has not been
+given a reason to call yet.
 
 **What is deliberately absent.** No model in the teaching loop. No generated
 content in the repository. No spaced-repetition scheduling beyond the

@@ -282,7 +282,27 @@ define lp_m_register(msg) -> res;
         lp_err(LP_E_PARAMS, 'register: student_id needed') -> res; return
     endunless;
     consword(lp_norm(user)) -> lp_user;
+    ;;; A LANGUAGE THAT WAS ASKED FOR beats the one on file, and has to
+    ;;; be set before the profile is read rather than after it, because
+    ;;; lp_load_profile is what would otherwise put the stored one back.
+    ;;; Cleared again straight away: this server binds whoever asks
+    ;;; next, and one caller's flag must not outlive their call.
+    ;;;
+    ;;; This is why the client sends `language` only when it was given
+    ;;; one.  A client that always sent its own default would flip a
+    ;;; returning English student back to Japanese on connect.
+    if lang then consword(lang) -> lp_lang; true -> lp_lang_asked endif;
     lp_load_profile(lp_user) -> known;
+    false -> lp_lang_asked;
+    ;;; Written back when it really was a switch, so that a later bind --
+    ;;; after some other student has been served -- reads the language
+    ;;; this caller asked for rather than reverting.  lp_levels_at holds
+    ;;; the other language's rung exactly when the profile named a
+    ;;; different one, which is the signal that a switch happened.
+    if known and lang
+    and lp_levels_at(if lp_lang == "ja" then "en" else "ja" endif) then
+        lp_save();
+    endif;
     unless known then
         if name then name else user endif -> lp_display;
         if lang then consword(lang) else "ja" endif -> lp_lang;

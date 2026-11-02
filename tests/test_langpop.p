@@ -2435,6 +2435,157 @@ check_false('loading a student who does not exist fails',
 check('and leaves no assignments behind', length(lp_assigns), 0);
 check('nor any refused guesses', length(lp_corrections), 0);
 
+;;; -------------------------------------------- the language on the command
+;;; THE FLAG BEATS THE FILE.  `--lang en` on a student who has been
+;;; studying Japanese used to load the English teacher and then let the
+;;; profile put the Japanese curriculum back underneath him: Mr Hill
+;;; asking for hiragana.  The persona was chosen from the flag and the
+;;; content from the file, and nothing reconciled them.
+"switcher2" -> lp_user;
+[] -> lp_journal;
+"ja" -> lp_lang; "n5" -> lp_level;
+false -> lp_lang_asked;
+lp_save();
+
+;;; No flag: the profile's language stands, which is the whole point of
+;;; storing it.
+"en" -> lp_lang; "a2" -> lp_level;
+false -> lp_lang_asked;
+check_true('the profile loads', lp_load_profile("switcher2"));
+check('with no flag the stored language wins', lp_lang, "ja");
+check('and the stored rung with it', lp_level, "n5");
+
+;;; A flag: it wins, and the level comes from the ladder being climbed
+;;; rather than from the one that was stored.  n5 is not a rung of the
+;;; English ladder, and starting an English session "at n5" is the kind
+;;; of nonsense that only shows up three questions later.
+"en" -> lp_lang; true -> lp_lang_asked;
+check_true('the profile loads again', lp_load_profile("switcher2"));
+check('an asked-for language beats the stored one', lp_lang, "en");
+check_true('and the level is one of that language\'s',
+           member(lp_level, lp_levels("en")) /== false);
+check('which is the bottom of it, this student never having been there',
+      lp_level, hd(lp_levels("en")));
+check('while the other language\'s rung is kept, not dropped',
+      lp_levels_at("ja"), "n5");
+
+;;; And saved per language, so that an evening of English does not cost
+;;; a student where they had got to in Japanese.
+"a2" -> lp_level;
+lp_save();
+false -> lp_lang_asked;
+check_true('it loads once more', lp_load_profile("switcher2"));
+check('the language asked for last time is the one on file now',
+      lp_lang, "en");
+check('at the rung it was left at', lp_level, "a2");
+check('and Japanese is still where it was', lp_levels_at("ja"), "n5");
+
+;;; Back again, explicitly: each language resumes at its own rung.
+"ja" -> lp_lang; true -> lp_lang_asked;
+check_true('and again', lp_load_profile("switcher2"));
+check('going back is going back to n5', lp_level, "n5");
+check('with English kept this time', lp_levels_at("en"), "a2");
+false -> lp_lang_asked;
+
+;;; A STORED RUNG THAT DOES NOT EXIST is a profile written by a build
+;;; with a different ladder, or by hand.  It starts at the bottom rather
+;;; than binding a student to a level nothing can be asked at.
+lp_write_file(lp_profile_path("ghost"),
+              '{"user":"ghost","display":"G","lang":"ja","level":"n9"}');
+check_true('a profile naming a rung that does not exist still loads',
+           lp_load_profile("ghost"));
+check('and starts at the bottom of the ladder', lp_level,
+      hd(lp_levels("ja")));
+
+;;; ------------------------------------------------------ the sitting clock
+;;; The clock the student can see, which is not the clock that scores an
+;;; answer -- that one is lp_record's and is pinned down above.  What is
+;;; checked here is the arithmetic: a duration rendered as 9:5 is wrong
+;;; in a way nothing else in this suite would notice.
+check('a minute and a bit', lp_sit_clock(63000), '1:03');
+check('the pad is where a reader needs it', lp_sit_clock(545000), '9:05');
+check('and is not there when it is not', lp_sit_clock(730000), '12:10');
+check('a sitting that has only just started', lp_sit_clock(400), '0:00');
+check('a round ten minutes', lp_sit_clock(600000), '10:00');
+
+;;; An hour in, "how long is this sitting" has stopped being the
+;;; question, so the shape changes.
+check('past the hour it reads as hours', lp_sit_clock(3600000), '1h00m');
+check('and keeps the minutes', lp_sit_clock(3600000 + 305000), '1h05m');
+check('two and a half hours', lp_sit_clock(9000000), '2h30m');
+
+;;; No sitting open: nought, and not the milliseconds since 1970, which
+;;; is what reading an unset lp_sit_t0 as a number would give.
+false -> lp_sit_t0;
+check('an unopened sitting has run for no time', lp_sit_ms(), 0);
+lp_now_ms() - 250000 -> lp_sit_t0;
+check_true('an open one is measured from its start',
+           lp_sit_ms() >= 250000 and lp_sit_ms() < 260000);
+
+;;; THE NUDGE, which fires only where there is a sitting length to fire
+;;; on.  lp_sit_goal reads lp_schedule_advice, and that says nothing
+;;; about a student who is keeping up -- so with no advice there is
+;;; nothing to announce, however long the sitting has run.
+vars sit_buf = [];
+
+define sit_say(proc) -> s;
+    lvars proc, s;
+    dlocal cucharout = procedure(c); lvars c;
+        conspair(c, sit_buf) -> sit_buf endprocedure;
+    [] -> sit_buf;
+    proc();
+    consstring(destlist(rev(sit_buf))) -> s;
+enddefine;
+
+false -> lp_period_start;            ;;; no period, so no advice
+false -> lp_sit_said;
+lp_now_ms() - 3600000 -> lp_sit_t0;  ;;; an hour in
+check('a student nobody is worried about is not interrupted',
+      sit_say(lp_sit_check), '');
+check_true('and the nudge is still unfired', lp_sit_said == false);
+
+;;; A period with nothing in it: lp_schedule_advice asks for ten minutes
+;;; a day, which is the smallest honest thing it offers.
+lp_now_ms() - (10 * lp_day_ms) -> lp_period_start;
+check('ten minutes a day is what it asks of an empty period',
+      lp_sit_goal(), 10);
+lvars nudge = sit_say(lp_sit_check);
+check_true('an hour is past ten minutes, so it is said',
+           issubstring('10 minutes', nudge) /== false);
+check_true('with the permission that is the point of saying it',
+           issubstring('Stopping here is fine', nudge) /== false);
+check('and said once', sit_say(lp_sit_check), '');
+
+;;; :time itself.  lp_asked_n is the engine's own count of questions
+;;; recorded, so the clock borrows it rather than keeping a second one.
+lp_now_ms() - 600000 -> lp_sit_t0;   ;;; ten minutes
+40 -> lp_asked_n; 0 -> lp_later_n;
+lvars tt = sit_say(lp_sit_show);
+check_true('the sitting is reported', issubstring('10:0', tt) /== false);
+check_true('with the questions in it', issubstring('40 question', tt) /== false);
+check_true('and a pace, which is 600 seconds over 40',
+           issubstring('about 15 seconds', tt) /== false);
+
+;;; A pace over the first few seconds is not a pace, and "about 1
+;;; seconds a question" reads like a broken clock rather than a fast
+;;; student.  So there is a floor, and it is the half minute.
+lp_now_ms() - 4000 -> lp_sit_t0; 1 -> lp_asked_n;
+check_true('a sitting four seconds old quotes no pace',
+           issubstring('a question\n', sit_say(lp_sit_show)) == false);
+
+;;; What was put off is the other half of what the sitting did, and is
+;;; mentioned only when there is some.
+8 -> lp_later_n;
+check_true('questions put off are counted too',
+           issubstring('8 put off', sit_say(lp_sit_show)) /== false);
+0 -> lp_later_n;
+check_true('and not mentioned when there are none',
+           issubstring('put off', sit_say(lp_sit_show)) == false);
+
+false -> lp_sit_t0;
+check_true('with no sitting open it says so',
+           issubstring('No sitting open', sit_say(lp_sit_show)) /== false);
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 

@@ -406,8 +406,15 @@ enddefine;
 4096 -> poplinemax;
 
 define client_main();
+    ;;; `lang` starts as false and not as 'ja': it is sent only when it
+    ;;; was asked for, because the server treats a language it is given
+    ;;; as an instruction that beats the student's stored one.  A client
+    ;;; that always sent its own default would flip a returning English
+    ;;; student back to Japanese every time they connected.  With none
+    ;;; sent, the server uses the profile's, or Japanese for a student
+    ;;; it has never met.
     lvars args = poparglist, a, host = 'localhost', port = 7801,
-          user = false, name = false, lang = 'ja', reg, sess, line, cmd, arg;
+          user = false, name = false, lang = false, reg, sess, line, cmd, arg;
     until args == [] do
         hd(args) -> a;
         if a = '--port' then strnumber(hd(tl(args))) -> port; tl(tl(args)) -> args;

@@ -1742,3 +1742,52 @@ things in the client that are not a printf of something the server said: the
 duration formatting, the pace arithmetic, and that the nudge fires once.
 A clock that renders nine minutes five seconds as `9:5` is wrong in a way no
 server test can see.
+
+### Mr Hill asking for hiragana
+
+`./langpop --lang en --user dkords` loaded the English teacher and then
+taught Japanese. Two halves of one decision were read from two different
+places: `lp_main` chose the persona from the flag, and `lp_load_profile`
+restored `lp_lang` from the file a few lines later, unconditionally. Neither
+was wrong on its own, and nothing compared them.
+
+The rule that was missing is which one speaks for the student. A flag is an
+instruction — somebody typed it this morning — and a stored language is a
+default, which is what makes it useful when no flag is given. So
+`lp_lang_asked` records *whether the language was asked for*, and the profile
+only restores a language nobody asked about. The same flag now drives the
+protocol: `langpop/register` sets the language before reading the profile
+rather than after, which also fixed the quieter half of the bug, where a
+returning student's `language` parameter was ignored altogether.
+
+That change forced a second one out into the open. The level was a single
+field, and a level is only meaningful against a ladder: a student at N5 in
+Japanese is not at N5 in English, where there is no such rung. Honouring the
+flag without touching the level would have started an English session "at
+n5", which nothing can ask a question at and which `--audit` would have
+reported as a rung with no content. So the profile now holds a rung per
+language, `levels: {ja: n5, en: a2}`, with the old single `level` still
+written for a build that reads only that, and read as belonging to the
+language stored beside it. Each language resumes where it was left; a
+language never studied starts at the bottom of its own ladder; and a stored
+rung that is not on the ladder at all — a hand-edited profile, or one written
+against a different ladder — starts at the bottom rather than binding a
+student to a level nothing can be asked at.
+
+The switch is announced, which is the part that is a judgment rather than a
+fix. A student who typed the wrong flag should find out in the greeting
+rather than four questions later, and what they most need to hear is that
+nothing was lost:
+
+```
+dk, is it not?  Level a2.
+  (en this session, as you asked.  n5 is where you
+  were in ja, and it is kept.)
+```
+
+And the client now sends a language only when it was given one. It used to
+default to `'ja'` and send that on every connect, which under the new rule
+would have been an instruction — flipping a returning English student back to
+Japanese every time they started the client. A default is not an instruction,
+and a protocol cannot tell the two apart unless the caller declines to send
+one.

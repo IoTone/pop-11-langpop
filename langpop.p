@@ -126,6 +126,15 @@ vars
     lp_lang     = "ja",
     lp_level    = "preschool",
     lp_corrections = [],
+    ;;; WAS THE LANGUAGE ASKED FOR, or is it just the default?  The
+    ;;; difference decides who wins when a stored profile disagrees.
+    ;;; `--lang en` on a student who has been studying Japanese used to
+    ;;; load the English teacher and then let the profile put the
+    ;;; Japanese curriculum back underneath him -- Mr Hill asking for
+    ;;; hiragana -- because the persona was chosen from the flag and the
+    ;;; content from the file.  An explicit request wins; the stored
+    ;;; language is a default for when none was made.
+    lp_lang_asked = false,
 ;
 
 ;;; Belief thresholds.  These three numbers are the evidence policy, and
@@ -1687,6 +1696,12 @@ define lp_journal_flush();
     lp_journal -> lp_journal_mark;
 enddefine;
 
+;;; Where this student had got to in each language they have studied,
+;;; {lang -> level}.  Cleared with the rest of the profile, because the
+;;; server binds whoever asks and the last student's rung must not be
+;;; owed by the next one.
+vars lp_levels_at = newproperty([], 8, false, "perm");
+
 define lp_save();
     lvars o = newmapping([], 16, false, true),
           b = newmapping([], 256, false, true),
@@ -1698,7 +1713,19 @@ define lp_save();
     lp_user sys_>< '' -> o('user');
     lp_display -> o('display');
     lp_lang sys_>< '' -> o('lang');
+    ;;; `level` stays, and is this session's: a profile written here has
+    ;;; to stay readable by a build that knows only the one field.
     lp_level sys_>< '' -> o('level');
+    ;;; And the levels of every language this student has studied, so
+    ;;; that going to English for an evening does not forget where they
+    ;;; had got to in Japanese.
+    lp_level -> lp_levels_at(lp_lang);
+    lvars lv = newmapping([], 8, false, true);
+    appproperty(lp_levels_at,
+        procedure(k, v); lvars k, v;
+            if v then v sys_>< '' -> lv(k sys_>< '') endif;
+        endprocedure);
+    lv -> o('levels');
     appproperty(lp_beliefs,
         procedure(k, v); v -> b(k sys_>< '') endprocedure);
     b -> o('beliefs');
@@ -1762,12 +1789,40 @@ define lp_load_profile(user) -> found;
     [] -> lp_passed;
     clearproperty(lp_reviews);
     lp_aids_reset(); lp_queue_reset();
+    clearproperty(lp_levels_at);
     returnunless(s);
     json_parse(s) -> o;
     true -> found;
     o('display') -> lp_display;
-    if o('lang') then consword(o('lang')) -> lp_lang endif;
-    if o('level') then consword(o('level')) -> lp_level endif;
+    lvars had = false;
+    if o('lang') then consword(o('lang')) -> had endif;
+    if had and not(lp_lang_asked) then had -> lp_lang endif;
+    ;;; THE LEVEL IS PER LANGUAGE.  A student who has reached n5 in
+    ;;; Japanese is not at n5 in English -- there is no such rung -- and
+    ;;; one stored level cannot answer for two ladders.  Older profiles
+    ;;; hold a bare `level`, which belongs to the language they also
+    ;;; hold; anything else starts at the bottom of the ladder actually
+    ;;; being climbed, and the figure for the other language is kept.
+    lvars lvs = o('levels'), stored = false;
+    if lvs and lvs(lp_lang sys_>< '') then
+        consword(lvs(lp_lang sys_>< '')) -> stored;
+    elseif o('level') and (had == false or had == lp_lang) then
+        consword(o('level')) -> stored;
+    endif;
+    if stored and member(stored, lp_levels(lp_lang)) then
+        stored -> lp_level;
+    else
+        hd(lp_levels(lp_lang)) -> lp_level;
+    endif;
+    ;;; Kept so lp_save can write back the level of a language this
+    ;;; session is not studying, rather than dropping it.
+    if lvs then
+        appproperty(lvs, procedure(k, v); lvars k, v;
+            consword(v) -> lp_levels_at(consword(k)) endprocedure);
+    endif;
+    if had and had /== lp_lang and o('level') then
+        consword(o('level')) -> lp_levels_at(had);
+    endif;
     if o('beliefs') then
         appproperty(o('beliefs'),
             procedure(k, v); v -> lp_beliefs(consword(k)) endprocedure);
@@ -2924,6 +2979,95 @@ vars lp_allow_later = true;
 define lp_queue_reset();
     [] -> lp_pending; 0 -> lp_asked_n; 0 -> lp_later_n;
     clearproperty(lp_laters);
+enddefine;
+
+;;; ------------------------------------------------------ the sitting clock
+;;; HOW LONG HAVE I BEEN HERE, which is a different question from how
+;;; long an answer took and is kept apart from it on purpose.  Answer
+;;; latency is evidence: it is recorded against the item, it decides
+;;; whether a rung's speed criterion is met, and lp_record is the only
+;;; thing allowed to write it.  This measures the sitting, is written
+;;; nowhere, and nobody is graded on it.
+;;;
+;;; It was in client.p first and only, because the request was for a
+;;; timer in the client -- and `:time` typed into this front end came
+;;; back "I do not know", which is where a student would meet it.  The
+;;; two copies are deliberate in the other direction: client.p may know
+;;; the protocol and nothing else about the tutor, so it cannot call
+;;; lp_now_ms and carries its own clock, as it carries its own yes().
+vars lp_sit_t0 = false,        ;;; when this sitting started, in ms
+     lp_sit_said = false;      ;;; the sitting-length nudge, fired once
+
+define lp_sit_ms() -> ms;
+    lvars ms;
+    if lp_sit_t0 then lp_now_ms() - lp_sit_t0 else 0 endif -> ms;
+enddefine;
+
+;;; m:ss while a sitting is a sitting, h mm once it stops being one.
+;;; The zero pad is not decoration: 9:5 reads as nine minutes five
+;;; seconds to nobody.
+define lp_sit_clock(ms) -> s;
+    lvars ms, s, secs = ms div 1000, m, r;
+    secs div 60 -> m; secs rem 60 -> r;
+    if m >= 60 then
+        sprintf('%ph%p%pm', [% m div 60,
+                               if m rem 60 < 10 then '0' else '' endif,
+                               m rem 60 %]) -> s;
+    else
+        sprintf('%p:%p%p', [% m, if r < 10 then '0' else '' endif, r %]) -> s;
+    endif;
+enddefine;
+
+;;; The sitting length this student has been asked for, or false.  Read
+;;; from lp_schedule_advice rather than remembered from :status -- the
+;;; client has to wait to be told, this front end is the engine and can
+;;; just ask.  No advice means the student is keeping up, and a tutor
+;;; with nothing to say should say nothing.
+define lp_sit_goal() -> mins;
+    lvars mins = false, adv = lp_schedule_advice();
+    if adv then adv(3) -> mins endif;
+enddefine;
+
+;;; Having asked somebody for twenty minutes, notice the twentieth.
+;;; Once: a student told this on every answer afterwards is being
+;;; nagged, and is being told something they were just told.
+define lp_sit_check();
+    lvars g;
+    returnif(lp_sit_said or lp_sit_t0 == false);
+    lp_sit_goal() -> g;
+    returnunless(g and lp_sit_ms() >= g * 60000);
+    true -> lp_sit_said;
+    printf('\n  (%p minutes -- that is the sitting I asked you for.'
+           <> '  Stopping here is fine; so is carrying on.)\n', [% g %]);
+enddefine;
+
+define lp_sit_show();
+    lvars ms = lp_sit_ms(), g = lp_sit_goal();
+    unless lp_sit_t0 then printf('  No sitting open.\n'); return endunless;
+    printf('\n  %p at the keyboard, %p question(s) answered',
+           [% lp_sit_clock(ms), lp_asked_n %]);
+    if lp_later_n > 0 then
+        printf(', %p put off', [% lp_later_n %]);
+    endif;
+    printf('\n');
+    ;;; Seconds a question is not a score and goes nowhere; it is the
+    ;;; number that tells a student the sitting went on reading the
+    ;;; screen rather than answering it.  Half a minute before it says
+    ;;; anything, because a pace over two questions is not a pace and
+    ;;; "about 1 seconds" reads like a broken clock.
+    if lp_asked_n > 0 and ms >= 30000 then
+        printf('    about %p seconds a question\n',
+               [% round(ms / (lp_asked_n * 1000)) %]);
+    endif;
+    if g then
+        if ms >= g * 60000 then
+            printf('    the sitting I asked for was %p minutes; done\n',
+                   [% g %]);
+        else
+            printf('    %p minutes was the sitting I asked for; %p to go\n',
+                   [% g, lp_sit_clock(g * 60000 - ms) %]);
+        endif;
+    endif;
 enddefine;
 
 define lp_unqueue(item);
@@ -4631,6 +4775,19 @@ define lp_register(user, display, batch);
     if lp_load_profile(user) then
         printf('%p\n', [% lp_line('welcome_back') %]);
         printf('%p, is it not?  Level %p.\n', [% lp_display, lp_level %]);
+        ;;; A language that was asked for and is not the one on file is
+        ;;; a decision, so it is honoured -- and said out loud, because
+        ;;; a student who typed the wrong flag should find that out now
+        ;;; and not four questions in.  lp_levels_at holds the other
+        ;;; language's rung exactly when the profile named a different
+        ;;; one, so it is both the evidence that this happened and the
+        ;;; figure worth quoting: nothing was lost, it is being kept.
+        lvars othr = if lp_lang == "ja" then "en" else "ja" endif;
+        if lp_lang_asked and lp_levels_at(othr) then
+            printf('  (%p this session, as you asked.  %p is where you\n',
+                   [% lp_lang, lp_levels_at(othr) %]);
+            printf('  were in %p, and it is kept.)\n', [^othr]);
+        endif;
         return;
     endif;
     lp_greet();
@@ -5030,6 +5187,7 @@ define lp_help();
     printf('  :report <n> ok   done it (compliance)\n');
     printf('  :report <n> 17/20  done it, with a result\n');
     printf('  :level <name>    move the goal\n');
+    printf('  :time            how long this sitting has run\n');
     printf('  :quit            save and stop\n');
     printf('\n  At a question: enter means "I do not know", which is an answer.\n');
     printf('  Typing "later" puts the question off until later today instead.\n');
@@ -5185,9 +5343,17 @@ enddefine;
 define lp_session();
     ;;; `back` is a Pop-11 syntax word, as `from`, `to` and `step` are
     lvars line, cmd, arg, a2, id, outcome, retaken;
+    ;;; Here and not at startup: the greeting, the name and the
+    ;;; recognition question come before this, and the minutes spent on
+    ;;; them are not study.
+    lp_now_ms() -> lp_sit_t0;
+    false -> lp_sit_said;
     lp_help();
     repeat
-        printf('\n%p> ', [% lp_teacher_name() %]);
+        ;;; The clock is in the prompt because a student who has to ask
+        ;;; what time it is has already lost track of it.
+        printf('\n%p %p> ',
+               [% lp_teacher_name(), lp_sit_clock(lp_sit_ms()) %]);
         sysflush(popdevout);
         lp_readline() -> line;
         quitif(line == termin);
@@ -5197,6 +5363,9 @@ define lp_session();
             ;;; After the answer, not before the question: a rung
             ;;; finished by the answer just given should be said now.
             lp_announce_advance();
+            ;;; And after that, because finishing a rung is the better
+            ;;; news and a sitting is a worse reason to stop.
+            lp_sit_check();
         elseif line(1) == `:` then
             lp_split2(allbutfirst(1, line)) -> (cmd, arg);
             if cmd = 'quit' or cmd = 'q' then quitloop;
@@ -5276,6 +5445,7 @@ define lp_session();
                 else
                     printf('  Levels for %p: %p\n', [% lp_lang, lp_levels(lp_lang) %]);
                 endif;
+            elseif cmd = 'time' then lp_sit_show();
             elseif cmd = 'whoami' then
                 printf('  %p (%p), %p at %p\n',
                        [% lp_display, lp_user, lp_lang, lp_level %]);
@@ -5294,6 +5464,12 @@ define lp_session();
     endrepeat;
     lp_save();
     printf('\n%p\n', [% lp_line('signoff') %]);
+    ;;; After the signoff, not instead of it.  The teacher says goodbye;
+    ;;; the program says what the sitting was.
+    if lp_sit_t0 then
+        printf('  %p at the keyboard, %p question(s) answered.\n',
+               [% lp_sit_clock(lp_sit_ms()), lp_asked_n %]);
+    endif;
 enddefine;
 
 ;;; --------------------------------------------------- the other language
@@ -5429,7 +5605,10 @@ define lp_main();
     find_dir() -> langpop_dir;
     until args == [] do
         hd(args) -> a;
-        if a = '--lang' then consword(hd(tl(args))) -> lp_lang; tl(tl(args)) -> args;
+        if a = '--lang' then
+            consword(hd(tl(args))) -> lp_lang;
+            true -> lp_lang_asked;
+            tl(tl(args)) -> args;
         elseif a = '--user' then consword(hd(tl(args))) -> user; tl(tl(args)) -> args;
         elseif a = '--name' then hd(tl(args)) -> display; tl(tl(args)) -> args;
         elseif a = '--batch' then true -> batch; tl(args) -> args;
@@ -5526,6 +5705,10 @@ define lp_main();
     ;;; spoken to for the whole session.  audio.p may not be loaded yet,
     ;;; so the name is held and lp_load_audio picks it up.
     if rate then rate -> lp_rate_want endif;
+    ;;; A teacher is needed before the profile is read, because the
+    ;;; greeting and the username question come first and somebody has
+    ;;; to ask them.  So this is the language as it stands now -- the
+    ;;; flag, or the default.
     lp_load_persona(if lp_lang == "en" then 'hill' else 'aoi' endif);
     unless user then
         lp_greet();
@@ -5535,7 +5718,15 @@ define lp_main();
         if line == termin then return endif;
         consword(lp_norm(line)) -> user;
     endunless;
+    lvars was = lp_lang;
     lp_register(user, display, batch);
+    ;;; AND AGAIN, if the profile turned out to be studying the other
+    ;;; one.  Without this the student gets the teacher their flag named
+    ;;; and the curriculum their file named: Mr Hill asking for
+    ;;; hiragana, which is the bug this pair of calls exists to prevent.
+    unless lp_lang == was then
+        lp_load_persona(if lp_lang == "en" then 'hill' else 'aoi' endif);
+    endunless;
     lp_session();
 enddefine;
 
