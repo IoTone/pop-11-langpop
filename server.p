@@ -857,24 +857,30 @@ enddefine;
 ;;; Work to do away from the keyboard.  The resource is a pointer with a
 ;;; date; no content from it ever passes through here.
 define lp_m_assign(msg) -> res;
-    lvars msg, res, s = lp_need_session(msg), item, r, a = false, plan = lp_plan();
+    lvars msg, res, s = lp_need_session(msg), item, r, again, a = false;
     returnif(lp_is_err(s))(s -> res);
-    for item in plan do
-        nextif(lp_drillable(item));
-        lp_resource_for(item) -> r;
-        nextunless(r);
-        {% length(lp_assigns) + 1, item, hd(r), lp_now_ms(), 'open' %} -> a;
-        lp_assigns <> [^a] -> lp_assigns;
-        quitloop;
-    endfor;
-    unless a then
+    ;;; The selector is lp_assign_pick in langpop.p, which the TUI uses
+    ;;; too: this handler had its own copy of the loop and so its own
+    ;;; copy of the bug -- the same item handed back for ever, and a row
+    ;;; appended to lp_assigns on every call.
+    lp_assign_pick() -> (item, r, again);
+    unless item then
         jsonrpc_obj([% 'assignment_id', json_null,
                        'note', 'everything ready for you can be checked here' %])
             -> res;
         return;
     endunless;
-    lp_save();
-    jsonrpc_obj([% 'assignment_id', a(1),
+    ;;; An outstanding assignment comes back as itself.  Nothing is
+    ;;; appended and nothing is saved, because nothing changed.
+    if again then
+        again -> a;
+    else
+        {% length(lp_assigns) + 1, item, hd(r), lp_now_ms(), 'open' %} -> a;
+        lp_assigns <> [^a] -> lp_assigns;
+        lp_save();
+    endif;
+    jsonrpc_obj([% 'again', again and true or false,
+                   'assignment_id', a(1),
                    'item', lp_jkey(a(2)),
                    'form', lp_jkey(lp_any_form(a(2))),
                    'gloss', lp_jstr(lp_gloss_of(a(2), "en")),

@@ -1900,7 +1900,7 @@ shim. `--port N` for TCP, nothing for stdio.
 | `langpop/card.render` | the item as a picture |
 | `langpop/sheet.render` | a page to print: a chart, today, or the booklet |
 | `langpop/audio.say` | the sound file for an item, if one is cached |
-| `langpop/assign` / `report` | work to do elsewhere, and what came of it |
+| `langpop/assign` / `report` | work to do elsewhere, and what came of it; `again` marks a reply that is a reminder of outstanding work rather than something new |
 
 Three things are deliberately on the server's side of the line, and each one
 is a property the design would lose if it moved.

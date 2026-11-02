@@ -945,6 +945,15 @@ check_false('which cannot reach mastery', rep3('mastered'));
 check_true('but is accepted', rep3('accepted'));
 
 vars asg2 = result('langpop/assign', jsonrpc_obj([% 'session_id', sid_en %]));
+
+;;; A DIFFERENT ITEM, which is the whole of the fix.  Reporting "ok" caps
+;;; an item at tier 3, below MASTERY, so it stays unmastered and stays in
+;;; the plan -- and this handler used to hand the same one back for ever,
+;;; appending a row to lp_assigns every time it was asked.
+check_false('the first assignment was not a re-offer', asg('again'));
+check_true('the second assignment is a different item',
+           asg2('item') /= asg('item'));
+check('with an id of its own', asg2('assignment_id'), 2);
 vars rep2 = result('langpop/report',
                    jsonrpc_obj([% 'session_id', sid_en,
                                   'assignment_id', asg2('assignment_id'),

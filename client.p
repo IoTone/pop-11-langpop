@@ -375,7 +375,13 @@ define do_assign();
     unless p(a, 'assignment_id') then
         printf('  %p\n', [% p(a, 'note') %]); return;
     endunless;
-    printf('\n  Assignment %p: %p\n', [% p(a, 'assignment_id'), p(a, 'form') %]);
+    ;;; `again` means this is work already outstanding rather than
+    ;;; something new, and saying so is the difference between a reminder
+    ;;; and a second piece of homework.  Same wording as the TUI's.
+    printf('\n  Assignment %p%p: %p\n',
+           [% p(a, 'assignment_id'),
+              if p(a, 'again') then ', still open' else '' endif,
+              p(a, 'form') %]);
     if p(a, 'gloss') then printf('    %p\n', [% p(a, 'gloss') %]) endif;
     printf('    %p   (%p, checked %p)\n',
            [% p(a, 'url'), p(a, 'resource_kind'), p(a, 'checked') %]);

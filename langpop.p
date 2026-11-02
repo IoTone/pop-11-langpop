@@ -3418,24 +3418,72 @@ define lp_resource_for(item) -> r;
     endfor;
 enddefine;
 
+;;; Has this student been given this item already?  Open or reported --
+;;; either way it has been handed over once.
+define lp_assigned_for(item) -> a;
+    lvars item, e;
+    false -> a;
+    for e in lp_assigns do if e(2) == item then e -> a; return endif endfor;
+enddefine;
+
+;;; WHICH ITEM TO ASSIGN NEXT, for the TUI and the protocol both -- they
+;;; had a copy of this loop each, and the copies had the same bug.
+;;;
+;;; The plan in order, skipping what can be drilled here, what has no
+;;; resource, and what this student has already been given.  That last
+;;; clause is the fix.  A reported result caps an item at TIER2_CAP,
+;;; which is below MASTERY deliberately, so the item stays unmastered and
+;;; therefore stays in the plan -- and `assign` handed back the same
+;;; first item for ever, appended another assignment for it on every ask,
+;;; and a student who had done that piece of work had no way to be given
+;;; the next one.  lp_assigns grew by a row per call.
+;;;
+;;; When everything assignable has been assigned, the oldest one still
+;;; OPEN comes back, with its own id and without appending anything:
+;;; outstanding work is the honest answer to "what should I do away from
+;;; the keyboard". Only when nothing is open is the answer nothing.
+define lp_assign_pick() -> (item, r, again);
+    lvars item = false, r = false, again = false, i, rr, e, oldest = false;
+    for i in lp_plan() do
+        nextif(lp_drillable(i));
+        nextif(lp_assigned_for(i));
+        lp_resource_for(i) -> rr;
+        nextunless(rr);
+        i -> item; rr -> r;
+        return;
+    endfor;
+    for e in lp_assigns do
+        if e(5) = 'open' and (not(oldest) or e(4) < oldest(4)) then
+            e -> oldest
+        endif;
+    endfor;
+    returnunless(oldest);
+    oldest -> again; oldest(2) -> item; lp_resource_for(item) -> r;
+enddefine;
+
 define lp_assign() -> a;
-    lvars a = false, item, r, plan = lp_plan();
-    for item in plan do
-        nextif(lp_drillable(item));
-        lp_resource_for(item) -> r;
-        nextunless(r);
+    lvars a = false, item, r, again;
+    lp_assign_pick() -> (item, r, again);
+    unless item then
+        printf('  Nothing to assign: everything ready for you can be '
+               <> 'checked here.\n');
+        return;
+    endunless;
+    if again then
+        again -> a;
+        printf('\n  Assignment %p, still open: %p\n',
+               [% a(1), lp_any_form(item) %]);
+    else
         {% length(lp_assigns) + 1, item, hd(r), lp_now_ms(), 'open' %} -> a;
         lp_assigns <> [^a] -> lp_assigns;
         printf('\n  Assignment %p: %p\n', [% a(1), lp_any_form(item) %]);
-        if lp_gloss_of(item, "en") then
-            printf('    %p\n', [% lp_gloss_of(item, "en") %]);
-        endif;
-        printf('    %p   (%p, checked %p)\n',
-               [% hd(tl(tl(tl(tl(r))))), hd(tl(tl(r))), hd(tl(tl(tl(tl(tl(r)))))) %]);
-        printf('  %p\n', [% lp_line('assign') %]);
-        return;
-    endfor;
-    printf('  Nothing to assign: everything ready for you can be checked here.\n');
+    endif;
+    if lp_gloss_of(item, "en") then
+        printf('    %p\n', [% lp_gloss_of(item, "en") %]);
+    endif;
+    printf('    %p   (%p, checked %p)\n',
+           [% hd(tl(tl(tl(tl(r))))), hd(tl(tl(r))), hd(tl(tl(tl(tl(tl(r)))))) %]);
+    printf('  %p\n', [% lp_line('assign') %]);
 enddefine;
 
 define lp_find_assign(id) -> a;

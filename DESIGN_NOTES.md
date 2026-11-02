@@ -2381,3 +2381,51 @@ violation clauses were another, and `ready/4` was the third and the only
 one a student could feel. The remaining per-item scans are in `--audit`'s
 `skill_leaf/2` and `criterion_item/2`, which run once per criterion rather
 than once per item, and the audit is a second and a half.
+
+### The same homework for ever
+
+`assign` is for the work a keyboard cannot check: a minimal pair to listen
+to, a sentence pattern to practise. It walked the plan, took the first item
+that cannot be drilled here, and handed it over with a resource.
+
+Every time. A reported result caps an item at `TIER2_CAP`, which sits below
+`MASTERY` on purpose -- a student saying "18 out of 20" is evidence, not
+proof -- so the item stays unmastered, stays in the plan, and is the first
+thing the loop finds on the next call. A student who did that work and came
+back for more got the same piece of homework, with a new id, for ever.
+
+And the id is the second defect. Each call appended a row to `lp_assigns`,
+which is part of the profile, so asking repeatedly grew the student's own
+file with rows about one item nobody had asked twice about.
+
+Both the TUI and the protocol handler had their own copy of the loop, and
+so their own copy of both defects. `lp_assign_pick` is now the one
+selector. It skips what this student has already been given; when
+everything assignable has been handed out it returns the oldest still-open
+assignment **as itself**, with its own id and nothing appended, because
+outstanding work is the right answer to "what should I do away from the
+keyboard"; and only when nothing is open is the answer nothing. The
+protocol reply gained an `again` field so a client can tell a new
+assignment from a reminder, and the TUI and the TUI-over-the-wire client
+both say *still open* when it is one.
+
+What it did not need was a way to ask for the *next* one, which is how the
+gap was written down when it was first noticed. Asking again is asking for
+the next one, once asking again means something.
+
+Two things worth keeping from the hour it took, both Pop-11 rather than
+design:
+
+A list literal is **space-separated**. `[{% ... %}, {% ... %}]` is a list
+of three things, the middle one being the word `,`, and the first thing
+`lp_assigned_for` did with it was subscript it.
+
+And a test must not look for the situation it is about. The first version
+asked the plan for assignable items, which depends on the student, on how
+much content is built, and -- for the English contrasts, whose gate is
+`hear` -- on whether a voice happens to be configured, so it passed in one
+context and failed in another for reasons that had nothing to do with
+assignments. The version that stands seeds two outstanding rows with old
+timestamps, takes whatever the plan will give with newer ones, and then
+knows which row is the oldest open one whether the plan gave fourteen items
+or none.

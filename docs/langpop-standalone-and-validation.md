@@ -886,11 +886,29 @@ did what the section above predicted, in order:
    left are in `--audit`, which runs them once per criterion rather than
    once per item.
 
-28. **Smaller observations, not yet acted on:** a reported-but-never-
-   masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
-   `assign` call, with no way for a client to ask for the *next* one;
-   and `vocabulary(50, hear)` needs the audio build before any run can
-   move it, exactly as `--audit` says.
+28. **The same item for ever, and a row per call.** The observation
+   below was that a reported-but-never-masterable item is re-assigned on
+   every `assign` call with no way for a client to ask for the next one.
+   Fixed 2026-11-02, and it was two defects sharing a loop -- a loop the
+   TUI and the protocol handler had a copy of each. `lp_assign` took the
+   first assignable item in the plan every time it was asked; a reported
+   result caps an item at `TIER2_CAP`, below `MASTERY` deliberately, so
+   the item stays unmastered, stays in the plan, and comes back for ever
+   -- and every call APPENDED a row to `lp_assigns`, which is saved to
+   the profile, so a student who kept asking grew their own profile
+   without being given anything new. `lp_assign_pick` in `langpop.p` is
+   now the one selector: it skips what this student has already been
+   given, and when everything assignable has been handed out it returns
+   the oldest still-OPEN assignment as itself -- same id, nothing
+   appended -- because outstanding work is the honest answer to "what
+   should I do away from the keyboard". Only when nothing is open is the
+   answer nothing. The protocol reply gained an `again` field so a
+   client can tell the two apart. No new API was needed for "the next
+   one": asking again IS asking for the next one now.
+
+29. **Smaller observations, not yet acted on:** `vocabulary(50, hear)`
+   needs the audio build before any run can move it, exactly as
+   `--audit` says.
 
 Soak state: seeds 1-5 (ja) and 1-3 (en) all pass, and seed 42 passes on
 the enlarged graph -- 3,000 answers against 9,741 items (2026-11-02),

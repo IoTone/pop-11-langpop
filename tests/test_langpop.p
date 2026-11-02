@@ -2341,6 +2341,64 @@ check_true('and it can be found by id', lp_find_assign(1) and true);
 check('the journal survives', length(lp_journal), 1);
 check('tier survives the round trip', lp_journal(1)(3), 3);
 
+;;; ------------------------------------------- one assignment per item
+;;; `assign` used to hand back the first assignable item in the plan
+;;; every time it was asked, and append a row for it.  A reported result
+;;; caps an item below MASTERY on purpose, so the item stays in the plan
+;;; for ever: the same piece of homework came back for ever, lp_assigns
+;;; grew by a row per call, and a student who had done that work had no
+;;; way to be given the next one.  lp_assign_pick is the fix, and the
+;;; TUI and the protocol share it now rather than having a loop each.
+;;;
+;;; The situation is BUILT here rather than looked for, because how many
+;;; items are assignable depends on the student, on how much content is
+;;; built, and -- for the English contrasts -- on whether a voice can ask
+;;; them, none of which this is about.  Two outstanding assignments are
+;;; seeded with old timestamps, then everything the plan will give is
+;;; taken with newer ones, so which row is the oldest open one is known
+;;; either way.
+;;;
+;;; No comma between the two rows: a Pop-11 list literal is
+;;; space-separated and a stray `,` is an ELEMENT, which
+;;; lp_assigned_for duly subscripted.
+"ja" -> lp_lang; "preschool" -> lp_level;
+lvars apick, ar, aagain, an = 0, aseen = [], aa, ae;
+[{% 7, "s_r_l", "r_minimal_rl", 1700000000500, 'open' %}
+ {% 8, "s_th_v", "r_tatoeba_en", 1700000000100, 'open' %}] -> lp_assigns;
+repeat 60 times
+    lp_assign_pick() -> (apick, ar, aagain);
+    quitunless(apick);
+    quitif(aagain);
+    check_false('no item is offered twice', member(apick, aseen));
+    [^apick ^^aseen] -> aseen;
+    {% length(lp_assigns) + 1, apick, hd(ar), 1700000001000 + an,
+       'open' %} -> aa;
+    lp_assigns <> [^aa] -> lp_assigns;
+    an fi_+ 1 -> an;
+endrepeat;
+check('every one of them was a different item', length(aseen), an);
+
+;;; Now there is nothing new to give, so the OLDEST open row comes back
+;;; as itself -- outstanding work is the honest answer to "what should I
+;;; do away from the keyboard" -- and nothing is appended for it.
+lvars abefore = length(lp_assigns);
+lp_assign_pick() -> (apick, ar, aagain);
+check_true('an outstanding assignment comes back', aagain and true);
+check('the oldest open one, not the first in the list',
+      aagain and aagain(1), 8);
+check('and the item it was about', apick, "s_th_v");
+check('with nothing appended for the re-offer', length(lp_assigns), abefore);
+
+;;; Reported is not outstanding: it is work already handed back, and
+;;; offering it again is the bug this exists to prevent.
+[% for ae in lp_assigns do
+       {% ae(1), ae(2), ae(3), ae(4), 'reported' %}
+   endfor %] -> lp_assigns;
+lp_assign_pick() -> (apick, ar, aagain);
+check_false('with everything reported there is nothing to assign', apick);
+check_false('and no assignment to point at', aagain);
+[] -> lp_assigns;
+
 ;;; The ladder and the period are state the journal cannot reconstruct:
 ;;; where this student's own month started, and when each mastered item
 ;;; is next owed.  Both have to come back, or every reload is an amnesty.
