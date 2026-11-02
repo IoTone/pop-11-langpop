@@ -1,6 +1,6 @@
-the 100
+zorp 100
 water 50
-of 30
-drinking 20
+quux 30
+frell 20
 mother 10
-zorp 5
+blint 5

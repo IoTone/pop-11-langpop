@@ -658,13 +658,161 @@ a1(e_almost,      'almost',      'very nearly',                       'ほとん
 a1(e_finally,     'finally',     'after a long wait',                 'ついに').
 
 % --- Asking ---------------------------------------------------------------
-% Six of the seven.  `what` is in the function-word queue
-% (docs/langpop-function-words.md, Group C) and is left there, which is
-% why the set below has a hole in it: these six are plain translations
-% and `what` sits in a group whose other rows need a decision.
+% Six of the seven here, and `what` below with the rest of the function
+% words it arrived with (2026-11-01).  The hole this comment used to
+% apologise for is closed.
 a1(e_who,         'who',         'asking which person',               '誰').
 a1(e_where,       'where',       'asking which place',                'どこ').
 a1(e_when,        'when',        'asking which time',                 'いつ').
 a1(e_why,         'why',         'asking the reason',                 'なぜ').
 a1(e_how,         'how',         'asking in what way',                'どう・どうやって').
 a1(e_which,       'which',       'asking which of them',              'どちら').
+
+% === THE FUNCTION WORDS ==================================================
+% Added 2026-11-01 from docs/langpop-function-words.md, which had been
+% sitting as a queue since 2026-10-26.  All of it: groups A, B and C
+% unreserved, and the six the page reserved for a decision it would not
+% make alone -- `the`, `a`, `it`, the forms of `be`, `do`, `have` --
+% decided by the project owner on 2026-11-01 and recorded in that file
+% under "What was decided".
+%
+% WHY THESE AND NOT MORE NOUNS.  Every one of the 519 words above is a
+% content word, and not one of the fifty most frequent words in English
+% was in the graph.  That is not because the list is short; it is because
+% a curated list of useful words is made of exactly what a frequency list
+% puts in the long tail.  The 519 answer for 13.57% of en_50k.txt.  These
+% 27 are worth roughly twice that again on their own, which is the whole
+% of why `coverage(reading, 0.95)` at B1 was unreachable through content
+% words at any list length.  A learner who knows five thousand nouns and
+% no articles reads nothing.
+%
+% The /ð/ edges come free and are not written here: CMUdict gives DH to
+% `the`, `this`, `that`, `they`, `there` and `with`, and
+% `import --source cmudict` turns that into requires(Id, s_th_v) by rule.
+% The pre-school contrast that edge points at has existed since the first
+% commit with only `father`, `mother` and `brother` exercising it -- three
+% nouns a learner can route around for years.  It is about to sit under
+% six words they cannot avoid in one sentence.
+
+% --- The people in the sentence ------------------------------------------
+% These translate.  The teachable fact is not the translation: it is that
+% English requires the pronoun where Japanese drops it, and that あなた is
+% avoided in Japanese exactly where English says `you` most.
+a1(e_i,     'I',     'the person speaking',               '私').
+a1(e_you,   'you',   'the person spoken to',              'あなた').
+a1(e_me,    'me',    'the person speaking, as object',    '私を・私に').
+a1(e_my,    'my',    'belonging to the speaker',          '私の').
+a1(e_your,  'your',  'belonging to the one spoken to',    'あなたの').
+a1(e_we,    'we',    'the speaker and others',            '私たち').
+a1(e_he,    'he',    'a male person already mentioned',   '彼').
+a1(e_she,   'she',   'a female person already mentioned', '彼女').
+a1(e_they,  'they',  'people already mentioned',          '彼ら・それら').
+a1(e_this,  'this',  'the thing near the speaker',        'これ・この').
+a1(e_that,  'that',  'the thing away from the speaker',   'それ・あれ').
+a1(e_here,  'here',  'the place the speaker is',          'ここ').
+a1(e_there, 'there', 'a place away from the speaker',     'そこ・あそこ').
+
+% `my` is `I` with something added, and a learner who cannot read `I`
+% cannot be asked about `my`.  this/that and here/there are left
+% unordered: neither is a prerequisite for the other, and the こ・そ・あ
+% series a Japanese speaker already has makes both available at once.
+requires(e_my,   e_i).
+requires(e_your, e_you).
+
+% --- The frame -----------------------------------------------------------
+% These map onto particles, badly and many-to-many, which is why they are
+% the error class they are.  The gloss is deliberately ONE sense, the
+% commonest, and not a list.
+%
+% The honest objection, stated rather than hidden: a preposition with one
+% gloss is a half-truth, and the missing half is where learners actually
+% fail -- `in` the morning but `on` Monday, and nothing in のなかに
+% predicts that.  The position taken is that the one-sense gloss is still
+% worth having at A1, because a student who cannot read `to` at all is
+% not helped by being told it is complicated, and that the collocations
+% belong at A2 as `pattern` items where they can be ASKED about rather
+% than merely glossed.
+a1(e_to,   'to',   'towards, or the direction of',   'に・へ').
+a1(e_of,   'of',   'belonging to, or part of',       'の').
+a1(e_in,   'in',   'inside',                         'の中に').
+a1(e_on,   'on',   'resting on top of',              'の上に').
+a1(e_for,  'for',  'intended for, or on behalf of',  'のために').
+a1(e_with, 'with', 'together with, or using',        'と・で').
+
+% --- Joining, asking, refusing -------------------------------------------
+% `and` is worth a note: と joins nouns and そして joins clauses, and
+% English `and` does both jobs with one word.  That asymmetry runs the
+% opposite way from most of this list, where English makes a distinction
+% Japanese does not.  It is a gloss note and not a second item.
+%
+% `no` against `not` is a real confusion, and the two rows are adjacent
+% on purpose.
+a1(e_and,  'and',  'joining two things',               'と・そして').
+a1(e_but,  'but',  'joining two things that disagree', 'でも・しかし').
+a1(e_so,   'so',   'and therefore',                    'だから').
+a1(e_what, 'what', 'asking which thing',               '何').
+a1(e_all,  'all',  'every one of them',                '全部').
+a1(e_no,   'no',   'the answer that refuses',          'いいえ').
+a1(e_not,  'not',  'making a sentence negative',       '〜ない').
+a1(e_can,  'can',  'is able to',                       '〜できる').
+
+% --- The two words with no translation -----------------------------------
+% DECIDED 2026-11-01: words, with a RULE where the translation would go.
+%
+% Japanese has no articles, so the Japanese cell cannot hold a
+% translation -- there is nothing to put in it.  The alternative was to
+% make them `pattern` items, contrasting "___ book I showed you" against
+% "I need ___ book", which is truer to how articles are actually learned
+% and buys no reading coverage at all: a pattern is on the `produce`
+% channel and coverage counts what can be read.  5.14 points of the
+% corpus against nothing, for a gloss that says plainly that the word is
+% not translated, which is itself the fact a Japanese speaker needs.
+%
+% The contrast still belongs at A2 as pattern work.  It is not written
+% yet and this row does not pretend otherwise.
+a1(e_the, 'the', 'the one we both know about',
+    '特定のものを指す・訳さない').
+a1(e_a,   'a',   'one of them, not a particular one',
+    '不特定のものを指す・訳さない').
+
+% --- The subject English insists on --------------------------------------
+% DECIDED 2026-11-01: one word, and the gloss carries both jobs.
+%
+% `it` is the thing already mentioned, AND the subject English requires
+% where Japanese simply has none -- *it* is raining, 雨が降る.  Splitting
+% the dummy use into its own pattern was the alternative; one item with
+% an honest gloss was chosen, and the second half of that gloss is the
+% teachable part, because a dropped subject is among the commonest
+% Japanese-speaker errors in English.
+a1(e_it,  'it',  'the thing already mentioned, or the subject English needs when there is none',
+    'それ・(「雨が降る」の主語にあたる語)').
+
+% --- One verb, four forms ------------------------------------------------
+% DECIDED 2026-11-01: four words, with `be` required by the other three.
+%
+% Each form carries its own frequency rank and its own question, which is
+% how the graph treats every other inflection it teaches.  Folding them
+% into one item would have hidden the commonest form behind the lemma --
+% `is` is rank 12 of the corpus and `be` is rank 44 -- and a student would
+% never be asked for `was` as such.  The edges say they are one verb, so
+% a learner meets the infinitive before the forms of it.
+a1(e_be,  'be',  'to exist, or to be something',      'です・いる・ある').
+a1(e_is,  'is',  'to be, of one thing happening now', 'です・いる').
+a1(e_are, 'are', 'to be, of more than one',           'です・いる(複数)').
+a1(e_was, 'was', 'to be, of something past',          'でした・いた').
+
+requires(e_is,  e_be).
+requires(e_are, e_be).
+requires(e_was, e_be).
+
+% --- Two jobs each -------------------------------------------------------
+% DECIDED 2026-11-01: the main verb here, the auxiliary at A2 as patterns.
+%
+% `do` performs an action and also makes a question; `have` possesses and
+% also makes a perfect.  The main-verb sense is a plain translation and
+% goes in now for the coverage; the auxiliary is a grammatical job, which
+% is a pattern item -- "___ you know?", "I ___ seen it" -- where it can
+% be ASKED about instead of mentioned in a gloss.  Those two patterns are
+% A2 work and are not written yet.
+a1(e_do,   'do',   'to perform an action', 'する').
+a1(e_have, 'have', 'to possess',           '持っている').

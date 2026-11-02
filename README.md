@@ -261,13 +261,13 @@ outside that list is allowed in.
 | `graph/ja/picks/n4.pl` | the same for N4, whose count is measured over both | 749 picks |
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
 | `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
-| `graph/en/a1.pl` | 519 A1 words with Japanese glosses, hand-written | 519 |
+| `graph/en/a1.pl` | 552 A1 words with Japanese glosses, hand-written — 519 content words and the 33 function words that carry the corpus | 552 |
 | `graph/en/a2.pl` | the same for A2, whose count is measured over both | 550 |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
 | `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 3,752 items (ja): 2,230 kanji and 1,522 words; for English, facts only: 1,103 pronunciations, 1,069 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
 
-1,309 committed items, 5,061 once the imported content is built; 12 ladder
+1,342 committed items, 5,097 once the imported content is built; 12 ladder
 levels, 40 exit criteria, no integrity violations either way. Those are
 the figures `./langpop --check` prints.
 
@@ -2050,7 +2050,7 @@ content and without it, and the second case is the one that catches an
 assumption about content that happens to be built. `LANGPOP_NO_CONTENT=1`
 holds the generated files back at load time rather than moving them, so the
 two runs differ by a switch and not by the state of the working tree: 617
-checks and 5,061 items with the content, 566 and 1,309 without.
+checks and 5,097 items with the content, 567 and 1,342 without.
 
 One number worth knowing before you read a failing oracle: the scratch
 server runs a 200ms day so that the review ladder actually advances, which
@@ -2101,7 +2101,10 @@ counts are met through N4 and short from N3 up, and JMdict carries no level,
 so each of those is a hand-written pick list. `--audit` is the list. Every
 listening criterion in both languages needs `--audio` run once with a voice
 installed. The English B1 word count is the largest gap above that, and the
-English function words are the largest gap in *coverage*.
+English B1 words are the largest gap above that. *Coverage* was the
+function words, which are now in: `coverage(reading, _)` reads 55% of the
+corpus where it read 17% before them, and the 40 points still owed are
+thousands of words rather than a rule.
 
 **What the two front ends do not share.** `./langpop` and
 `./langpop client` are the same engine, and `:time` is now in both. The
@@ -2121,7 +2124,7 @@ string.
 
 | | |
 | --- | --- |
-| [langpop-function-words.md](docs/langpop-function-words.md) | 33 function words, the only lever on coverage, awaiting marks |
+| [langpop-function-words.md](docs/langpop-function-words.md) | 33 function words, the only lever on coverage — **done**, and the decisions recorded |
 | [langpop-japanese-tranche.md](docs/langpop-japanese-tranche.md) | how the N5 word rows were argued |
 | [langpop-n3-kanji.md](docs/langpop-n3-kanji.md) | which 366 of old level 2's characters are N3, and why school grade beats newspaper frequency |
 | [langpop-pronunciation.md](docs/langpop-pronunciation.md) | what a Japanese speaker learning English cannot be asked |

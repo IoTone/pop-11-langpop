@@ -561,13 +561,23 @@ procedure();
 endprocedure();
 check('every legible line is read', gnl, 6);
 check('and every count is in the denominator', gtot, 215);
+;;; THE MISSING SIDE OF THE FIXTURE IS NONSENSE ON PURPOSE.  It read
+;;; `the`, `water`, `of`, `drinking`, `mother`, `zorp`, and two of those
+;;; were in the graph, which held until `of` and `the` were taught: then
+;;; `held` went to 3, the queue to 3, and gmiss(4) was an indexed access
+;;; off the end of a list.  A fixture whose arithmetic depends on which
+;;; real English words have been curated yet has a shelf life, and the
+;;; thing under test here is the SCAN -- held against missing against the
+;;; denominator -- which has no opinion about English.  So the held side
+;;; is two committed A1 words and the missing side is four tokens no
+;;; curator will ever add.
 check('the graph holds water and mother', gnheld, 2);
 check('and their counts are what the graph already covers', gheld, 60);
 check('the rest are the gap, in list order', length(gmiss), 4);
-check('the biggest purchase first', gmiss(1)(2), 'the');
+check('the biggest purchase first', gmiss(1)(2), 'zorp');
 check('with its rank in the list', gmiss(1)(1), 1);
 check('and its count', gmiss(1)(3), 100);
-check('a nonsense token is still a token', gmiss(4)(2), 'zorp');
+check('down to the smallest', gmiss(4)(2), 'blint');
 check('and a corpus with no contractions has no shards', gshard, 0);
 check_true('so nothing is listed under the table', gshards == []);
 
@@ -620,23 +630,26 @@ lvars fes, funres;
 procedure();
     dlocal imp_lang = "en";
     ;;; `want` is a parameter, so the sum can be checked without
-    ;;; doctoring the graph: two forms of one invented item.
-    imp_frequency(FIX <> 'freq-sample.txt', [[e_be 'the'] [e_be 'of']])
+    ;;; doctoring the graph: two forms of one invented item.  INVENTED
+    ;;; is load-bearing and `e_be` was not -- the four forms of `be` are
+    ;;; real items now, which is what the comment above was waiting for.
+    ;;; e_zq is the id nothing will ever teach.
+    imp_frequency(FIX <> 'freq-sample.txt', [[e_zq 'zorp'] [e_zq 'quux']])
         -> (fes, funres);
 endprocedure();
 check('two forms of one item make one entry', length(fes), 1);
-check('under the item id, not a form', imp_e_id(hd(fes)), "e_be");
+check('under the item id, not a form', imp_e_id(hd(fes)), "e_zq");
 check('and the counts are summed',
       hd(tl(tl(hd(imp_e_ranks(hd(fes)))))), 130);
 check('at the best rank of the forms',
       hd(tl(hd(imp_e_ranks(hd(fes))))), 1);
 check_true('and nothing is unresolved', funres == []);
 
-;;; A form that is absent does not sink the item: `be` is in the list
-;;; even when `beest` is not.
+;;; A form that is absent does not sink the item: one form in the list
+;;; is enough, and the other is simply not added.
 procedure();
     dlocal imp_lang = "en";
-    imp_frequency(FIX <> 'freq-sample.txt', [[e_be 'the'] [e_be 'zzqq']])
+    imp_frequency(FIX <> 'freq-sample.txt', [[e_zq 'zorp'] [e_zq 'zzqq']])
         -> (fes, funres);
 endprocedure();
 check('a missing form is simply not added', length(fes), 1);

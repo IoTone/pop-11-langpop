@@ -1848,14 +1848,26 @@ if lp_freq_count() > 0 then
     check('the scale names the corpus, because the corpus is the meaning',
           cs, "opensubtitles_en");
     check_true('and some text is covered', cf > 0.0);
-    check_true('but nothing like all of it', cf < 0.5);
     check_true('over the words that carry a frequency', cn > 0);
 
     ;;; The DENOMINATOR is the whole corpus and not the words we happen
     ;;; to teach.  Dividing by our own vocabulary would give a figure
     ;;; that only ever goes up and would read as progress, not coverage.
-    check_true('coverage of 100 content words is small',
-               round(cf * 100) < 20);
+    ;;;
+    ;;; A THRESHOLD CANNOT SAY THAT, which took two tries to learn here:
+    ;;; this asked for under 20% because 519 content words carried 13.57%,
+    ;;; and the line above asked for under 50% for the same reason.  33
+    ;;; function words took the figure to 55% in an afternoon -- that is
+    ;;; the tranche working, and both checks called it a failure.
+    ;;;
+    ;;; What the divisor claim actually implies is that the figure is a
+    ;;; proper fraction of something larger than the graph: the corpus has
+    ;;; 50,000 entries and the graph teaches a thousand-odd words, so
+    ;;; coverage cannot be all of it however much curation happens.  A
+    ;;; self-referential denominator would read 1.0 the moment the last
+    ;;; taught word was mastered.
+    check_true('a fraction of the corpus, and not of our own word list',
+               cf > 0.0 and cf < 1.0);
 
     ;;; A student who has mastered nothing covers nothing, however much
     ;;; the graph holds.

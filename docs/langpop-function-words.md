@@ -1,9 +1,28 @@
 # The function-word tranche
 
-A queue for a curator. Nothing here is in the graph yet, and nothing
-here should be committed as content until the rows are marked.
+**Done, 2026-11-01.** All 33 rows are in `graph/en/a1.pl`. This page is
+kept as the argument for them, and the decisions it reserved are recorded
+at the bottom under [What was decided](#what-was-decided).
 
-**What is being asked:** mark each row `yes`, `no`, or `reword`. The rows
+What it bought, measured: `coverage(reading, _)` went from **17% of the
+corpus to 55%**, from 33 items. The 519 content words above them carry
+13.57% between them. `coverage(reading, 0.95)` at B1 is now short by 40
+points rather than 78, and the rest of that gap is thousands of words
+rather than a rule.
+
+The /ð/ edges came free, as predicted: `import --source cmudict` wrote
+`requires(e_they, s_th_v)`, `requires(e_this, s_th_v)`,
+`requires(e_that, s_th_v)`, `requires(e_there, s_th_v)` and
+`requires(e_with, s_th_v)` from CMUdict's `DH`, with no hand-written
+edges. The pre-school contrast those point at had three nouns exercising
+it -- *father*, *mother*, *brother* -- and now sits under five words a
+learner cannot avoid in one sentence.
+
+---
+
+*The original queue follows, unedited.*
+
+**What was being asked:** mark each row `yes`, `no`, or `reword`. The rows
 you keep, I wire in -- id, level, forms, `requires` edges, and the
 re-import that attaches pronunciation and frequency. The rows you reject
 cost nothing, because none of this is written anywhere the engine reads.
@@ -352,3 +371,45 @@ no objection attached -- is worth more than fifteen points on its own.
    in the commit message.
 
 Nothing in steps 1 through 6 happens before the rows are marked.
+
+---
+
+## What was decided
+
+Asked and answered 2026-11-01. The six rows this page reserved, and the
+reasoning given with each:
+
+**`the` and `a`: words, with a rule where the translation goes.** Japanese
+has no articles, so the Japanese cell cannot hold a translation; it holds
+`特定のものを指す・訳さない` -- *refers to a particular one; not
+translated* -- which is itself the fact a Japanese speaker needs. The
+alternative was `pattern` items contrasting *the book I showed you*
+against *I need a book*, which is truer to how articles are learned and
+buys **no reading coverage at all**, a pattern being on the `produce`
+channel. 5.14 points against nothing. The contrast still belongs at A2 as
+pattern work, and is not written.
+
+**`it`: one word, the gloss carrying both jobs.** The thing already
+mentioned, *and* the subject English requires where Japanese has none --
+*it* is raining, 雨が降る. The second half of the gloss is the teachable
+part: a dropped subject is among the commonest Japanese-speaker errors in
+English.
+
+**`be`: four words, with `be` required by the other three.** Each form
+carries its own frequency rank and its own question, as every other
+inflection the graph teaches does. Folding them into one item would have
+hidden the commonest form behind the lemma -- `is` is rank 12 of the
+corpus and `be` is rank 44 -- and a student would never be asked for
+`was` as such. The edges say they are one verb, so the infinitive comes
+first.
+
+**`do` and `have`: the main verb now, the auxiliary at A2 as patterns.**
+*To perform an action* and *to possess* are plain translations and go in
+for the coverage. Making a question and making a perfect are grammatical
+jobs, which is what a `pattern` item is for -- `___ you know?`, `I ___
+seen it` -- where they can be asked about instead of mentioned in a
+gloss. Those two patterns are A2 work and are not written.
+
+Three things are therefore owed to A2 by this page and recorded here so
+they are not lost: the article contrast, `do` as a question-former, and
+`have` as a perfect-former.
