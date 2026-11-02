@@ -2157,7 +2157,13 @@ was said and by which voice.
 So **a Japanese learner who renders every rung needs about 156 MB**, and the
 whole ladder to N3 — which is as far as the words go — is 122 MB. **An
 English test-taker needs about 29 MB** for the three rungs that have
-content. English pre-school is 82 files for 41 items because a contrast's
+content. **English renders nothing until a voice is named for it.**
+`~/.langpop/audio.conf` here has a `ja` entry and no `en` one, so every
+English item is skipped as `no_voice` and the English rows above are what it
+*would* cost — which is also why `--audit` reports every English listening
+criterion as `needs_audio` rather than as zero.
+
+English pre-school is 82 files for 41 items because a contrast's
 drill words are not items: the 13 sound contrasts and 12 written confusions
 carry 58 distinct words between them over 30 `pair/3` rows, and each
 needs saying.
