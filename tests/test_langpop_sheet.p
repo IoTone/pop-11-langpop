@@ -549,7 +549,148 @@ endif;
 "en" -> lp_lang;
 check_true('nothing escapes the English booklet', sheet_maxy(enz) <= 4200);
 
+;;; ------------------------------------------- and nothing escapes sideways
+;;; THE HORIZONTAL COUNTERPART OF sheet_maxy, which is the check that was
+;;; missing.  `sheet_maxy(enz) <= 4200` passed for a month over a cover
+;;; whose one line of type ran from -64 to 1548 across a 1485 panel: it
+;;; was off the page to the left and the right, and on it vertically.
+;;;
+;;; A page builder's output is in PANEL coordinates -- zine_place is what
+;;; moves it to a corner of the sheet -- so each one can be measured on
+;;; its own without following a transform.  The width comes from
+;;; zine_width, which is the same estimate the fitting uses, so this
+;;; cannot catch an error IN that estimate; it catches type sized for one
+;;; language and set in the other, which is what happened.
+;;;
+;;; The content is measured as escaped, so `&amp;` counts five rather
+;;; than one.  That errs towards reporting an overrun, which is the safe
+;;; direction for a bound.
+define zine_overrun(panel) -> worst;
+    lvars panel, s = panel sys_>< '', i = 1, j, n, worst = 0,
+          x, size, anchor, body, lo, hi, w;
+    repeat
+        issubstring_lim('<text x="', i, false, false, s) -> j;
+        quitunless(j);
+        j + 9 -> j; j -> n;
+        while n <= length(s) and s(n) /== `"` do n + 1 -> n endwhile;
+        strnumber(substring(j, n - j, s)) -> x;
+        issubstring_lim('font-size="', n, false, false, s) -> j;
+        quitunless(j);
+        j + 11 -> j; j -> n;
+        while n <= length(s) and s(n) /== `"` do n + 1 -> n endwhile;
+        strnumber(substring(j, n - j, s)) -> size;
+        issubstring_lim('text-anchor="', n, false, false, s) -> j;
+        quitunless(j);
+        j + 13 -> j; j -> n;
+        while n <= length(s) and s(n) /== `"` do n + 1 -> n endwhile;
+        substring(j, n - j, s) -> anchor;
+        while n <= length(s) and s(n) /== `>` do n + 1 -> n endwhile;
+        n + 1 -> j;
+        issubstring_lim('</text>', j, false, false, s) -> n;
+        quitunless(n);
+        substring(j, n - j, s) -> body;
+        zine_width(body, size) -> w;
+        if anchor = 'middle' then
+            x - (w div 2) -> lo; x + (w div 2) -> hi;
+        elseif anchor = 'end' then
+            x - w -> lo; x -> hi;
+        else
+            x -> lo; x + w -> hi;
+        endif;
+        ;;; 1485 rather than PW: the panel width is an lconstant and so
+        ;;; is not visible here, exactly as 4200 is spelled out above.
+        if -lo > worst then -lo -> worst endif;
+        if hi - 1485 > worst then hi - 1485 -> worst endif;
+        n -> i;
+    endrepeat;
+enddefine;
+
+;;; Each of the eight pages, in both languages.  A name is included that
+;;; nobody would type, because the cover sets whatever the student gave
+;;; it and this file does not get to be surprised by that either.
+define zine_pages(display) -> pages;
+    lvars display, plan = lp_plan(), rows = sheet_today(0), pages;
+    [% zine_cover(display), zine_where(), zine_doing(),
+       zine_plan_page(plan, 0, 4, zine_say("next")),
+       zine_plan_page(plan, 9, 5, zine_say("then")),
+       zine_ladder(), zine_again(rows), zine_back() %] -> pages;
+enddefine;
+
+lvars zpg, zworst = 0, zn = 0;
+for zpg in zine_pages('Tester') do
+    zn + 1 -> zn;
+    if zine_overrun(zpg) > zworst then zine_overrun(zpg) -> zworst endif;
+endfor;
+check('all eight English pages were measured', zn, 8);
+check('and no English page overruns its panel', zworst, 0);
+
+;;; The line that broke, measured directly: fifteen Latin characters at
+;;; the size five kana were chosen at.
+check_true('the cover line as it was would have overrun',
+           zine_width('you can do this', 215) > 1485 - 2 * 120);
+
 "ja" -> lp_lang; "preschool" -> lp_level;
+
+0 -> zworst;
+for zpg in zine_pages('Tester') do
+    if zine_overrun(zpg) > zworst then zine_overrun(zpg) -> zworst endif;
+endfor;
+check('nor any Japanese one', zworst, 0);
+
+;;; ------------------------------------------------------- fitting the type
+;;; An em is two columns, which is zine_cw's unit: a kana is one em and a
+;;; Latin letter half of one.
+check('five kana at 215 is five ems', zine_width('がんばって', 215), 1075);
+check('and fifteen Latin letters is seven and a half',
+      zine_width('you can do this', 215), 1612);
+check('nothing is nothing wide', zine_width('', 215), 0);
+
+;;; A cap, not a target: a string that fits is left at the size the page
+;;; was designed for rather than grown into the space.
+check('a string that fits keeps the designed size',
+      zine_fit('short', 1245, 165), 165);
+check_true('one that does not is brought down until it does',
+           zine_fit('an unreasonably long heading indeed', 1245, 165) < 165);
+check_true('and far enough down to actually fit',
+           zine_width('an unreasonably long heading indeed',
+                      zine_fit('an unreasonably long heading indeed',
+                               1245, 165)) <= 1245);
+
+;;; THE MOTTO WRAPS BEFORE IT SHRINKS, because two lines at full size
+;;; read better than one line of small type on a page that is nothing
+;;; but a title.
+lvars (msize, mlines) = zine_motto('がんばって');
+check('the Japanese motto still fits on one line', length(mlines), 1);
+check('at the size the cover was designed around', msize, 215);
+
+(msize, mlines) -> (msize, mlines);
+zine_motto('you can do this') -> (msize, mlines);
+check('the English one takes two', length(mlines), 2);
+check('and keeps the full size to do it', msize, 215);
+check_true('with every line inside the panel',
+           zine_width(hd(mlines), msize) <= 1485 - 2 * 120
+           and zine_width(hd(tl(mlines)), msize) <= 1485 - 2 * 120);
+
+;;; And something that cannot be wrapped into two lines at that size is
+;;; shrunk as well -- down to Z_TITLE and no further.  Past that it is
+;;; allowed a third line instead, which is the right way round: cover
+;;; type that kept shrinking would end up the size of the body text,
+;;; and there is a thousand units of empty page between the name above
+;;; and the level below for a line to go into.
+zine_motto('one two three four five six seven eight nine ten') -> (msize, mlines);
+check_true('a long motto is shrunk as well as wrapped', msize < 215);
+check_true('but not below the title size', msize >= 140);
+lvars mfits = true, ml;
+for ml in mlines do
+    if zine_width(ml, msize) > 1485 - 2 * 120 then false -> mfits endif;
+endfor;
+check_true('every line of it still fits across the panel', mfits);
+;;; The block is centred on 1250, so it grows both ways -- and has to
+;;; stay clear of the name at 760 and the level line at 1760.
+check_true('and the block stays between the name and the level',
+           1250 - ((length(mlines) - 1) * ((msize * 130) div 100)) div 2 > 860
+           and 1250 + ((length(mlines) - 1) * ((msize * 130) div 100)) div 2
+               < 1660);
 
 ;;; --------------------------------------------------------- escaping
 ;;; A gloss is human-written text; nothing stops one holding a quote or

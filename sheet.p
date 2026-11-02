@@ -858,19 +858,89 @@ define zine_para(y, size, ink, s, cols) -> out;
     endfor;
 enddefine;
 
+;;; How wide a string is, in the same units as a font size.  zine_cw is
+;;; already the project's answer to "how much room does this character
+;;; take" -- 2 for an ideograph, 1 for everything else -- so a column is
+;;; half an em and the sum is an em count.  Approximate for Latin, where
+;;; `i` and `m` are not the same width, and the error is on the safe
+;;; side: half an em is a wide average for lower-case sans.
+define zine_width(s, size) -> units;
+    lvars s, size, cp, units = 0;
+    for cp in [% utf8_explode(s sys_>< '') %] do
+        units + zine_cw(cp) -> units;
+    endfor;
+    (units * size) div 2 -> units;
+enddefine;
+
+;;; The largest size up to `cap` at which `s` fits across `avail`.
+;;; A cap and not a target: nothing here wants type BIGGER than the
+;;; page was designed for just because the string is short.
+define zine_fit(s, avail, cap) -> size;
+    lvars s, avail, cap, size = cap;
+    while size > 8 and zine_width(s, size) > avail do
+        size - 2 -> size;
+    endwhile;
+enddefine;
+
 ;;; ---------------------------------------------------- the pages
+;;; THE COVER LINE IS THE ONE PIECE OF TYPE WITH NO ROOM TO GIVE.
+;;; `がんばって` is five characters and `you can do this` is fifteen, and
+;;; the first draft set both at 215 because the size had been chosen
+;;; against the Japanese: the English ran from -64 to 1548 across a
+;;; 1485-wide panel, out through the cover frame on both sides.
+;;;
+;;; Shrinking it to fit on one line would have worked and looked wrong --
+;;; 166 units is a third smaller than the Japanese cover's, on the one
+;;; page that is nothing but a title.  So it WRAPS first and shrinks only
+;;; if wrapping is not enough: two lines at full size beat one line of
+;;; small type, and the Japanese, which fits on one line at 215, is
+;;; unchanged.
+define zine_motto(s) -> (size, lines);
+    lvars s, size = 215, lines, cols, avail = PW - 2 * ZPAD;
+    repeat
+        max(1, (2 * avail) div size) -> cols;
+        zine_wrap(s, cols) -> lines;
+        quitif(length(lines) <= 2 or size == Z_TITLE);
+        ;;; Clamped rather than decremented past: stepping by 10 from
+        ;;; 215 lands on 145, and a bare `size - 10` would then quit at
+        ;;; 135 -- a floor that the last step walks through is not one.
+        max(Z_TITLE, size - 10) -> size;
+    endrepeat;
+enddefine;
+
+;;; Centred on the line the single-line version sat on, so a cover that
+;;; needs one line is byte-for-byte what it was and a cover that needs
+;;; two is balanced around the same place rather than hanging below it.
+define zine_motto_text() -> out;
+    lvars out = '', size, lines, l, n, y;
+    zine_motto(zine_say_target("motto")) -> (size, lines);
+    length(lines) -> n;
+    1250 - ((n - 1) * ((size * 130) div 100)) div 2 -> y;
+    for l in lines do
+        out <> sheet_text(PW div 2, y, size, '#1b1a17', 'middle', l) -> out;
+        y + ((size * 130) div 100) -> y;
+    endfor;
+enddefine;
+
 define zine_cover(display) -> out;
     lvars display, out;
     sprintf('    <rect x="%p" y="%p" width="%p" height="%p" fill="none" '
             <> 'stroke="#d9d5cc" stroke-width="3"/>\n',
             [% 70, 70, PW - 140, PH - 140 %])
-    <> sheet_text(PW div 2, 640, 165, '#1b1a17', 'middle', zine_say("cover"))
-    <> sheet_text(PW div 2, 760, Z_HEAD, '#8a8275', 'middle',
-                  display or (lp_user sys_>< ''))
+    ;;; Fitted rather than fixed, both of them: the heading is a
+    ;;; translated string and the name is whatever the student typed,
+    ;;; and neither is this file's to be surprised by.
+    <> sheet_text(PW div 2, 640,
+                  zine_fit(zine_say("cover"), PW - 2 * ZPAD, 165),
+                  '#1b1a17', 'middle', zine_say("cover"))
+    <> sheet_text(PW div 2, 760,
+                  zine_fit(display or (lp_user sys_>< ''),
+                           PW - 2 * ZPAD, Z_HEAD),
+                  '#8a8275', 'middle', display or (lp_user sys_>< ''))
     ;;; Sized to the PANEL, not to taste: five kana at 290 units each
-    ;;; overran 1485 and broke out of the cover frame.
-    <> sheet_text(PW div 2, 1250, 215, '#1b1a17', 'middle',
-                  zine_say_target("motto"))
+    ;;; overran 1485 and broke out of the cover frame.  See zine_motto
+    ;;; for what fifteen Latin characters then did at 215.
+    <> zine_motto_text()
     <> sheet_text(PW div 2, 1760, Z_BODY, '#8a8275', 'middle',
                   (lp_lang sys_>< '') <> '  ·  ' <> (lp_level sys_>< ''))
     <> sheet_text(PW div 2, 1860, Z_SMALL, '#b9b2a4', 'middle',

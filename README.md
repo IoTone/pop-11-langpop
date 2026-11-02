@@ -2061,6 +2061,15 @@ encoding parses perfectly and comes out wrong: a JSON round trip cannot tell
 
 ## Limits
 
+**Type is fitted, not trusted.** A cover line, a heading and a student's own
+name are all strings this program does not choose, and two of the three are
+translated. Each is measured against the panel and brought down to fit; the
+cover line wraps before it shrinks, because two lines at full size read
+better than one small one. The suite measures every text element on all eight
+pages, in both languages, against the panel it is drawn in — the vertical
+version of that check had been passing for a month over an English cover line
+that was off the page to the left and the right.
+
 **What this build cannot check.** `speak` needs a microphone and a scorer,
 and the scorer that exists measures one thing: whether a geminate beat is
 there. `hear` needs a voice installed and the sound already cached. Where

@@ -1806,3 +1806,47 @@ would have been an instruction — flipping a returning English student back to
 Japanese every time they started the client. A default is not an instruction,
 and a protocol cannot tell the two apart unless the caller declines to send
 one.
+
+### The cover line was sized for the wrong language
+
+`がんばって` is five characters. `you can do this` is fifteen. Both were set at
+215 units because the size had been chosen against the Japanese — there is
+even a comment saying so, *sized to the PANEL, not to taste: five kana at 290
+units each overran 1485* — and the English ran from −64 to 1548 across a
+1485-wide panel, out through the cover frame on both sides.
+
+What let it through is the shape of the test. `sheet_maxy` walks every `y="`
+in the SVG and checks nothing is drawn below the page, and it had been
+checking the English booklet for a month. There was no `sheet_maxx`, and the
+one piece of type on the one page that is nothing but type was off the sheet
+horizontally while sitting comfortably on it vertically.
+
+The fix is not a smaller number. Shrinking to one line that fits gives 166
+units, a third smaller than the Japanese cover's, on a page whose whole job
+is to carry a line of type. So the motto **wraps first and shrinks only if
+wrapping is not enough**: two lines at full size beat one line of small type,
+and the Japanese — which fits on one line at 215 — comes out byte for byte
+what it was. Below `Z_TITLE` it stops shrinking and takes a third line
+instead, because cover type that kept shrinking would end up the size of the
+body text, and there is a thousand units of empty page between the name above
+and the level below for a line to go into.
+
+The measurement was already in the file. `zine_cw` answers "how much room
+does this character take" — 2 for an ideograph, 1 for everything else —
+because the prose wrapper needs it, so a column is half an em and
+`zine_width` is a sum. It is approximate for Latin, where `i` and `m` are not
+the same width, and the error is on the safe side: half an em is a wide
+average for lower-case sans.
+
+#### The check that was missing, written as the general one
+
+`zine_overrun` parses a page's `<text>` elements and measures each against the
+panel, and the suite runs it over all eight pages in both languages. A page
+builder's output is in panel coordinates — `zine_place` is what moves it to a
+corner of the sheet — so each one measures on its own without following a
+transform.
+
+It cannot catch an error in `zine_width` itself, since the fitting uses the
+same estimate. What it catches is type sized for one language and set in the
+other, which is the thing that happened, and the thing that will happen again
+the next time a string in `ZINE_WORDS` is translated.
