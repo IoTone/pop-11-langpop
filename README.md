@@ -262,7 +262,7 @@ outside that list is allowed in.
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
 | `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
 | `graph/en/a1.pl` | 552 A1 words with Japanese glosses, hand-written — 519 content words and the 33 function words that carry the corpus | 552 |
-| `graph/en/a2.pl` | the same for A2, whose count is measured over both | 550 |
+| `graph/en/a2.pl` | the same for A2, whose count is measured over both, plus 4 grammar patterns | 550 words, 4 patterns |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
 | `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 3,752 items (ja): 2,230 kanji and 1,522 words; for English, facts only: 1,103 pronunciations, 1,069 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |

@@ -410,6 +410,43 @@ jobs, which is what a `pattern` item is for -- `___ you know?`, `I ___
 seen it` -- where they can be asked about instead of mentioned in a
 gloss. Those two patterns are A2 work and are not written.
 
-Three things are therefore owed to A2 by this page and recorded here so
-they are not lost: the article contrast, `do` as a question-former, and
-`have` as a perfect-former.
+Three things were therefore owed to A2 by this page: the article
+contrast, `do` as a question-former, and `have` as a perfect-former.
+
+**Paid, the same day.** Four `pattern` items in `graph/en/a2.pl`:
+
+```prolog
+form(p_article_known, latin, '___ book is here').      % the
+form(p_article_any,   latin, 'I need ___ book').       % a
+form(p_do_question,   latin, '___ you know?').         % do
+form(p_have_perfect,  latin, 'I ___ seen it').         % have
+```
+
+The article contrast is **two** items, because a learner who can fill
+either blank in isolation has not learned the distinction. The two frames
+differ in exactly one thing -- whether the speaker and the listener
+already share the book -- and that difference is the fact being taught.
+They do not require each other: neither is a prerequisite for the other.
+
+Each pattern requires the function word whose job it teaches *and* the
+content words of its frame, so nothing can ask a learner to produce a
+sentence containing a word they have never seen:
+
+```
+  ___ you know?  (pattern, a2, own(function_words))
+    turning a statement into a question
+    missing(e_do)  missing(e_you)  missing(e_know)
+    belief 0.0 on channel produce (mastery is 0.8)
+```
+
+The Japanese gloss on each says what Japanese does *instead*, which is
+the whole of why these are hard: the first two have no Japanese form at
+all (`日本語には冠詞がない`), the third is a particle
+(`「か」をつけるところ`) and the fourth a verb ending
+(`「〜たことがある」にあたる`).
+
+None of it moves a coverage figure, and that is the point rather than a
+shortcoming. A pattern is on the `produce` channel alone, coverage counts
+what can be read, and `vocabulary(1000, read)` at A2 still reads 1117:
+four patterns are not four words. A count of vocabulary that could be
+satisfied by writing grammar frames would be measuring the curator.

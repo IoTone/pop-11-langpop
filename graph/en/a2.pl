@@ -633,3 +633,73 @@ a2(e_towards,      'towards',      'in the direction of',                 'の�
 a2(e_without,      'without',      'not having',                          'なしで').
 a2(e_among,        'among',        'in the middle of many',               'の中で').
 a2(e_beyond,       'beyond',       'further than',                        'を越えて').
+
+% === THE FOUR PATTERNS A1's FUNCTION WORDS OWED ==========================
+% Added 2026-11-01.  docs/langpop-function-words.md recorded three debts
+% when its rows were decided: the article contrast, `do` as a
+% question-former and `have` as a perfect-former.  Each was deferred out
+% of A1 for the same reason -- it is a grammatical JOB and not a
+% translation, so it belongs in an item that can be asked about rather
+% than in a gloss that merely mentions it.  These are those debts, paid.
+%
+% A pattern is on the `produce` channel alone (lp_channels), so none of
+% this moves a coverage figure.  That is the point: the words bought the
+% coverage at A1 and these buy the grammar, and conflating the two is
+% what a single gloss would have done.
+%
+% The engine does not generate the sentences -- a DCG does that later --
+% but the dependencies are explicit, so nothing can teach a pattern
+% before the words that fill it.  graph/ja/items.pl says the same thing
+% about the three Japanese starters and this follows its shape.
+
+item(p_article_known, pattern, en, a2, own(function_words)).
+item(p_article_any,   pattern, en, a2, own(function_words)).
+item(p_do_question,   pattern, en, a2, own(function_words)).
+item(p_have_perfect,  pattern, en, a2, own(function_words)).
+
+form(p_article_known, latin, '___ book is here').
+form(p_article_any,   latin, 'I need ___ book').
+form(p_do_question,   latin, '___ you know?').
+form(p_have_perfect,  latin, 'I ___ seen it').
+
+% The English gloss says what the blank DOES, because the answer is the
+% thing being taught and a gloss that gave it away would be the answer
+% key the design keeps out of a question.
+gloss(p_article_known, en, 'the one we both already know about').
+gloss(p_article_any,   en, 'any one of them, not a particular one').
+gloss(p_do_question,   en, 'turning a statement into a question').
+gloss(p_have_perfect,  en, 'something done, with the doing still relevant').
+
+% And the Japanese gloss says what Japanese does instead, which is the
+% whole of why these are hard: the first two have no Japanese form at
+% all, the third is a particle and the fourth is a verb ending.
+gloss(p_article_known, ja, '日本語には冠詞がない（「その」に近い）').
+gloss(p_article_any,   ja, '日本語には冠詞がない（「ある」に近い）').
+gloss(p_do_question,   ja, '日本語なら「か」をつけるところ').
+gloss(p_have_perfect,  ja, '日本語なら「〜たことがある」にあたる').
+
+% The article pair is one contrast and two items on purpose.  A learner
+% who can fill either blank in isolation has not learned the
+% distinction; the two frames differ in exactly one thing -- whether the
+% speaker and the listener already share the book -- and that is the
+% fact.  They are deliberately adjacent, as `no` and `not` are in a1.pl.
+requires(p_article_known, e_the).
+requires(p_article_known, e_book).
+requires(p_article_known, e_is).
+requires(p_article_known, e_here).
+requires(p_article_any,   e_a).
+requires(p_article_any,   e_book).
+requires(p_article_any,   e_need).
+requires(p_article_any,   e_i).
+
+requires(p_do_question,   e_do).
+requires(p_do_question,   e_you).
+requires(p_do_question,   e_know).
+
+% `seen` is an inflection in the frame and `see` is the item: what a
+% learner needs to hold before this pattern is the verb, and the
+% participle is the pattern's own business.
+requires(p_have_perfect,  e_have).
+requires(p_have_perfect,  e_i).
+requires(p_have_perfect,  e_it).
+requires(p_have_perfect,  e_see).

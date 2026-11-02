@@ -1922,3 +1922,47 @@ comparison runs the right way round, and one row cannot.
 `--check` went from 28 seconds to 61 on the way, which is the cycle guard's own
 comment holding: what the cost grows with is the roll-ups and the characters
 rather than the vocabulary, and the characters just went up sevenfold.
+
+### A gloss can mention a thing; only an item can ask about it
+
+The function-word queue had sat since 2026-10-26 with six rows reserved
+for a decision the page would not make alone. Four of those six -- the two
+articles, `do` and `have` -- all posed the same question in different
+clothes: *this word does a grammatical job that Japanese does with
+something other than a word. Where does that go?*
+
+The cheap answer is the gloss. `do` is `する`, and a parenthesis saying
+*also makes a question* costs nothing. The expensive answer is a second
+item. What decided it is that **a gloss is never asked about.** A learner
+reads it once beside the word, nothing records whether they took it in,
+and no criterion is moved by it. A `pattern` item has a belief, a review
+interval and a question, so the thing can be got wrong, which is the only
+way the tutor learns that it has not landed.
+
+So the division came out as: the word, where it is a translation; a
+pattern, where it is a job. `the` and `a` went in as words anyway,
+because the alternative was to leave 5.14 points of reading coverage on
+the floor for a channel that cannot collect it -- and their contrast
+followed as patterns regardless. Nothing is glossed as doing two things.
+
+#### The coverage figure is why the articles are words at all
+
+A pattern is on the `produce` channel alone, and `coverage(reading, _)`
+counts what can be read. So every pattern written here moved the coverage
+figure by exactly nothing, and `vocabulary(1000, read)` at A2 still reads
+1117 with four more items in the graph.
+
+That is a property worth a test rather than a footnote. A vocabulary
+count that could be satisfied by writing grammar frames would be
+measuring the curator's output instead of the student's reading, and the
+two are the same number only by accident.
+
+#### Two frames, one fact
+
+The article contrast is two items and not one. A learner who can fill
+`I need ___ book` has shown nothing about `___ book is here`, because
+each blank has a defensible wrong answer that the other frame rules out.
+The pair differ in exactly one thing -- whether the speaker and the
+listener already share the book -- and they deliberately do not require
+each other, since neither is a prerequisite for the other. `no` and `not`
+sit adjacent in `a1.pl` for the same reason.

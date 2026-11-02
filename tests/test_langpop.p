@@ -2550,6 +2550,76 @@ check_true('a profile naming a rung that does not exist still loads',
 check('and starts at the bottom of the ladder', lp_level,
       hd(lp_levels("ja")));
 
+;;; ------------------------------------------- the grammar a gloss cannot do
+;;; The four A2 patterns the function-word tranche owed: the article
+;;; contrast, `do` as a question-former and `have` as a perfect-former.
+;;; Each was kept out of A1 because it is a grammatical JOB rather than a
+;;; translation -- see docs/langpop-function-words.md, "What was decided".
+;;;
+;;; What is checked is the SHAPE of that decision, which is the part a
+;;; reader cannot see by reading the rows: that a pattern is gated behind
+;;; the words that fill it, and that none of it is counted as vocabulary.
+;;; `pp` and not `pi`: pi is a Pop-11 constant -- 3.14159... -- and
+;;; lvars pi is ILLEGAL DECLARATION OF WORD, which is a clearer error
+;;; than most but says nothing about trigonometry.
+lvars pats = [p_article_known p_article_any p_do_question p_have_perfect],
+      pp, pbad = [];
+for pp in pats do
+    unless lp_kind(pp) == "pattern" then pbad <> [^pp] -> pbad endunless;
+endfor;
+check('all four are patterns and not words', pbad, []);
+check('and they are English', lp_ilang("p_do_question"), "en");
+check('at A2, where the decision put them', lp_ilevel("p_do_question"), "a2");
+
+;;; A pattern is PRODUCE and nothing else, which is why none of this
+;;; moved a coverage figure: coverage counts what can be read.
+check('a pattern is produced and not read', lp_channels("p_do_question"),
+      [produce]);
+
+;;; Gated behind the word it teaches the job of.  A pattern a learner
+;;; could meet before the word in its blank would be asking them to
+;;; produce something they have never seen.
+check_true('the question pattern needs `do`',
+           member("e_do", lp_edges_of("p_do_question")));
+check_true('the perfect needs `have`',
+           member("e_have", lp_edges_of("p_have_perfect")));
+check_true('and the articles need theirs',
+           member("e_the", lp_edges_of("p_article_known"))
+           and member("e_a", lp_edges_of("p_article_any")));
+
+;;; And behind the content words of the frame, not just the function
+;;; word: `I ___ seen it` is unaskable without `see`.
+check_true('the frame words are prerequisites too',
+           member("e_see", lp_edges_of("p_have_perfect"))
+           and member("e_book", lp_edges_of("p_article_any")));
+
+;;; The article pair is TWO items on purpose.  A learner who can fill
+;;; either blank alone has not learned the distinction, so the two must
+;;; be separate items -- and they must not require each other, because
+;;; neither is a prerequisite for the other.
+check_true('the two article frames are different items',
+           "p_article_known" /== "p_article_any");
+check_false('and neither waits on the other',
+            member("p_article_any", lp_edges_of("p_article_known"))
+            or member("p_article_known", lp_edges_of("p_article_any")));
+
+;;; NOT COUNTED AS VOCABULARY.  exit(en, a2, vocabulary(1000, read))
+;;; counts words, and four patterns are not four words -- if they were,
+;;; a rung could be finished by writing grammar frames, which is the one
+;;; thing a count of vocabulary must not permit.
+lvars pcount = 0, pw;
+for pw in lp_items do
+    if lp_ilang(pw) == "en" and lp_kind(pw) == "pattern" then
+        pcount + 1 -> pcount;
+    endif;
+endfor;
+check_true('the English patterns exist', pcount >= 4);
+lvars pword = false;
+for pp in pats do
+    if lp_kind(pp) == "word" then true -> pword endif;
+endfor;
+check_false('and none of them is a word', pword);
+
 ;;; ------------------------------------------------------ the sitting clock
 ;;; The clock the student can see, which is not the clock that scores an
 ;;; answer -- that one is lp_record's and is pinned down above.  What is
