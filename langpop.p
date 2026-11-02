@@ -5540,6 +5540,133 @@ define lp_show_sheet(style);
     endif;
 enddefine;
 
+;;; ------------------------------------------------ the check's own index
+;;; Poplog's Prolog does not index clause heads: a goal whose first
+;;; argument is bound still walks every clause of the predicate.  That
+;;; is invisible at a hundred items and decisive at seven thousand.
+;;; Measured on this graph (7,565 items, 12,505 requires facts), each
+;;; violation timed on its own -- the sum is a little over the 402
+;;; seconds `--check` took end to end, because the machine was busier
+;;; the day of the profile:
+;;;
+;;;     reaches/2, inside violation(cycle(I))      414 s
+;;;     requires_crosses_language                   16 s
+;;;     requires_from_above                         10 s
+;;;     everything else together                     4 s
+;;;
+;;; All three of the slow ones are the same mistake: a lookup written as
+;;; a goal, run once per edge or once per path, each run scanning a
+;;; clause list that grows with the content.  So the check builds the
+;;; three tables it wants -- an item's language, an item's level, and
+;;; the edges both ways -- in one pass each, and the clauses in
+;;; graph/schema.pl ask those instead.
+;;;
+;;; FRESH ON EVERY CALL, and deliberately not lp_index's tables:
+;;; tests/bad.pl replaces item/5, form/3 and requires/2 under a loaded
+;;; graph on purpose, and a check reading a cache built before that would
+;;; report on the graph that is gone.  check(graph) prepares them itself
+;;; (lp_check_prepare below) so that a bare `?- check(graph).` is still
+;;; a complete check and not a quiet one.
+vars lp_ck_lang  = newproperty([], 8192, false, "perm"),
+     lp_ck_level = newproperty([], 8192, false, "perm"),
+     lp_ck_rank  = newproperty([],   64, false, "perm"),
+     lp_ck_out   = newproperty([], 8192, [],    "perm"),
+     lp_ck_in    = newproperty([], 8192, false, "perm");
+
+;;; lang and level together, because `preschool` is a rung of both
+;;; ladders and the two are not the same rung.
+define lp_ck_key(lang, level) -> k;
+    lvars lang, level, k = false;
+    if lang and level then
+        consword((lang sys_>< '') <> '/' <> (level sys_>< '')) -> k
+    endif;
+enddefine;
+
+define lp_check_tables();
+    lvars t, f, a, b, c;
+    clearproperty(lp_ck_lang); clearproperty(lp_ck_level);
+    clearproperty(lp_ck_rank); clearproperty(lp_ck_out);
+    clearproperty(lp_ck_in);
+    ;;; One query, three kinds of row, dispatched on the functor: three
+    ;;; passes over the clause store in one traversal of the answers.
+    for t in lp_ask("check_facts", 0) do
+        prolog_functor(t) -> f;
+        prolog_full_deref(prolog_arg(1, t)) -> a;
+        prolog_full_deref(prolog_arg(2, t)) -> b;
+        if f == "ck_item" then
+            prolog_full_deref(prolog_arg(3, t)) -> c;
+            b -> lp_ck_lang(a);
+            c -> lp_ck_level(a);
+        elseif f == "ck_rung" then
+            prolog_full_deref(prolog_arg(3, t)) -> c;
+            b -> lp_ck_rank(lp_ck_key(a, c));
+        elseif f == "ck_edge" then
+            lp_ck_out(a) <> [^b] -> lp_ck_out(a);
+            true -> lp_ck_in(b);
+        endif;
+    endfor;
+enddefine;
+
+define :prolog lp_check_prepare/0(contn);
+    lvars contn;
+    lp_check_tables();
+    chain(contn);
+enddefine;
+
+;;; A prerequisite in another language.  Both ends have to be items --
+;;; requires/2 may name something the graph does not hold, and that is
+;;; requires_unknown_item's violation to report, not this one's.
+define :prolog lp_cross_lang/2(x, y, contn);
+    lvars x, y, contn, a = lp_ck_lang(prolog_deref(x)),
+          b = lp_ck_lang(prolog_deref(y));
+    if a and b and a /== b then chain(contn) endif;
+enddefine;
+
+;;; A prerequisite from a HIGHER rung of the same ladder, which is a
+;;; prerequisite a student cannot have met yet.
+define :prolog lp_from_above/2(x, y, contn);
+    lvars x, y, contn, i = prolog_deref(x), p = prolog_deref(y),
+          la, lp, ni, np;
+    lp_ck_lang(i) -> la; lp_ck_lang(p) -> lp;
+    returnunless(la and lp and la == lp);
+    lp_ck_rank(lp_ck_key(la, lp_ck_level(i))) -> ni;
+    lp_ck_rank(lp_ck_key(lp, lp_ck_level(p))) -> np;
+    if ni and np and np > ni then chain(contn) endif;
+enddefine;
+
+;;; IS THIS ITEM ON A CYCLE?  The question reaches/2 was answering, asked
+;;; of nodes rather than of paths.
+;;;
+;;; reaches/2 enumerated every distinct ROUTE below an item, and a word
+;;; whose kanji each require the kana has a great many routes that all
+;;; arrive at the same forty-six places.  One visited set for the whole
+;;; search is all the difference: a node already seen cannot lead
+;;; anywhere new, so the walk is linear in the edges below the item
+;;; instead of exponential in its branching.  The start is not marked,
+;;; because arriving back at it is the answer.
+;;;
+;;; The two guards reaches/2 needed in front of it are gone: an item with
+;;; no edge out stops at the first line, and one with no edge in cannot
+;;; be arrived at.
+define lp_ck_reaches_self(id) -> yes;
+    lvars id, x, yes = false, stack = lp_ck_out(id),
+          seen = newproperty([], 64, false, "perm");
+    returnunless(stack /== [] and lp_ck_in(id));
+    until stack == [] do
+        hd(stack) -> x; tl(stack) -> stack;
+        if x == id then true -> yes; return
+        elseif not(seen(x)) then
+            true -> seen(x);
+            lp_ck_out(x) <> stack -> stack;
+        endif;
+    enduntil;
+enddefine;
+
+define :prolog lp_on_cycle/1(x, contn);
+    lvars x, contn;
+    if lp_ck_reaches_self(prolog_deref(x)) then chain(contn) endif;
+enddefine;
+
 ;;; ------------------------------------------------------------------ main
 ;;; The modifiers, from the graph: characters a written form may hold
 ;;; that are not kana in their own right.  Built on first use, like the

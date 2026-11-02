@@ -2214,6 +2214,14 @@ check('the shipped graph has no violations', lp_check(), []);
 
 ;;; Then a graph that is wrong in seven ways, so the checks above are
 ;;; known not to be vacuous.  This replaces item/5, form/3 and requires/2.
+;;;
+;;; It proves one more thing since check(graph) got its own tables: that
+;;; those tables are built FRESH.  Three of the seven violations below
+;;; are now found by asking an index rather than the clause store, and
+;;; the index for the graph this file replaces knows nothing of b_en or
+;;; b_cycle1 -- so if check(graph) read a cache instead of building one,
+;;; requires_crosses_language, requires_from_above and cycle would all
+;;; go quiet here.
 prolog_compile(discin(langpop_dir <> 'tests/bad.pl'));
 lvars bad = lp_check(), kinds = [], v, f;
 for v in bad do

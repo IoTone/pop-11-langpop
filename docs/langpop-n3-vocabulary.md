@@ -134,7 +134,7 @@ python3 tools/mkpicks.py work 3200 > graph/ja/picks/n3.pl
 | `exit(ja, n3, vocabulary(3750, read))` | short by 2,236 | **ok**, with 228 to spare |
 | `exit(ja, n2, vocabulary(6000, read))` | short by 4,486 | short by 2,022 |
 | `exit(ja, n3, vocabulary(3750, hear))` | short by 2,236 | short by 3,652 — there is no audio |
-| `./langpop --check` | 61 s | 402 s |
+| `./langpop --check` | 61 s | 402 s — then 5.6 s, see below |
 
 ## The four that were not askable
 
@@ -171,11 +171,16 @@ importer does not. So the rule lives where the knowledge is, and the test
 states the consequence. 味方 and 心地 are words worth teaching, in a
 rung whose reading questions can be answered — not this one.
 
-The last row is a real cost and not yet explained. The graph grew by a
+The last row was a real cost and is now explained. The graph grew by a
 factor of 1.48 and the audit got 6.6 times slower, which is the signature of
-something quadratic rather than something merely large — the same smell as
-the `reaches/2` blow-up that `docs/langpop-standalone-and-validation.md`
-records, and the next thing to measure.
+something quadratic rather than something merely large. It was: a profile
+put 92% of the time inside `reaches/2`, which answered *is this item on a
+cycle* by enumerating every route below it, and most of the rest in two
+clauses that look an item up by name — which Poplog's Prolog does by
+scanning every clause, because it does not index clause heads. The check
+builds its own tables now and the cycle walk keeps one visited set, so the
+report is 5.6 seconds and says the same thing. Finding 24 in
+`docs/langpop-standalone-and-validation.md` has the numbers.
 
 The `hear` half of every Japanese rung is still zero askable without
 `--audio`, and that remains the student's own job: the recordings are theirs

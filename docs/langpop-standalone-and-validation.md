@@ -789,14 +789,34 @@ did what the section above predicted, in order:
    should also show that it can find one, or all it tests is that
    iteration terminates.
 
-24. **Smaller observations, not yet acted on:** a reported-but-never-
+24. **Guarding a wrong algorithm buys a rung of content, and hides
+   that it is the wrong algorithm.** `--check` was 402 seconds where it
+   had been 61 (2026-11-02), and a profile -- one scratch program,
+   `systime()` around each violation on its own -- put 92% of it inside
+   `reaches/2` and most of the rest in two clauses that look an item up
+   by name. Both are the same fact about this engine: **Poplog's Prolog
+   does not index clause heads**, so `item(Pre, _, L, _, _)` with `Pre`
+   bound still walks all 7,565 item facts, and
+   `requires_crosses_language` ran that twice for each of 12,505 edges.
+   A clause like that reads as a definition and executes as a search.
+   `check(graph)` now builds three tables of its own first -- language,
+   level, edges both ways -- and the clauses ask those; what they say is
+   unchanged. `reaches/2` was worse than slow: it answered *is this item
+   on a cycle* by enumerating every distinct ROUTE below it, and the N3
+   words multiplied the routes. The guards added in October (an item on
+   a cycle has an edge in and an edge out, so leaves can be skipped)
+   took it from 288 seconds to 28 and the question stopped being asked
+   -- a constant factor on a wrong algorithm reads exactly like a fix
+   until the data grows. One visited set for the whole search makes it
+   linear in the edges below the item: 414 seconds to 0.02. **402
+   seconds to 5.6**, same answers, and `tests/bad.pl` still produces all
+   seven violations, which is the only reason to believe any of it.
+
+25. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
-   move it, exactly as `--audit` says. And `--check` is now 402 seconds
-   where it was 61: the graph grew by a factor of 1.48 and the audit got
-   6.6 times slower, which is quadratic rather than merely large, and is
-   the next thing to measure.
+   move it, exactly as `--audit` says.
 
 Soak state: seeds 1-5 (ja) and 1-3 (en) all pass. Not *deterministically*
 -- finding 16 is what that word was hiding. The answers a seed gives are
@@ -827,7 +847,7 @@ later one.
 | 3 | ~~a ceiling report~~ already built: it is `--audit` | nothing to do |
 | 4 | the oracle student over JSON-RPC, and the invariant assertions | `ja preschool` climbs from empty, reproducibly, from a seed |
 | 5 | the okurigana fix and the n5 word tranche to 800 | ~~`ja n5` climbs~~ the reading half does (2026-10-31, 773 picks, 823 words, 804 askable); the listening half wants `--audio n5`. N4's reading half followed (2026-11-01, 749 picks, 1572 words, and its 284 kanji by rule) |
-| 6 | N3 vocabulary, 2,236 words | done (2026-11-01): 2,464 picks, `vocabulary(3750, read)` ok with 228 askable to spare, N2 short by 2,022 where it was 4,486. The rung was too big to pick a word at a time, so it has a rule instead -- JMdict's priority marks gate the pool, the dialogue corpus orders it -- argued in langpop-n3-vocabulary.md. 7,565 items, no violations, `--check` 61s to 402s. Four picks were withdrawn the next day as findings 22 and 23 -- ateji spellings the pool's own filter had always meant to refuse, and the two property checks that now say so |
+| 6 | N3 vocabulary, 2,236 words | done (2026-11-01): 2,464 picks, `vocabulary(3750, read)` ok with 228 askable to spare, N2 short by 2,022 where it was 4,486. The rung was too big to pick a word at a time, so it has a rule instead -- JMdict's priority marks gate the pool, the dialogue corpus orders it -- argued in langpop-n3-vocabulary.md. 7,565 items, no violations, `--check` 61s to 402s and then to 5.6s once finding 24 was measured. Four picks were withdrawn the next day as findings 22 and 23 -- ateji spellings the pool's own filter had always meant to refuse, and the two property checks that now say so |
 | 6 | the kanji column, all of it | done (2026-11-01): 650, 1023 and 2230 all read ok. N1 by rule, N3 and N2 by splitting old level 2 on school grade then newspaper frequency -- the one rung the source cannot answer, argued in langpop-n3-kanji.md. 5,061 items, no violations, `--check` 28s to 61s |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
 | 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |

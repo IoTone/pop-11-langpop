@@ -147,41 +147,37 @@ why(_).
 violation(level_not_on_ladder(I, Lang, Level)) :-
     item(I, _, Lang, Level, _), \+ ladder(Lang, _, Level).
 
+% lp_cross_lang/2 and lp_from_above/2 ask the check's own tables rather
+% than the clause store, and the reason is in langpop.p above
+% lp_check_tables: Poplog's Prolog does not index clause heads, so
+% item(Pre, _, L2, _, _) with Pre bound still walks all 7,565 item facts
+% -- once per prerequisite edge, which is 12,505 times.  These two
+% clauses alone were 26 seconds of a 402-second report.  What they SAY
+% is unchanged; where they look it up is not.
 violation(requires_crosses_language(I, Pre)) :-
-    requires(I, Pre),
-    item(I, _, L1, _, _), item(Pre, _, L2, _, _), L1 \== L2.
+    requires(I, Pre), lp_cross_lang(I, Pre).
 
 violation(requires_unknown_item(I, Pre)) :-
     requires(I, Pre), \+ item(Pre, _, _, _, _).
 
 violation(requires_from_above(I, Pre)) :-
-    requires(I, Pre),
-    item(I, _, Lang, Li, _), item(Pre, _, Lang, Lp, _),
-    ladder(Lang, Ni, Li), ladder(Lang, Np, Lp), Np > Ni.
+    requires(I, Pre), lp_from_above(I, Pre).
 
-% An item on a cycle has at least one edge OUT of it and at least one
-% edge INTO it, so the two guards in front of reaches/2 lose no cycle --
-% and they are the difference between a report that takes five minutes
-% and one that takes seconds.
+% ON A CYCLE, which is a question about nodes and was asked about paths.
 %
-% reaches/2 enumerates PATHS and not reachable nodes, so the cost of this
-% check was (number of items) x (paths below one item) x (cost of a
-% requires/2 lookup).  Nearly every item in a vocabulary graph is a leaf
-% of that relation in one direction or the other -- a word is required by
-% nothing, a kana requires nothing -- and neither kind can be on a cycle.
-% Pruning them took the N4 graph's check from 288 seconds of CPU to 28,
-% and what the cost now grows with is the roll-ups and the characters
-% rather than the vocabulary.
+% reaches/2 used to live here and enumerated every distinct ROUTE below
+% an item.  Guarding it (an item on a cycle has an edge in and an edge
+% out, so leaves can be skipped) took the N4 graph from 288 seconds to
+% 28, and it came back at 414 as soon as the N3 words multiplied the
+% routes below the characters: 780 items survived the guards, and the
+% walk below each one re-reached the same forty-six kana by thousands of
+% different paths, scanning all 12,505 requires facts at every step.
 %
-% The two guards are predicates with a cut rather than bare goals,
-% because a bare requires(I, _) leaves a choice point per edge and would
-% report one cycle once per path into it.
-violation(cycle(I)) :-
-    item(I, _, _, _, _), requires_something(I), required_by_something(I),
-    reaches(I, I).
-
-requires_something(I) :- requires(I, _), !.
-required_by_something(I) :- requires(_, I), !.
+% lp_on_cycle/1 walks the same edges with one visited set for the whole
+% search, over a table built in one pass, which is linear in the edges
+% below the item -- see lp_ck_reaches_self in langpop.p.  Same answers,
+% same order, and the guards are inside it.
+violation(cycle(I)) :- item(I, _, _, _, _), lp_on_cycle(I).
 
 violation(item_without_form(I)) :-
     item(I, Kind, _, _, _), Kind \== skill, \+ form(I, _, _).
@@ -197,19 +193,21 @@ violation(level_without_exit(Lang, Level)) :-
     ladder(Lang, _, Level), \+ exit(Lang, Level, _, _, _).
 provenance_ok(I) :- item(I, _, _, _, S), nonvar(S), S \== unknown.
 
-% Reachability that terminates on a graph which is NOT yet known to be a
-% DAG -- which is the only interesting case, since this is what finds the
-% cycles.  Without the visited list, a two-item cycle has infinitely many
-% proofs and the check exhausts pop_prolog_lim instead of reporting it.
-reaches(X, Y) :- reaches_(X, Y, [X]).
-reaches_(X, Y, _) :- requires(X, Y).
-reaches_(X, Z, Seen) :-
-    requires(X, Y), \+ in_list(Y, Seen), reaches_(Y, Z, [Y|Seen]).
+% The tables the three clauses above consult, in one pass each: an
+% item's language and level, the rungs of each ladder, and the edges.
+% Read by lp_check_tables in langpop.p, which is where the shape of
+% these rows is described.
+check_facts :- item(I, _, Lang, Lv, _), lp_take(ck_item(I, Lang, Lv)), fail.
+check_facts :- ladder(Lang, N, Lv), lp_take(ck_rung(Lang, N, Lv)), fail.
+check_facts :- requires(I, Pre), lp_take(ck_edge(I, Pre)), fail.
+check_facts.
 
-in_list(X, [X|_]).
-in_list(X, [_|T]) :- in_list(X, T).
-
-check(graph) :- violation(V), lp_take(V), fail.
+% The preparation is the first goal of the check and not a thing the
+% caller has to remember, so `?- check(graph).` typed at a prompt is the
+% same complete check the driver runs -- and so that the tables describe
+% whatever graph is loaded NOW, which is the whole point of
+% tests/bad.pl.
+check(graph) :- lp_check_prepare, violation(V), lp_take(V), fail.
 check(graph).
 
 % --- Indexing ------------------------------------------------------------

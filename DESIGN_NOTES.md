@@ -2085,6 +2085,68 @@ happy one: the import is correct, the audit's answer is correct, and
 guessing at a Prolog goal's cost without measuring it is how the 288-second
 version got written in the first place.
 
+#### Measured, and it was three clauses
+
+**`--check` is 5.6 seconds now, where it was 402.** Not an optimisation
+pass: one profile, and then the three lines it pointed at.
+
+The profile was a scratch program that compiled the graph once and then ran
+each violation on its own with `systime()` around it. In centiseconds of
+CPU — the sum runs a little over the 402 seconds `--check` takes end to
+end, because the machine was busier that evening:
+
+```
+reaches/2, inside violation(cycle(I))     41973
+requires_crosses_language                  1636
+requires_from_above                         960
+item_without_form                           202
+item_without_source                         118
+requires_unknown_item                        45
+level_not_on_ladder, level_without_exit       0
+```
+
+One check is 92% of the report, and the two behind it are the same mistake
+in a milder form. **Poplog's Prolog does not index clause heads.** A goal
+whose first argument is bound still walks every clause of the predicate, so
+`item(Pre, _, L2, _, _)` with `Pre` bound is a scan of all 7,565 item facts
+— and `requires_crosses_language` runs it twice for each of 12,505
+prerequisite edges. Nothing about that clause looks expensive. It looks
+like a definition, which is what it is; it was being executed as a search.
+
+The fix for those two is to give the check its own tables. `check(graph)`'s
+first goal now builds three of them in one pass each — an item's language,
+an item's level, the edges both ways — and the clauses ask those. What they
+*say* is unchanged. 26 seconds became nothing measurable.
+
+`reaches/2` was not a lookup problem. It answered *is this item on a cycle*
+by enumerating every distinct ROUTE below the item, and the N3 words
+multiplied the routes: 780 items survived the guards, and under each one
+the same forty-six kana were reached again by thousands of different paths,
+each step of each path scanning all 12,505 requires facts. Its own comment
+had recorded the first version of this — 288 seconds down to 28, by
+pruning the leaves — and said what the cost now grows with. Guarding a
+wrong algorithm buys a rung or two of content. It does not stop the thing
+from being exponential in the branching, and the graph will keep growing.
+
+A cycle is a question about NODES. `lp_ck_reaches_self` walks the same
+edges with one visited set for the whole search, which makes it linear in
+the edges below the item rather than exponential in its branching, because
+a node already seen cannot lead anywhere new. 414 seconds became 0.02.
+
+The part worth keeping: **the guards were what made it survivable, and that
+is why it came back bigger.** Pruning the leaves in October took the report
+from five minutes to half a minute and the question stopped being asked. A
+constant factor on a wrong algorithm reads exactly like a fix until the
+data grows.
+
+And the tables are rebuilt on every call rather than shared with
+`lp_index`, which is not an accident: `tests/bad.pl` replaces `item/5`,
+`form/3` and `requires/2` under a loaded graph on purpose, and a check
+reading a cache built before that would be reporting on the graph that is
+gone — the vacuous-test failure of the day before, one layer down. The
+broken graph still produces all seven violations, which is the only proof
+that any of this still checks anything.
+
 #### A margin that absorbs exactly four items
 
 The day the N3 words went in, the audit said 4,038 words have and 3,976
