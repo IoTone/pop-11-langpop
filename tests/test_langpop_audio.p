@@ -943,9 +943,34 @@ check_true('a voice and a scorer is enough -- no recorder is needed',
 lvars va, vd, vab;
 lp_voice_test(false) -> (va, vd, vab);
 check('a working chain has no disagreements', vd, 0);
-check('and with gaps this clear, no abstentions either', vab, 0);
+
+;;; ABSTENTIONS ARE NOT FAILURES, AND THEY GROW WITH THE WORD.  This
+;;; line said `and with gaps this clear, no abstentions either` while
+;;; the longest geminate word in the graph had five morae.  N2's
+;;; vocabulary brought 専門学校 and 高等学校: at seven morae a dropped
+;;; beat is a seventh of the word, the 40ms fixture gap lands inside the
+;;; near band, and the scorer declines instead of guessing -- which is
+;;; what the band is for, and the same arithmetic the comment below
+;;; spells out for がっこう.  Two of 568 checks, both of them seven
+;;; morae long.
+;;;
+;;; What must stay true is that nothing is CREDITED wrongly, which is
+;;; the check above, and that declining stays the exception.
+check_true('and abstentions are the rare exception, not the rule',
+           vab * 20 =< va);
 check_true('every geminate word was tried both ways, plus the fricative '
            <> 'and the controls', va >= 12);
+
+;;; On a word short enough for the gap to be unambiguous the chain is
+;;; decisive and not merely safe: がっこう is four morae, and this is the
+;;; same fixture the whole-graph run above used.  It is a starter word,
+;;; so this holds with or without the imported content.
+"w_gakkou" -> lp_vt_only;
+lp_voice_test(false) -> (va, vd, vab);
+false -> lp_vt_only;
+check('a four-mora word leaves no room to abstain', vab, 0);
+check('and nothing to disagree about', vd, 0);
+check_true('with both its cases measured', va >= 2);
 
 ;;; The degeminated render is a wrong pronunciation and must not stay in
 ;;; the cache a student hears from; the word as written is ordinary

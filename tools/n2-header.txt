@@ -1,0 +1,65 @@
+% graph/ja/picks/n2.pl -- which words are N2, and who they are.
+%
+% Read graph/ja/picks/n3.pl's header first, and
+% docs/langpop-n2-vocabulary.md for what changed.  The arrangement is
+% the same: a pick is an identity, a level and a lookup key, import.p
+% fetches the forms and the glosses from JMdict at build time, and no
+% Japanese that upstream wrote is committed here.
+%
+% WHAT CHANGED, IN ONE SENTENCE.  N3's rule was that a bridge-level word
+% is one BOTH corpora use; N2's is that a word of the reading rung is
+% one the NEWSPAPER uses, whether or not anybody says it.
+%
+% The reason is a measurement, not a preference.  判断, 批判, 段階 and
+% 背景 are absent from a 34,504-form subtitle frequency list -- not
+% rare in it, absent -- while 捜査 sits at rank 109 with 4,939
+% occurrences.  A list built from film and television knows what people
+% SAY.  N2 is the rung at which a learner reads editorials, so the gate
+% that served N3 (the word must also be spoken) would have refused
+% 判断 and admitted 殺人, which is the wrong rung's vocabulary in both
+% directions.  So at N2 the Mainichi band orders the pool and the
+% dialogue count is only the tiebreak.
+%
+% The five mechanical filters are N3's, with one number moved: a
+% headword may use any of the 1023 kanji the graph teaches at or below
+% N2.  The id, though, is settled by the dialogue order at EVERY rung --
+% three words read どうし, and 同志 is a word while 同市 is "the said
+% city".  See tools/draft-picks.py.
+%
+% Then @REVIEWED@ survivors were read by hand, in rank order, and
+% @REJECTS@ of them thrown out.  The reasons, in the order they cost the
+% most rows:
+%
+%     402  register   the word is real but belongs to a trade -- and at
+%                     this rung the trade is usually JOURNALISM itself:
+%                     同省 "the said ministry", 与野党, 党利, 戦況, and
+%                     a whole sports page of 打率 and 安打.
+%      95  proper     a country, party, ministry, agency, region or
+%                     surname.  The newspaper corpus is thick with them.
+%      69  rare       formal, literary or archaic: 人心, 万国, 学徒.
+%      34  artefact   two words the segmenter joined: 高品質, 現段階,
+%                     新聞記事.
+%      25  numeral    十二, 三枚, 数万.
+%      17  fragment   half of a longer word: 人文, 国勢, 多面, 三次.
+%       9  stem       a nominalised verb: 示し, 戻り, 盗み, 磨き.
+%      13  one each or two: a suffix (越し, 抜き), an expression (何か,
+%                     中でも), an alternate reading (留保 for 保留), a
+%                     homophone (裏面 twice over), a mis-glossed entry
+%                     (手取り, whose first sense upstream is a sumo one).
+%
+% The rejections are kept, with their reasons, in n2-rejects.tsv beside
+% this file, and they are carried forward: the pool for the rung above
+% will not offer any of them again unless a curator deletes a row.
+%
+% THE COUNT.  @COUNT@ picks here.  With the 4036 words through N3 that is
+% what exit(ja, n2, vocabulary(6000, read)) asks for, and the margin is
+% thin on purpose -- the review stopped once the rung was met rather
+% than reading the whole 9490-row pool, because the next 6500 rows are
+% ordered by a newspaper's opinion of a word a learner has yet to meet.
+%
+% WHAT THIS IS NOT.  Not a published list.  JLPT has published no word
+% list since 2010, so
+% provenance(exit(ja, _, vocabulary(_, _), _, _), estimate(community))
+% in the ladder says what this is: a teaching claim, made by a person,
+% from a corpus that was counting something else.
+%

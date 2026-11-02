@@ -1,336 +1,336 @@
-w_shuttai	alt-reading	出来 is できる; しゅったい is a different, formal word
-w_konnichi	alt-reading	今日 is きょう in the graph already
-w_myounichi	alt-reading	明日 is あした in the graph already
-w_nihon	proper-noun	a country name
-w_beikoku	proper-noun	a country name
-w_eikoku	proper-noun	a country name
-w_toukyou	proper-noun	a city name
-w_handa	artefact	solder; a segmentation artefact of the pool
-w_namamono	homophone	生物 is taught as せいぶつ
-w_iri	stem	the noun of 入る
-w_hajimari	stem	the noun of 始まる
-w_ugoki	stem	the noun of 動く
-w_tsukai	stem	the noun of 使う
-w_kudari	stem	the noun of 下る, and a railway sense
-w_gimi	suffix	-気味 is a suffix, not a word
-w_reijou	register	legal procedure
-w_hanji	register	legal office
-w_kenji	register	legal office
-w_shihou	register	legal institution
-w_renkou	register	police procedure
-w_kokuhatsu	register	legal procedure
-w_toukyoku	register	institutional journalism
-w_jouin	register	legislative chamber
-w_kyouwa	register	political theory
-w_gikai	register	legislative body
-w_gichou	register	legislative office
-w_daijin	register	cabinet office
-w_giin	register	legislative office
-w_gunji	register	military affairs as a policy field
-w_kokubou	register	military policy
-w_hoan	register	institutional security
-w_baishun	register	not vocabulary for a teaching rung
-w_kogane	homophone	黄金 is taught as おうごん
-w_honkon	proper-noun	a city name
-w_kokuren	proper-noun	an organisation's name
-w_chuutou	proper-noun	a region's name
-w_shounin	homophone	小人 is taught as こびと
-w_kyousan	register	a party and a political theory
-w_arasoi	stem	the noun of 争う
-w_tsukuri	stem	the noun of 作る
-w_okuri	stem	the noun of 送る
-w_onajiku	stem	the adverbial of 同じ
-w_isogi	stem	the noun of 急ぐ
-w_okonai	stem	the noun of 行う
-w_sodachi	stem	the noun of 育つ
-w_tachiiri	register	signage
-w_oomon	rare	a gate of a particular kind
-w_yajin	register	a disparaging word for a country person
-w_fukueki	register	prison sentencing
-w_ryoushu	register	feudal history
-w_heidan	register	military organisation
-w_gundan	register	military organisation
-w_kessei	register	clinical medicine
-w_shougou	register	clerical checking
-w_saiku	register	craft trade
-w_joumu	register	corporate office
-w_inchou	register	institutional office
-w_kyokuchou	register	institutional office
-w_chiji	register	prefectural office
-w_tomari	stem	the noun of 止まる
-w_michibiki	stem	the noun of 導く
-w_yomi	stem	the noun of 読む
-w_torikaeshi	stem	the noun of 取り返す
-w_shanhai	proper-noun	a city name
-w_pekin	proper-noun	a city name
-w_minamiafurika	proper-noun	a country name
-w_beigun	proper-noun	one country's armed forces
-w_shikyoku	register	a news bureau
-w_kokumu	register	affairs of state
-w_jichou	register	institutional office
-w_shochou	register	institutional office
-w_toudori	register	a bank's president
-w_houmu	register	judicial affairs
-w_chousho	register	legal record
-w_giji	register	parliamentary proceedings
-w_genkoku	register	a party to a lawsuit
-w_ryouji	register	diplomatic office
-w_souri	register	head of government
-w_koukan	register	institutional office
-w_juuyaku	register	corporate office
-w_shikyou	register	religious office
-w_shiketsu	register	clinical medicine
-w_seikei	register	surgical speciality
-w_kagou	register	chemistry
-w_sekkai	register	clinical medicine
-w_shouni	register	paediatric medicine
-w_kassei	register	chemistry
-w_fuzen	register	clinical medicine
-w_funbetsu	homophone	分別 is taught as ぶんべつ
-w_ninmae	homophone	人前 is taught as ひとまえ
-w_hitogoto	homophone	人事 is taught as じんじ
-w_hame	gloss	the living sense is 羽目になる, which the entry does not gloss
-w_shirayuki	rare	poetic
-w_jika	register	formal self-reference
-w_bugai	register	institutional
-w_shokumin	register	colonial history
-w_shingun	register	military movement
-w_kokuzei	register	tax administration
-w_nyuusatsu	register	procurement
-w_koushi	register	legal rights
-w_wahei	register	diplomacy
-w_jinmin	register	political theory
-w_youin	register	staffing
-w_souin	register	staffing
-w_douin	register	military and institutional mobilisation
-w_haibi	register	military deployment
-w_haikyuu	register	rationing and film distribution
-w_souden	register	the electricity grid
-w_shukkou	register	corporate secondment
-w_tousha	register	business correspondence
-w_honken	register	business correspondence
-w_sente	register	a board-game term
-w_shisaku	register	manufacturing
-w_choukyou	register	animal training
-w_jinshin	register	legal and traffic reporting
-w_shisoku	register	formal reference to another's son
-w_kyakujin	rare	a rare reading of 客人
-w_manabi	stem	the noun of 学ぶ
-w_sasshi	stem	the noun of 察する
-w_hakobi	stem	the noun of 運ぶ
-w_kizuki	stem	the noun of 気づく
-w_tooshi	stem	the noun of 通す
-w_naoshi	stem	the noun of 直す
-w_ueshita	homophone	上下 is taught as じょうげ
-w_shinchuu	homophone	心中 is taught as しんじゅう
-w_chiba	proper-noun	a city and prefecture name
-w_zenbei	proper-noun	one country, named
-w_naimu	register	government portfolio
-w_sokkin	register	political staff
-w_kyouku	register	church administration
-w_honzan	register	temple administration
-w_dendou	register	missionary work
-w_imu	register	medical administration
-w_touyaku	register	clinical medicine
-w_byougentai	register	microbiology
-w_byougen	register	clinical medicine
-w_hishitsu	register	anatomy
-w_shicchou	register	clinical medicine
-w_bashin	register	horse racing
-w_chaban	register	theatre criticism
-w_minpei	register	military organisation
-w_heiryoku	register	military capacity
-w_senryoku	register	military capacity
-w_sensen	register	military geography
-w_jissen	register	military action
-w_tokushi	register	diplomacy
-w_hatsurei	register	official proclamation
-w_tsuutatsu	register	official notification
-w_kaiji	register	legal disclosure
-w_kainin	register	institutional dismissal
-w_zennin	register	institutional succession
-w_issaku	fragment	一昨 is a prefix, not a word
-w_zendai	register	historical periodisation
-w_sendai	register	family and household history
-w_kido	rare	a gate of a particular kind
-w_senjuu	fragment	先住 wants 民 to be a word
-w_katagi	rare	a rare reading of 気質
-w_sendan	register	naval and fishing organisation
-w_maegashira	register	sumo ranking
-w_utsushi	stem	the noun of 写す
-w_toi	stem	the noun of 問う
-w_katari	stem	the noun of 語る
-w_hirogari	stem	the noun of 広がる
-w_kinboshi	homophone	金星 is taught as きんせい
-w_mokka	homophone	目下 is taught as めした
-w_kanki	homophone	寒気 is taught as さむけ
-w_ikkou	homophone	一行 is taught as いちぎょう
-w_nagoya	proper-noun	a city name
-w_hiroshima	proper-noun	a city and prefecture name
-w_hokubei	proper-noun	a continent, named
-w_nanbei	proper-noun	a continent, named
-w_gaimu	register	government portfolio
-w_soumu	register	corporate department
-w_chouchou	register	municipal office
-w_daigi	register	representative government
-w_kanku	register	administrative jurisdiction
-w_bukyoku	register	institutional department
-w_zeimu	register	tax administration
-w_kaketsu	register	legislative procedure
-w_hourei	register	statute law
-w_inin	register	legal delegation
-w_juri	register	official acceptance
-w_kakarikan	register	institutional office
-w_ikyoku	register	hospital administration
-w_chiken	register	clinical research
-w_byouri	register	clinical medicine
-w_hika	register	anatomy
-w_ryodan	register	military organisation
-w_kougun	register	military movement
-w_boukuu	register	military defence
-w_senchi	register	military geography
-w_zengun	register	military organisation
-w_shukun	register	feudal relations
-w_kerai	register	feudal relations
-w_zokuchou	register	anthropology
-w_houou	register	religious office
-w_kunshi	register	classical moral philosophy
-w_shiraki	register	carpentry
-w_bosen	register	naval logistics
-w_onshin	rare	formal correspondence
-w_denka	register	physics
-w_denkyoku	register	physics
-w_eiri	register	commercial law
-w_tsuushou	register	trade policy
-w_kouri	register	lending
-w_sasatsu	register	compliance inspection
-w_yokonagashi	register	illegal trade
-w_hokujou	register	weather reporting
-w_isseki	register	a board-game term
-w_shukushu	register	parasitology
-w_aidajuu	fragment	間中 is a suffixed form, not a word
-w_yattsu	numeral	a number, which the ladder counts elsewhere
-w_seisha	register	formal and Buddhist
-w_unabara	rare	poetic
-w_eisha	register	cinema projection
-w_kashin	register	feudal relations
-w_yasen	register	military action
-w_sousa	register	imaging technology
-w_tessen	register	materials, and a plant name
-w_mochizuki	rare	poetic, and a surname
-w_mawashi	register	sumo
-w_enka	register	chemistry
-w_chuuwa	register	chemistry
-w_tachikata	rare	a rare reading of 立方
-w_samon	register	official hearings
-w_minji	register	civil law
-w_shikoku	proper-noun	an island's name
-w_kyouto	proper-noun	a city and prefecture name
-w_koube	proper-noun	a city name
-w_nikkei	proper-noun	a newspaper and an index
-w_shigikai	register	municipal government
-w_rippou	register	legislation
-w_jourei	register	municipal law
-w_jidan	register	civil litigation
-w_dougi	register	parliamentary procedure
-w_innai	register	legislative building
-w_gunbu	register	military institutions
-w_shuseki	register	head of state
-w_chouin	register	treaty-making
-w_tokumei	register	official appointment
-w_kakui	register	formal correspondence
-w_kanchou	register	institutional office
-w_daishikyou	register	religious office
-w_shito	register	religious history
-w_shinto	register	religious adherence
-w_josan	register	obstetrics
-w_naiji	register	anatomy
-w_hyouhi	register	anatomy
-w_jutsugo	register	clinical medicine
-w_shizan	register	obstetrics
-w_tanka	register	chemistry
-w_enzan	register	mathematics
-w_tanpa	register	radio engineering
-w_toukei	register	cartography
-w_kentai	register	clinical testing
-w_kyokusho	register	clinical medicine
-w_bante	register	textile measurement
-w_sakimono	register	financial trading
-w_kokuyuu	register	public ownership
-w_houtei	register	statute law
-w_naisei	register	domestic politics
-w_kanzei	register	trade policy
-w_kyuufu	register	welfare administration
-w_hakkyuu	register	official issuance
-w_sennin	register	official appointment
-w_kouin	register	banking
-w_bunin	register	institutional branches
-w_oono	proper-noun	mostly a surname
-w_hakujitsu	register	literary
-w_zensei	rare	a rare reading of 前世
-w_jitsugetsu	register	literary
-w_gappi	homophone	月日 is taught as つきひ
-w_nobori	stem	the noun of 上る
-w_kayoi	stem	the noun of 通う
-w_tasshi	stem	the noun of 達する
-w_taikou	register	European nobility
-w_taneuma	register	animal husbandry
-w_umanushi	register	horse racing
-w_oute	register	shogi
-w_gote	register	board games
-w_honmaru	register	castle architecture
-w_nenriki	register	the paranormal
-w_yakai	register	dated society reporting
-w_shuushi	homophone	始終 already carries this sense
-w_hatsujou	register	animal husbandry
-w_nanka	register	weather and military reporting
-w_hirai	register	aviation reporting
-w_jouri	register	literary
-w_densou	register	telecommunications
-w_kajuu	register	statistics
-w_tajuu	register	engineering
-w_ryoukuu	register	airspace law
-w_touki	register	property law
-w_kaiun	register	shipping
-w_tsuufuu	register	ventilation engineering, and a disease
-w_nyuushoku	register	colonial settlement
-w_ryuuyou	register	accounting
-w_shiromizu	rare	a specialist sense
-w_kaikou	register	engineering
-w_honin	register	institutional self-reference
-w_ryuutai	register	physics
-w_furou	fragment	不老 wants 不死 to be a word
-w_ryoumei	register	formal and legal
-w_kanju	register	psychology
-w_doutei	register	scientific identification
-w_shayou	register	corporate expense
-w_hitoashi	homophone	一足 is taught as いっそく
-w_shukyou	register	religious office
-w_ousei	register	constitutional history
-w_gunkoku	register	military politics
-w_gorin	proper-noun	the Olympic Games, named
-w_koumei	register	a party name as well as a virtue
-w_taibei	register	foreign policy
-w_shouhou	register	commercial law
-w_jiseki	register	institutional rank
-w_gian	register	legislative procedure
-w_taichi	register	aviation and gunnery
-w_soudai	register	formal representation
-w_denrei	register	military communication
-w_shinkan	register	religious office
-w_hyakubun	fragment	百聞 wants 一見 to be a word
-w_joujou	register	stock listing
-w_koufu	register	official issuance
-w_shoukou	fragment	商工 is half of 商工会議所
-w_joukoku	register	appellate procedure
-w_gijou	register	legislative building
-w_minori	stem	the noun of 実る
-w_hensei	register	chemistry
-w_houden	register	physics
-w_buai	register	commission and piecework
-w_aiba	register	horsemanship
-w_hyakka	fragment	百科 wants 事典 to be a word
-w_kokkou	register	diplomacy
-w_ryounin	register	formal and legal
-w_barairo	orthography	the kanji spelling is 薔薇色, which N3 does not teach
-w_yuusen	register	telecoms
+w_shuttai	出来	alt-reading	出来 is できる; しゅったい is a different, formal word
+w_konnichi	今日	alt-reading	今日 is きょう in the graph already
+w_myounichi	明日	alt-reading	明日 is あした in the graph already
+w_nihon	日本	proper-noun	a country name
+w_beikoku	米国	proper-noun	a country name
+w_eikoku	英国	proper-noun	a country name
+w_toukyou	東京	proper-noun	a city name
+w_handa	半田	artefact	solder; a segmentation artefact of the pool
+w_namamono	生物	homophone	生物 is taught as せいぶつ
+w_iri	入り	stem	the noun of 入る
+w_hajimari	始まり	stem	the noun of 始まる
+w_ugoki	動き	stem	the noun of 動く
+w_tsukai	使い	stem	the noun of 使う
+w_kudari	下り	stem	the noun of 下る, and a railway sense
+w_gimi	気味	suffix	-気味 is a suffix, not a word
+w_reijou	令状	register	legal procedure
+w_hanji	判事	register	legal office
+w_kenji	検事	register	legal office
+w_shihou	司法	register	legal institution
+w_renkou	連行	register	police procedure
+w_kokuhatsu	告発	register	legal procedure
+w_toukyoku	当局	register	institutional journalism
+w_jouin	上院	register	legislative chamber
+w_kyouwa	共和	register	political theory
+w_gikai	議会	register	legislative body
+w_gichou	議長	register	legislative office
+w_daijin	大臣	register	cabinet office
+w_giin	議員	register	legislative office
+w_gunji	軍事	register	military affairs as a policy field
+w_kokubou	国防	register	military policy
+w_hoan	保安	register	institutional security
+w_baishun	売春	register	not vocabulary for a teaching rung
+w_kogane	黄金	homophone	黄金 is taught as おうごん
+w_honkon	香港	proper-noun	a city name
+w_kokuren	国連	proper-noun	an organisation's name
+w_chuutou	中東	proper-noun	a region's name
+w_shounin	小人	homophone	小人 is taught as こびと
+w_kyousan	共産	register	a party and a political theory
+w_arasoi	争い	stem	the noun of 争う
+w_tsukuri	作り	stem	the noun of 作る
+w_okuri	送り	stem	the noun of 送る
+w_onajiku	同じく	stem	the adverbial of 同じ
+w_isogi	急ぎ	stem	the noun of 急ぐ
+w_okonai	行い	stem	the noun of 行う
+w_sodachi	育ち	stem	the noun of 育つ
+w_tachiiri	立ち入り	register	signage
+w_oomon	大門	rare	a gate of a particular kind
+w_yajin	野人	register	a disparaging word for a country person
+w_fukueki	服役	register	prison sentencing
+w_ryoushu	領主	register	feudal history
+w_heidan	兵団	register	military organisation
+w_gundan	軍団	register	military organisation
+w_kessei	血清	register	clinical medicine
+w_shougou	照合	register	clerical checking
+w_saiku	細工	register	craft trade
+w_joumu	常務	register	corporate office
+w_inchou	院長	register	institutional office
+w_kyokuchou	局長	register	institutional office
+w_chiji	知事	register	prefectural office
+w_tomari	止まり	stem	the noun of 止まる
+w_michibiki	導き	stem	the noun of 導く
+w_yomi	読み	stem	the noun of 読む
+w_torikaeshi	取り返し	stem	the noun of 取り返す
+w_shanhai	上海	proper-noun	a city name
+w_pekin	北京	proper-noun	a city name
+w_minamiafurika	南アフリカ	proper-noun	a country name
+w_beigun	米軍	proper-noun	one country's armed forces
+w_shikyoku	支局	register	a news bureau
+w_kokumu	国務	register	affairs of state
+w_jichou	次長	register	institutional office
+w_shochou	所長	register	institutional office
+w_toudori	頭取	register	a bank's president
+w_houmu	法務	register	judicial affairs
+w_chousho	調書	register	legal record
+w_giji	議事	register	parliamentary proceedings
+w_genkoku	原告	register	a party to a lawsuit
+w_ryouji	領事	register	diplomatic office
+w_souri	総理	register	head of government
+w_koukan	高官	register	institutional office
+w_juuyaku	重役	register	corporate office
+w_shikyou	司教	register	religious office
+w_shiketsu	止血	register	clinical medicine
+w_seikei	整形	register	surgical speciality
+w_kagou	化合	register	chemistry
+w_sekkai	切開	register	clinical medicine
+w_shouni	小児	register	paediatric medicine
+w_kassei	活性	register	chemistry
+w_fuzen	不全	register	clinical medicine
+w_funbetsu	分別	homophone	分別 is taught as ぶんべつ
+w_ninmae	人前	homophone	人前 is taught as ひとまえ
+w_hitogoto	人事	homophone	人事 is taught as じんじ
+w_hame	羽目	gloss	the living sense is 羽目になる, which the entry does not gloss
+w_shirayuki	白雪	rare	poetic
+w_jika	自家	register	formal self-reference
+w_bugai	部外	register	institutional
+w_shokumin	植民	register	colonial history
+w_shingun	進軍	register	military movement
+w_kokuzei	国税	register	tax administration
+w_nyuusatsu	入札	register	procurement
+w_koushi	行使	register	legal rights
+w_wahei	和平	register	diplomacy
+w_jinmin	人民	register	political theory
+w_youin	要員	register	staffing
+w_souin	総員	register	staffing
+w_douin	動員	register	military and institutional mobilisation
+w_haibi	配備	register	military deployment
+w_haikyuu	配給	register	rationing and film distribution
+w_souden	送電	register	the electricity grid
+w_shukkou	出向	register	corporate secondment
+w_tousha	当社	register	business correspondence
+w_honken	本件	register	business correspondence
+w_sente	先手	register	a board-game term
+w_shisaku	試作	register	manufacturing
+w_choukyou	調教	register	animal training
+w_jinshin	人身	register	legal and traffic reporting
+w_shisoku	子息	register	formal reference to another's son
+w_kyakujin	客人	rare	a rare reading of 客人
+w_manabi	学び	stem	the noun of 学ぶ
+w_sasshi	察し	stem	the noun of 察する
+w_hakobi	運び	stem	the noun of 運ぶ
+w_kizuki	気づき	stem	the noun of 気づく
+w_tooshi	通し	stem	the noun of 通す
+w_naoshi	直し	stem	the noun of 直す
+w_ueshita	上下	homophone	上下 is taught as じょうげ
+w_shinchuu	心中	homophone	心中 is taught as しんじゅう
+w_chiba	千葉	proper-noun	a city and prefecture name
+w_zenbei	全米	proper-noun	one country, named
+w_naimu	内務	register	government portfolio
+w_sokkin	側近	register	political staff
+w_kyouku	教区	register	church administration
+w_honzan	本山	register	temple administration
+w_dendou	伝道	register	missionary work
+w_imu	医務	register	medical administration
+w_touyaku	投薬	register	clinical medicine
+w_byougentai	病原体	register	microbiology
+w_byougen	病原	register	clinical medicine
+w_hishitsu	皮質	register	anatomy
+w_shicchou	失調	register	clinical medicine
+w_bashin	馬身	register	horse racing
+w_chaban	茶番	register	theatre criticism
+w_minpei	民兵	register	military organisation
+w_heiryoku	兵力	register	military capacity
+w_senryoku	戦力	register	military capacity
+w_sensen	戦線	register	military geography
+w_jissen	実戦	register	military action
+w_tokushi	特使	register	diplomacy
+w_hatsurei	発令	register	official proclamation
+w_tsuutatsu	通達	register	official notification
+w_kaiji	開示	register	legal disclosure
+w_kainin	解任	register	institutional dismissal
+w_zennin	前任	register	institutional succession
+w_issaku	一昨	fragment	一昨 is a prefix, not a word
+w_zendai	前代	register	historical periodisation
+w_sendai	先代	register	family and household history
+w_kido	木戸	rare	a gate of a particular kind
+w_senjuu	先住	fragment	先住 wants 民 to be a word
+w_katagi	気質	rare	a rare reading of 気質
+w_sendan	船団	register	naval and fishing organisation
+w_maegashira	前頭	register	sumo ranking
+w_utsushi	写し	stem	the noun of 写す
+w_toi	問い	stem	the noun of 問う
+w_katari	語り	stem	the noun of 語る
+w_hirogari	広がり	stem	the noun of 広がる
+w_kinboshi	金星	homophone	金星 is taught as きんせい
+w_mokka	目下	homophone	目下 is taught as めした
+w_kanki	寒気	homophone	寒気 is taught as さむけ
+w_ikkou	一行	homophone	一行 is taught as いちぎょう
+w_nagoya	名古屋	proper-noun	a city name
+w_hiroshima	広島	proper-noun	a city and prefecture name
+w_hokubei	北米	proper-noun	a continent, named
+w_nanbei	南米	proper-noun	a continent, named
+w_gaimu	外務	register	government portfolio
+w_soumu	総務	register	corporate department
+w_chouchou	町長	register	municipal office
+w_daigi	代議	register	representative government
+w_kanku	管区	register	administrative jurisdiction
+w_bukyoku	部局	register	institutional department
+w_zeimu	税務	register	tax administration
+w_kaketsu	可決	register	legislative procedure
+w_hourei	法令	register	statute law
+w_inin	委任	register	legal delegation
+w_juri	受理	register	official acceptance
+w_kakarikan	係官	register	institutional office
+w_ikyoku	医局	register	hospital administration
+w_chiken	治験	register	clinical research
+w_byouri	病理	register	clinical medicine
+w_hika	皮下	register	anatomy
+w_ryodan	旅団	register	military organisation
+w_kougun	行軍	register	military movement
+w_boukuu	防空	register	military defence
+w_senchi	戦地	register	military geography
+w_zengun	全軍	register	military organisation
+w_shukun	主君	register	feudal relations
+w_kerai	家来	register	feudal relations
+w_zokuchou	族長	register	anthropology
+w_houou	法王	register	religious office
+w_kunshi	君子	register	classical moral philosophy
+w_shiraki	白木	register	carpentry
+w_bosen	母船	register	naval logistics
+w_onshin	音信	rare	formal correspondence
+w_denka	電荷	register	physics
+w_denkyoku	電極	register	physics
+w_eiri	営利	register	commercial law
+w_tsuushou	通商	register	trade policy
+w_kouri	高利	register	lending
+w_sasatsu	査察	register	compliance inspection
+w_yokonagashi	横流し	register	illegal trade
+w_hokujou	北上	register	weather reporting
+w_isseki	一石	register	a board-game term
+w_shukushu	宿主	register	parasitology
+w_aidajuu	間中	fragment	間中 is a suffixed form, not a word
+w_yattsu	八つ	numeral	a number, which the ladder counts elsewhere
+w_seisha	生者	register	formal and Buddhist
+w_unabara	海原	rare	poetic
+w_eisha	映写	register	cinema projection
+w_kashin	家臣	register	feudal relations
+w_yasen	野戦	register	military action
+w_sousa	走査	register	imaging technology
+w_tessen	鉄線	register	materials, and a plant name
+w_mochizuki	望月	rare	poetic, and a surname
+w_mawashi	回し	register	sumo
+w_enka	塩化	register	chemistry
+w_chuuwa	中和	register	chemistry
+w_tachikata	立方	rare	a rare reading of 立方
+w_samon	査問	register	official hearings
+w_minji	民事	register	civil law
+w_shikoku	四国	proper-noun	an island's name
+w_kyouto	京都	proper-noun	a city and prefecture name
+w_koube	神戸	proper-noun	a city name
+w_nikkei	日経	proper-noun	a newspaper and an index
+w_shigikai	市議会	register	municipal government
+w_rippou	立法	register	legislation
+w_jourei	条例	register	municipal law
+w_jidan	示談	register	civil litigation
+w_dougi	動議	register	parliamentary procedure
+w_innai	院内	register	legislative building
+w_gunbu	軍部	register	military institutions
+w_shuseki	主席	register	head of state
+w_chouin	調印	register	treaty-making
+w_tokumei	特命	register	official appointment
+w_kakui	各位	register	formal correspondence
+w_kanchou	館長	register	institutional office
+w_daishikyou	大司教	register	religious office
+w_shito	使徒	register	religious history
+w_shinto	信徒	register	religious adherence
+w_josan	助産	register	obstetrics
+w_naiji	内耳	register	anatomy
+w_hyouhi	表皮	register	anatomy
+w_jutsugo	術後	register	clinical medicine
+w_shizan	死産	register	obstetrics
+w_tanka	炭化	register	chemistry
+w_enzan	演算	register	mathematics
+w_tanpa	短波	register	radio engineering
+w_toukei	東経	register	cartography
+w_kentai	検体	register	clinical testing
+w_kyokusho	局所	register	clinical medicine
+w_bante	番手	register	textile measurement
+w_sakimono	先物	register	financial trading
+w_kokuyuu	国有	register	public ownership
+w_houtei	法定	register	statute law
+w_naisei	内政	register	domestic politics
+w_kanzei	関税	register	trade policy
+w_kyuufu	給付	register	welfare administration
+w_hakkyuu	発給	register	official issuance
+w_sennin	選任	register	official appointment
+w_kouin	行員	register	banking
+w_bunin	分院	register	institutional branches
+w_oono	大野	proper-noun	mostly a surname
+w_hakujitsu	白日	register	literary
+w_zensei	前世	rare	a rare reading of 前世
+w_jitsugetsu	日月	register	literary
+w_gappi	月日	homophone	月日 is taught as つきひ
+w_nobori	上り	stem	the noun of 上る
+w_kayoi	通い	stem	the noun of 通う
+w_tasshi	達し	stem	the noun of 達する
+w_taikou	大公	register	European nobility
+w_taneuma	種馬	register	animal husbandry
+w_umanushi	馬主	register	horse racing
+w_oute	王手	register	shogi
+w_gote	後手	register	board games
+w_honmaru	本丸	register	castle architecture
+w_nenriki	念力	register	the paranormal
+w_yakai	夜会	register	dated society reporting
+w_shuushi	終始	homophone	始終 already carries this sense
+w_hatsujou	発情	register	animal husbandry
+w_nanka	南下	register	weather and military reporting
+w_hirai	飛来	register	aviation reporting
+w_jouri	条理	register	literary
+w_densou	伝送	register	telecommunications
+w_kajuu	加重	register	statistics
+w_tajuu	多重	register	engineering
+w_ryoukuu	領空	register	airspace law
+w_touki	登記	register	property law
+w_kaiun	海運	register	shipping
+w_tsuufuu	通風	register	ventilation engineering, and a disease
+w_nyuushoku	入植	register	colonial settlement
+w_ryuuyou	流用	register	accounting
+w_shiromizu	白水	rare	a specialist sense
+w_kaikou	開口	register	engineering
+w_honin	本院	register	institutional self-reference
+w_ryuutai	流体	register	physics
+w_furou	不老	fragment	不老 wants 不死 to be a word
+w_ryoumei	両名	register	formal and legal
+w_kanju	感受	register	psychology
+w_doutei	同定	register	scientific identification
+w_shayou	社用	register	corporate expense
+w_hitoashi	一足	homophone	一足 is taught as いっそく
+w_shukyou	主教	register	religious office
+w_ousei	王政	register	constitutional history
+w_gunkoku	軍国	register	military politics
+w_gorin	五輪	proper-noun	the Olympic Games, named
+w_koumei	公明	register	a party name as well as a virtue
+w_taibei	対米	register	foreign policy
+w_shouhou	商法	register	commercial law
+w_jiseki	次席	register	institutional rank
+w_gian	議案	register	legislative procedure
+w_taichi	対地	register	aviation and gunnery
+w_soudai	総代	register	formal representation
+w_denrei	伝令	register	military communication
+w_shinkan	神官	register	religious office
+w_hyakubun	百聞	fragment	百聞 wants 一見 to be a word
+w_joujou	上場	register	stock listing
+w_koufu	交付	register	official issuance
+w_shoukou	商工	fragment	商工 is half of 商工会議所
+w_joukoku	上告	register	appellate procedure
+w_gijou	議場	register	legislative building
+w_minori	実り	stem	the noun of 実る
+w_hensei	変性	register	chemistry
+w_houden	放電	register	physics
+w_buai	歩合	register	commission and piecework
+w_aiba	愛馬	register	horsemanship
+w_hyakka	百科	fragment	百科 wants 事典 to be a word
+w_kokkou	国交	register	diplomacy
+w_ryounin	両人	register	formal and legal
+w_barairo	バラ色	orthography	the kanji spelling is 薔薇色, which N3 does not teach
+w_yuusen	有線	register	telecoms

@@ -812,7 +812,27 @@ did what the section above predicted, in order:
    seconds to 5.6**, same answers, and `tests/bad.pl` still produces all
    seven violations, which is the only reason to believe any of it.
 
-25. **Smaller observations, not yet acted on:** a reported-but-never-
+25. **A tool written for one rung is a hypothesis about which of its
+   rules were rules.** The N3 word pool was pointed at N2 (2026-11-02)
+   and three of its rules turned out to belong to N3 rather than to the
+   question. Each was found by a word, not by reading the code. (a) The
+   N3 rule *a word both corpora use* REFUSES 判断: it is absent from the
+   34,504-form subtitle list, as are 批判, 段階 and 背景, while 捜査 is
+   at rank 109 — a subtitle corpus measures what people say, and N2 is
+   the rung that reads editorials, so the newspaper orders this rung and
+   the dialogue count is the tiebreak. (b) The pool excluded what the
+   graph HAS and not what a curator had refused, so N2 opened with three
+   words thrown out of N3 the day before; carrying rejections forward by
+   ID ALONE then refused 捜査, because `w_sousa` had been refused as 走査,
+   raster scanning. An id is a reading, not a word: the key is now (id,
+   headword) and the reject files name the headword. (c) Which word owns
+   an id was being decided by the ranking of the rung being built — three
+   words read どうし, and `w_doushi` would have been 同志 at N3 and 同市
+   ("the said city") at N2, which is identity-splitting arriving through
+   the one door the pool exists to hold shut. Settled once, by the
+   dialogue order, at every rung.
+
+26. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
@@ -849,6 +869,7 @@ later one.
 | 5 | the okurigana fix and the n5 word tranche to 800 | ~~`ja n5` climbs~~ the reading half does (2026-10-31, 773 picks, 823 words, 804 askable); the listening half wants `--audio n5`. N4's reading half followed (2026-11-01, 749 picks, 1572 words, and its 284 kanji by rule) |
 | 6 | N3 vocabulary, 2,236 words | done (2026-11-01): 2,464 picks, `vocabulary(3750, read)` ok with 228 askable to spare, N2 short by 2,022 where it was 4,486. The rung was too big to pick a word at a time, so it has a rule instead -- JMdict's priority marks gate the pool, the dialogue corpus orders it -- argued in langpop-n3-vocabulary.md. 7,565 items, no violations, `--check` 61s to 402s and then to 5.6s once finding 24 was measured. Four picks were withdrawn the next day as findings 22 and 23 -- ateji spellings the pool's own filter had always meant to refuse, and the two property checks that now say so |
 | 6 | the kanji column, all of it | done (2026-11-01): 650, 1023 and 2230 all read ok. N1 by rule, N3 and N2 by splitting old level 2 on school grade then newspaper frequency -- the one rung the source cannot answer, argued in langpop-n3-kanji.md. 5,061 items, no violations, `--check` 28s to 61s |
+| 6 | N2 vocabulary, 2,022 words | done (2026-11-02): 2,176 picks from 2,900 rows read, 724 refused. `vocabulary(6000, read)` ok with 154 askable to spare; every Japanese reading criterion below N1 now met; 9,741 items, no violations, `--check` 10.5s. The rung needed the OTHER corpus -- see finding 25 and langpop-n2-vocabulary.md |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
 | 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |
 

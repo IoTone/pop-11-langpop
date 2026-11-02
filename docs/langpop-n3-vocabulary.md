@@ -106,8 +106,11 @@ subtitle list built from police procedurals and hospital drama is generous
 with 令状, 検事, 皮質 and 服役 — those words really are spoken, often, by
 actors playing detectives. They are not what a bridge-level learner needs
 next. That is a judgment, so it is written down one row at a time in
-`graph/ja/picks/n3-rejects.tsv`, with a reason beside each id: a rejection
-nobody can see is a rejection nobody can argue with.
+`graph/ja/picks/n3-rejects.tsv`, with the headword and a reason beside each
+id: a rejection nobody can see is a rejection nobody can argue with. (The
+headword column arrived with N2, which carries these rejections forward and
+needed to know which そうさ a row about `w_sousa` meant — see
+[langpop-n2-vocabulary.md](langpop-n2-vocabulary.md).)
 
 ## The bit that is not defensible, and is not meant to be
 

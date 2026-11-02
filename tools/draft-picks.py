@@ -1,13 +1,33 @@
 #!/usr/bin/env python3
-# draft-picks.py -- the N3 word candidates, ranked, as TSV.
+# draft-picks.py -- the word candidates for a rung, ranked, as TSV.
 #
 #     ./langpop dump --lang ja > work/ja-dump.json
-#     python3 tools/draft-picks.py work
+#     python3 tools/draft-picks.py work [level] [order]
+#
+# The level is the rung being built (default n3) and it decides one
+# thing: which kanji a headword may be written in.  The order is
+# `dialogue` (default) or `newspaper`, and it decides which corpus ranks
+# the pool -- which is a claim about the RUNG and is argued in
+# docs/langpop-n3-vocabulary.md for N3 and docs/langpop-n2-vocabulary.md
+# for N2.  Everything else is the same question at every rung.
+#
+# Two files come out.  work/candidates.tsv is the whole pool, best
+# first.  work/cand.tsv is the review list -- the same rows with the
+# DUPID ones dropped, and, under `dialogue`, the words no dialogue
+# corpus has -- and it is what mkpicks.py reads.  Both are written here
+# rather than cut out afterwards by hand, so that a pick file can be
+# reproduced from its own recipe.
 #
 # reads work/ja-dump.json and ~/langpop-upstream/{JMdict_e,ja_full.txt}
 # and writes work/candidates.tsv: one candidate a line, best first, as
 #
-#     band  dialogue-count  headword  reading  id  seq  DUPID?  pos  gloss
+#     band  dialogue-count  headword  reading  id  seq  DUPID?  pos  gloss  nf
+#
+# `band` is the sort key the N3 rung used and `nf` is the raw Mainichi
+# newspaper band, which is NOT the same thing: band falls back to a
+# stand-in (25, 30, 31, 32) for a word JMdict marks common without
+# giving it a newspaper rank, and a rung that orders BY the newspaper
+# has to be able to tell those apart.  See docs/langpop-n2-vocabulary.md.
 #
 # A DUPID row wants a different id from the row above that took it; the
 # curation pass drops them.
@@ -16,13 +36,17 @@
 # reads, in the order a curator should read it: the words JMdict marks
 # common, written in kanji the graph teaches at or below N3, that the
 # graph does not already teach.  Rejection is still by hand.
-import os, re, sys, json
+import glob, os, re, sys, json
 import xml.etree.ElementTree as ET
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from romaji import romaji
 
-WORK = sys.argv[1] if len(sys.argv) > 1 else '.'
+WORK  = sys.argv[1] if len(sys.argv) > 1 else '.'
+LEVEL = sys.argv[2] if len(sys.argv) > 2 else 'n3'
+ORDER = sys.argv[3] if len(sys.argv) > 3 else 'dialogue'
+if ORDER not in ('dialogue', 'newspaper'):
+    sys.exit('draft-picks: order is dialogue or newspaper, not ' + ORDER)
 UP   = os.environ.get('LANGPOP_UPSTREAM',
                       os.path.expanduser('~/langpop-upstream'))
 
@@ -39,13 +63,57 @@ UP   = os.environ.get('LANGPOP_UPSTREAM',
 # at the first brace.
 raw  = open(WORK + '/ja-dump.json', encoding='utf-8').read()
 dump = json.loads(raw[raw.index('{'):])
+# The rungs at or below the one being built, from the dump's own ladder
+# rather than a list written here: a reading question at this rung has to
+# be answerable at this rung, and what that means is a fact about the
+# ladder.
+rungs = {r['level']: r['n'] for r in dump['languages'][0]['ladder']}
+if LEVEL not in rungs:
+    sys.exit('draft-picks: %s is not a rung of this ladder (%s)'
+             % (LEVEL, ', '.join(rungs)))
+AT_OR_BELOW = {lv for lv, n in rungs.items() if n <= rungs[LEVEL]}
+
+# WHAT A CURATOR HAS ALREADY REFUSED stays refused.  The graph knows
+# what it teaches; only the reject files know what was offered and turned
+# down, and the pool asks the same question at every rung -- so without
+# this the N2 pool opened with 出来 as しゅったい, 今日 as こんにち and
+# 日本, all three thrown out of N3 by hand the day before.  Worse than
+# the wasted reading: a word refused as a proper noun at one rung and
+# accepted at the next is not a curriculum, it is two opinions.
+#
+# KEYED BY (id, headword) AND NOT BY id, which cost one word to learn.
+# An id is a reading -- w_sousa was 走査, thrown out of N3 as imaging
+# jargon -- and 捜査, a different word a learner meets in every news
+# bulletin, would have been refused for it without ever being read.
+# That is also why the reject files name the headword: a row reading
+# `w_sousa register imaging technology` does not say which そうさ its
+# writer meant.
+#
+# THIS RUNG'S OWN REJECTIONS ARE NOT CARRIED, they are subtracted later
+# by mkpicks.py, and the difference matters: the hand review reads the
+# pool down to a rank, and a row it threw out is a row it READ.  Taking
+# the rejections out of the pool itself would slide 336 unread words up
+# into the reviewed window, so n3.pl could no longer be reproduced from
+# its own recipe -- which is how this was noticed.
+#
+# A rejection is undone by deleting its row, which is a deliberate act
+# and leaves a diff.
+refused = set()
+for rf in sorted(glob.glob(HERE + '/../graph/ja/picks/*-rejects.tsv')):
+    if os.path.basename(rf) == LEVEL + '-rejects.tsv':
+        continue
+    for line in open(rf, encoding='utf-8'):
+        f = line.rstrip('\n').split('\t')
+        if len(f) >= 4:
+            refused.add((f[0], f[1]))
+
 have_forms, have_ids, kanji_ok = set(), set(), set()
 for it in dump['items']:
     have_ids.add(it['id'])
     have_forms.add(it.get('label'))
     for v in (it.get('forms') or {}).values():
         have_forms.add(v)
-    if it['kind'] == 'grapheme' and it['level'] in ('n5', 'n4', 'n3'):
+    if it['kind'] == 'grapheme' and it['level'] in AT_OR_BELOW:
         k = (it.get('forms') or {}).get('kanji')
         if k:
             kanji_ok.add(k)
@@ -84,14 +152,21 @@ SKIP_POS  = {'exp', 'pn', 'int', 'prt', 'aux', 'aux-v', 'aux-adj',
 SKIP_KTAG = {'iK', 'ateji', 'oK', 'rK', 'sK', 'ik'}
 
 
-def band(pri):
-    """A rank from JMdict's own priority marks: the nf band if it has one
-    (Mainichi newspaper, 500 words to a band), else a coarse stand-in."""
+def nf_band(pri):
+    """The Mainichi newspaper band, 500 words to a band, or None for a
+    word the newspaper corpus does not rank at all."""
     best = None
     for t in pri:
         if t.startswith('nf'):
             n = int(t[2:])
             best = n if best is None else min(best, n)
+    return best
+
+
+def band(pri):
+    """A rank from JMdict's own priority marks: the nf band if it has one,
+    else a coarse stand-in."""
+    best = nf_band(pri)
     if best is not None:
         return best
     if 'ichi1' in pri or 'spec1' in pri or 'news1' in pri: return 25
@@ -183,24 +258,57 @@ for ev, el in ET.iterparse(UP + '/JMdict_e', events=('end',)):
         if score > best:
             reading, best = reb, score
     if reading is None: continue
-    b = band(kpri | set().union(*[r[1] for r in rebs]))
+    pri = kpri | set().union(*[r[1] for r in rebs])
+    b = band(pri)
     if b is None: continue
+    nf = nf_band(pri)
     # an id or a form the graph already has would split a student's
     # beliefs about one word in two, and the importer refuses it.
     if keb in have_forms or reading in have_forms: continue
     rid = romaji(reading)
     if rid is None or 'w_' + rid in have_ids: continue
+    if ('w_' + rid, keb) in refused: continue
     if is_stem(keb, reading): continue
-    rows.append((-freq.get(keb, 0), b, keb, reading, 'w_' + rid, seq,
-                 '; '.join(glosses[:3]), ','.join(sorted(poss))))
+    rows.append([-freq.get(keb, 0), b, keb, reading, 'w_' + rid, seq,
+                 '; '.join(glosses[:3]), ','.join(sorted(poss)), nf])
 
+# Ranked by the corpus this rung belongs to.  Under `newspaper` the
+# dialogue count is only the tiebreak, and a word no dialogue corpus has
+# still ranks: 判断, 批判, 段階 and 背景 are absent from a 34,504-form
+# subtitle list, and a rung that reads newspapers cannot be built out of
+# words people say out loud.
 rows.sort()
-seen = set()
+
+# WHO OWNS THE ID, decided here and before the rung's own ordering, so
+# that it is the same answer at every rung.  An id is a reading, and
+# three words read どうし: 同志, 同士 and 同市.  Ranked by dialogue the
+# id goes to 同志, which is a word; ranked by the newspaper it goes to
+# 同市, "the said city", which is not.  A romaji id that means one word
+# while N3 is being built and another while N2 is would make two items
+# out of one name, which is the thing this pool exists to prevent -- so
+# the dialogue order settles it once, for both rungs.
+owned = set()
+for r in rows:
+    r.append(r[4] in owned)
+    owned.add(r[4])
+
+if ORDER == 'newspaper':
+    # A SECOND, STABLE sort and not a different key: ties on (band,
+    # dialogue) then fall where the dialogue order left them, which is
+    # the headword, rather than wherever JMdict happened to list them.
+    # A tie-break nobody chose is a boundary nobody can reproduce.
+    rows.sort(key=lambda r: (999 if r[8] is None else r[8], r[0]))
+
+review = []
 with open(WORK + '/candidates.tsv', 'w', encoding='utf-8') as out:
-    for nf, b, keb, reading, rid, seq, gl, pos in rows:
-        dup = rid in seen
-        seen.add(rid)
-        out.write('\t'.join([str(b), str(-nf), keb, reading, rid, seq,
-                             'DUPID' if dup else '', pos, gl]) + '\n')
-print(f'{len(rows)} candidates, {len(rows) - len(seen)} sharing an id',
-      file=sys.stderr)
+    for negf, b, keb, reading, rid, seq, gl, pos, nf, dup in rows:
+        row = '\t'.join([str(b), str(-negf), keb, reading, rid, seq,
+                          'DUPID' if dup else '', pos, gl,
+                          '' if nf is None else str(nf)])
+        out.write(row + '\n')
+        if not dup and (ORDER == 'newspaper' or negf < 0):
+            review.append(row)
+with open(WORK + '/cand.tsv', 'w', encoding='utf-8') as out:
+    out.write(''.join(r + '\n' for r in review))
+print(f'{len(rows)} candidates, {len(rows) - len(owned)} sharing an id, '
+      f'{len(review)} to review', file=sys.stderr)

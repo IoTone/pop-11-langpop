@@ -2205,3 +2205,75 @@ Each of them also ends with a lookup of a key its own loop has certainly
 stored: `people/word` must come back `e_people`, 人間 must come back
 `w_ningen`. One line, and it is the difference between a check that found
 nothing and a check that cannot find anything.
+
+### N2, and the three things a second rung from the same rule taught
+
+The N3 pool was built to answer one rung. Pointing it at the next one is
+the only way to find out which of its rules were rules and which were
+coincidences of the rung it was written for. Three turned out to be the
+second kind, and each was found by a word going wrong rather than by
+reading the code.
+
+#### The corpus itself was the N3 rule, not a component of it
+
+N3's sentence was *a bridge-level word is one that both corpora use*. At N2
+that sentence refuses 判断.
+
+Not ranks it low — refuses it. 判断, 批判, 段階 and 背景 are **absent** from
+the 34,504-form subtitle list, while 捜査 is at rank 109 with 4,939
+occurrences. The list is an excellent record of what people say out loud,
+and those four are words people write. N2 is the rung at which a learner
+reads editorials, so the gate that made N3 honest would have thrown out
+judgment and criticism and kept murder and weapon.
+
+So the newspaper orders this rung and the dialogue count is the tiebreak,
+which is N3 reversed. It does not feel like the same rule, and it is: *ask
+what each corpus is a measurement of*. Written down once more, because this
+is now the third time it has paid — school grade against `<freq>` for the
+N3 characters, the newspaper against the subtitles for the N3 words, and now
+the subtitles against the newspaper for N2's.
+
+#### A rejection is a judgment, and judgments have to be carried
+
+The pool excludes what the graph HAS. Nothing excluded what a curator had
+already looked at and refused, so the N2 pool opened with 出来 as
+しゅったい, 今日 as こんにち and 日本 — all three thrown out of N3 by hand
+the day before. Reading them again is the small cost. The real one is that a
+word refused as a proper noun at one rung and accepted at the next is not a
+curriculum, it is two opinions.
+
+Carrying them forward cost one word to learn, and it is a good one.
+Keying the carry-forward by id alone silently refused 捜査, because
+`w_sousa` had been refused at N3 — as 走査, raster scanning. An id is a
+reading, not a word. The reject files now name the headword in a column of
+their own, and the key is the pair: a row reading `w_sousa register imaging
+technology` does not even tell a reader which そうさ its writer meant.
+
+#### Which word owns an id cannot depend on which rung is being built
+
+Three words read どうし: 同志, 同士 and 同市. The pool marks the second and
+third `DUPID` so a curator drops them, and the first one in the ranking
+keeps the name. Which means the ranking decides what `w_doushi` is — and
+the ranking is now per-rung. Ordered by dialogue the id goes to 同志,
+which is a word; ordered by the newspaper it goes to 同市, "the said city",
+which is journalese. N3 would have taught one and N2 the other, from the
+same name.
+
+The id is settled once, by the dialogue order, at every rung. Not because
+dialogue is the better corpus — this rung is evidence it is not — but
+because a name has to mean one thing, and the ordering of the rung being
+built is the one input that must not reach it.
+
+#### And the arithmetic at the end
+
+2,900 rows read, 724 refused (25%, against N3's 12%, which is the
+newspaper's own junk showing up as work), 2,176 picks. 9,741 items.
+`exit(ja, n2, vocabulary(6000, read))` is **ok** with 154 askable to spare,
+every Japanese reading criterion below N1 is met, and 21 of 40 criteria now
+pass. Both test passes green, with one stale assertion fixed: the voice
+test said *and with gaps this clear, no abstentions either*, and N2 brought
+専門学校 and 高等学校 — at seven morae a dropped beat is a seventh of the
+word, which lands inside the scorer's `near` band. The scorer declining is
+the band working. What the test asserts now is that nothing is **credited**
+wrongly, that declining stays rare, and that a four-mora word is still
+decided outright.

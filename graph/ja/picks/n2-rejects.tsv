@@ -1,0 +1,724 @@
+w_taiwan	台湾	proper-noun	an island nation
+w_oushuu	欧州	proper-noun	a continent
+w_wangan	湾岸	register	the Gulf War is why the newspaper knows it
+w_anpo	安保	register	an abbreviated treaty name
+w_sannin	三人	numeral	three people
+w_nichibei	日米	proper-noun	two country names joined
+w_kokubetsu	告別	fragment	告別 wants 式 to be a word
+w_juuni	十二	numeral	twelve
+w_guatemarakyouwakoku	グアテマラ共和国	proper-noun	a country name
+w_kyousantou	共産党	proper-noun	a political party
+w_hokkaidou	北海道	proper-noun	an island and a prefecture
+w_juuichi	十一	numeral	eleven
+w_juusan	十三	numeral	thirteen
+w_gaimushou	外務省	proper-noun	a named ministry
+w_kimatte	決まって	artefact	an inflected 決まる, counted as a word
+w_shakaitou	社会党	proper-noun	a political party
+w_jimin	自民	proper-noun	a political party
+w_jimintou	自民党	proper-noun	a political party
+w_senmu	専務	register	a corporate title
+w_chiken	地検	register	a prosecutor's office
+w_giseki	議席	register	parliamentary procedure
+w_touhoku	東北	proper-noun	a region of Japan
+w_doukoku	同国	register	newspaper deixis: the said country
+w_ryoutou	両党	register	newspaper deixis: both the parties
+w_tounai	党内	register	newspaper deixis: within the party
+w_agattari	上がったり	artefact	an inflected idiom, counted as a word
+w_yoyatou	与野党	register	newspaper deixis: government and opposition
+w_koumeitou	公明党	proper-noun	a political party
+w_fukushachou	副社長	register	a corporate title
+w_doushou	同省	register	newspaper deixis: the said ministry
+w_douken	同県	register	newspaper deixis: the said prefecture
+w_kokkaigiin	国会議員	register	a parliamentary office
+w_kawatta	変わった	artefact	an inflected 変わる, counted as a word
+w_taiheiyou	太平洋	proper-noun	an ocean
+w_bouryokudan	暴力団	register	an organised-crime designation
+w_honkaigi	本会議	register	parliamentary procedure
+w_nokottabun	残った分	artefact	a phrase, not a word
+w_minshutou	民主党	proper-noun	a political party
+w_minshatou	民社党	proper-noun	a political party
+w_kenkei	県警	register	newspaper shorthand for a prefectural force
+w_zoushou	蔵相	register	a cabinet office, and an abolished title
+w_hyougi	評議	register	deliberative bodies
+w_tokusou	特捜	register	a prosecutor's special unit
+w_shouchou	省庁	register	institutional journalism
+w_touou	東欧	proper-noun	a region of Europe
+w_mittsu	三つ	numeral	three
+w_kyouto	教徒	suffix	a suffix: キリスト教徒
+w_nanika	何か	expression	何 plus か; a grammar point, not a word to teach
+w_rouso	労組	register	newspaper abbreviation of 労働組合
+w_kokutai	国対	register	a Diet committee, abbreviated
+w_dasen	打線	register	the sports page: a batting order
+w_heiritsu	並立	rare	formal and seldom met
+w_dougetsu	同月	register	newspaper deixis: the same month
+w_tainichi	対日	register	journalese prefix: toward Japan
+w_ichioku	一億	numeral	one hundred million
+w_misoka	三十日	numeral	the thirtieth
+w_jimujikan	事務次官	register	a government office title
+w_hosuru	保する	rare	not a standalone verb in use
+w_shireikan	司令官	register	a military office
+w_jounin	常任	register	institutional: 常任理事国
+w_shinfuzen	心不全	register	clinical medicine
+w_kankyouchou	環境庁	proper-noun	a named agency
+w_kenchiji	県知事	register	an office title
+w_hounichi	訪日	register	journalese prefix: a visit to Japan
+w_rengoukai	連合会	register	an organisational suffix
+w_unyushou	運輸省	proper-noun	a named ministry
+w_seizan	青山	rare	poetic, and mostly a place name
+w_gakuin	学院	suffix	a suffix in school names
+w_renpai	連敗	register	the sports page
+w_shitten	失点	register	the sports page
+w_anda	安打	register	the sports page
+w_zachou	座長	register	a title
+w_kyuudan	球団	register	the sports page
+w_ryoujitsu	両日	register	newspaper deixis: both days
+w_ryouin	両院	register	parliamentary chambers
+w_kouteibuai	公定歩合	register	the central bank's discount rate
+w_jokyouju	助教授	register	an academic title, and an abolished one
+w_kunai	区内	register	newspaper deixis: within the ward
+w_kokumuchoukan	国務長官	register	a foreign office title
+w_kensetsushou	建設省	proper-noun	a named ministry
+w_omowaku	思わく	alt-reading	思惑 is the spelling the graph should teach
+w_kengi	県議	register	a prefectural assembly, abbreviated
+w_shakaimen	社会面	register	the newspaper's own page names
+w_shuuryougo	終了後	artefact	終了 plus 後, counted as a word
+w_owarine	終値	register	the stock pages
+w_kikasu	聞かす	rare	a contracted causative; 聞かせる is the form to teach
+w_houchuu	訪中	register	journalese prefix: a visit to China
+w_keisatsuchou	警察庁	proper-noun	a named agency
+w_noukyou	農協	register	an organisation, abbreviated
+w_yuuseishou	郵政省	proper-noun	a named ministry
+w_shitsugi	質疑	register	parliamentary interpellation
+w_seiou	西欧	proper-noun	a region of Europe
+w_sokkyuu	速球	register	the sports page
+w_sousha	走者	register	the sports page
+w_dounen	同年	register	newspaper deixis: the same year
+w_aoki	青木	proper-noun	a surname, and a shrub
+w_nakajima	中島	proper-noun	a surname
+w_kyuushuu	九州	proper-noun	an island
+w_ookura	大蔵	proper-noun	a ministry, under its old name
+w_shigi	市議	register	a city assembly, abbreviated
+w_oozeki	大関	register	a sumo rank
+w_sanyaku	三役	register	sumo ranks
+w_uwacchoushi	上っ調子	rare	a dated colloquialism
+w_noshi	伸し	rare	a fragment of 伸しをする
+w_kyouwatou	共和党	proper-noun	a political party
+w_roudoutou	労働党	proper-noun	a political party
+w_roudoushou	労働省	proper-noun	a named ministry
+w_yorokonde	喜んで	artefact	an inflected 喜ぶ, counted as a word
+w_arishihi	在りし日	rare	a literary phrase
+w_taiseiyou	大西洋	proper-noun	an ocean
+w_shitsuchou	室長	register	a title
+w_yamagata	山形	proper-noun	a city and a prefecture
+w_daseki	打席	register	the sports page
+w_nuki	抜き	suffix	a suffix: ビール抜き
+w_shitenchou	支店長	register	a title
+w_kishouchou	気象庁	proper-noun	a named agency
+w_houshou	法相	register	a cabinet office
+w_hoseiyosan	補正予算	register	budget procedure
+w_zaidanhoujin	財団法人	register	a legal form of organisation
+w_tsuusanshou	通産相	register	a cabinet office, and an abolished one
+w_kyoujutsu	供述	register	legal procedure
+w_kyokutou	極東	proper-noun	a region
+w_houbei	訪米	register	journalese prefix: a visit to America
+w_nippou	日報	register	a report, and a newspaper's own name
+w_chuugen	中原	proper-noun	a region of China
+w_kokugun	国軍	register	military organisation
+w_kokuji	告示	register	official notices
+w_seirei	政令	register	cabinet ordinances
+w_bunmin	文民	register	civil-military relations as a policy field
+w_ichimai	一枚	numeral	one flat thing
+w_nakademo	中でも	expression	中 plus でも; a grammar point, not a word to teach
+w_tougi	党議	register	party procedure
+w_dekidaka	出来高	register	the markets
+w_sangiin	参議院	proper-noun	a named chamber of the Diet
+w_kokumushou	国務省	proper-noun	a foreign ministry
+w_chihoujichitai	地方自治体	fragment	地方 plus 自治体, which is already a pick
+w_sekijou	席上	register	newspaper deixis: at the meeting
+w_nihonkai	日本海	proper-noun	a sea
+w_sakushuu	昨秋	register	a newspaper's own time words
+w_honinbou	本因坊	proper-noun	a go title
+w_houmushou	法務省	proper-noun	a named ministry
+w_sangyoukai	産業界	register	the ~界 of newspaper comment
+w_soudanyaku	相談役	register	a corporate title
+w_shinno	真の	expression	真 plus の, counted as a word
+w_keizaikai	経済界	register	the ~界 of newspaper comment
+w_soukaiya	総会屋	register	a Japanese corporate-extortion trade
+w_ochitsuita	落ち着いた	artefact	an inflected 落ち着く, counted as a word
+w_gyoukaku	行革	register	an abbreviation of 行政改革
+w_nishinihon	西日本	proper-noun	a region of Japan
+w_kataku	家宅	register	legal: 家宅捜索
+w_rekidai	歴代	rare	formal and seldom met
+w_gakugei	学芸	rare	formal, and mostly in 学芸会
+w_chokkyuu	直球	register	the sports page
+w_hainin	背任	register	corporate crime
+w_nissan	日産	proper-noun	a car maker
+w_nousei	農政	register	agricultural administration
+w_jouden	上田	proper-noun	a surname
+w_chuunanbei	中南米	proper-noun	a region
+w_koudan	公団	register	public corporations
+w_chuunichi	駐日	register	journalese prefix: resident in Japan
+w_gobu	五分	numeral	five parts
+w_konka	今夏	register	a newspaper's own time words
+w_hoshutou	保守党	proper-noun	a political party
+w_ensouba	円相場	register	the markets
+w_koushou	厚相	register	a cabinet office
+w_shireibu	司令部	register	military organisation
+w_kanpuu	完封	register	the sports page
+w_kantou	完投	register	the sports page
+w_seimujikan	政務次官	register	a government office title
+w_shinpou	新法	register	journalese: the new law
+w_fugen	普賢	proper-noun	a bodhisattva, and a volcano
+w_tsundoku	積ん読	rare	a modern coinage, affectionate and not N2
+w_roujinhoomu	老人ホーム	register	a kind of institution
+w_tanigawa	谷川	proper-noun	a surname
+w_kashidashiyou	貸出用	artefact	貸出 plus 用, counted as a word
+w_nourin	農林	fragment	農林 wants 水産省 or 業
+w_noushou	農相	register	a cabinet office
+w_tsuiji	築地	proper-noun	a district of Tokyo
+w_shoin	署員	register	newspaper institutional: a station's staff
+w_daida	代打	register	the sports page
+w_oushou	王将	register	the games page
+w_kumichou	組長	register	a yakuza rank
+w_chuuzen	中前	register	the sports page
+w_beppyou	別表	register	official documents
+w_shichishichinichi	七七日	rare	Buddhist funerary observance
+w_nijuuyojikansei	二十四時間制	artefact	a compound phrase, counted as a word
+w_nibu	二部	numeral	two parts
+w_nigao	似顔	rare	似顔絵 is the word
+w_fukuchiji	副知事	register	an office title
+w_roushou	労相	register	a cabinet office
+w_rouren	労連	register	a union federation, abbreviated
+w_kachikoshi	勝ち越し	register	the sports page
+w_hokuriku	北陸	proper-noun	a region of Japan
+w_kouseinenkin	厚生年金	register	a named pension scheme
+w_shoukoukaigisho	商工会議所	register	a named institution
+w_kokudochou	国土庁	proper-noun	a named agency
+w_kokuminsouseisan	国民総生産	register	national accounts
+w_chihoubunken	地方分権	register	a policy term
+w_ikinai	域内	register	newspaper deixis: inside the area
+w_henkakyuu	変化球	register	the sports page
+w_daten	打点	register	the sports page
+w_daritsu	打率	register	the sports page
+w_dakyuu	打球	register	the sports page
+w_totonotta	整った	artefact	an inflected 整う, counted as a word
+w_nipponginkou	日本銀行	proper-noun	a named bank
+w_kikanshi	機関紙	register	a party's own newspaper
+w_dokkinhou	独禁法	register	an abbreviated statute
+w_genkouhan	現行犯	register	legal
+w_beika	米価	register	agricultural policy
+w_sourifu	総理府	proper-noun	a named office
+w_soujishoku	総辞職	register	political procedure
+w_araki	荒木	proper-noun	a surname
+w_dentsuudai	電通大	proper-noun	a university, abbreviated
+w_dentetsu	電鉄	register	railway company names
+w_shinkin	信金	register	banking, abbreviated
+w_koyama	小山	proper-noun	a surname
+w_zouhan	造反	register	journalese: a party revolt
+w_shoumu	商務	register	commercial affairs as a portfolio
+w_giketsu	議決	register	parliamentary procedure
+w_wakari	分かり	stem	the noun of 分かる
+w_douya	同夜	register	newspaper deixis: the same night
+w_taizan	大山	proper-noun	a surname, and a mountain
+w_ronsen	論戦	register	journalese: a battle of words
+w_bunai	部内	register	newspaper deixis: inside the department
+w_teikakaku	低価格	artefact	低 plus 価格, counted as a word
+w_shinyoukinko	信用金庫	register	a kind of bank
+w_koushikisen	公式戦	register	the sports page
+w_rokujuushibuonpu	六十四分音符	rare	music notation
+w_kyousai	共済	register	mutual-aid institutions
+w_bunkakai	分科会	register	committee structure
+w_doukyoku	同局	register	newspaper deixis: the said bureau
+w_kokuzeikyoku	国税局	register	a revenue office
+w_kokuzeichou	国税庁	proper-noun	a named agency
+w_kouriten	小売り店	artefact	小売り plus 店, counted as a word
+w_kourikakaku	小売価格	artefact	小売 plus 価格, counted as a word
+w_hidarimae	左前	rare	a kimono custom, and an idiom for going under
+w_makikaeshi	巻き返し	register	journalese: a comeback
+w_shikyou	市況	register	the markets
+w_rekihou	歴訪	register	journalese: a tour of visits
+w_gentan	減反	register	agricultural policy
+w_shakaishihon	社会資本	register	economics
+w_shadanhoujin	社団法人	register	a legal form of organisation
+w_kinshihou	禁止法	artefact	禁止 plus 法, counted as a word
+w_kinyu	禁輸	register	trade policy
+w_katarau	語らう	rare	literary
+w_gunki	軍機	register	military secrecy
+w_yuucho	郵貯	register	postal savings, abbreviated
+w_tobashi	飛ばし	register	finance jargon
+w_koroshi	殺し	stem	the noun of 殺す
+w_shoukou	将校	register	a military rank
+w_shidan	師団	register	military organisation
+w_koguchi	小口	rare	an edge, and a banking size
+w_rikisetsu	力説	register	journalese: he stressed that
+w_oodai	大台	register	the markets
+w_kanmin	官民	register	policy: the public and private sectors
+w_seimu	政務	register	government affairs as a portfolio
+w_gaishin	外信	register	a newspaper desk
+w_zenjin	全人	rare	全人的 is the use
+w_seiho	生保	register	life insurance, abbreviated
+w_souhyou	総評	register	a general comment, and a union federation
+w_ikuei	育英	rare	mostly in scholarship names
+w_ichien	一円	numeral	one yen
+w_sekaiginkou	世界銀行	proper-noun	a named bank
+w_nimai	二枚	numeral	two flat things
+w_naiyashu	内野手	register	the sports page
+w_uchuukan	右中間	register	the sports page
+w_kokkakoumuin	国家公務員	fragment	公務員 with 国家 in front
+w_chihoujichi	地方自治	register	a policy term
+w_gaiyashu	外野手	register	the sports page
+w_teikiyokin	定期預金	register	a banking product
+w_dasuu	打数	register	the sports page
+w_jushoushiki	授賞式	artefact	授賞 plus 式, counted as a word
+w_suuman	数万	numeral	tens of thousands
+w_bunkachou	文化庁	proper-noun	a named agency
+w_shinbashi	新橋	proper-noun	a district of Tokyo
+w_shinei	新鋭	register	journalese: the up-and-coming
+w_sakushun	昨春	register	a newspaper's own time words
+w_konsen	混戦	register	the sports page
+w_gyuuho	牛歩	register	a Diet delaying tactic
+w_ishibashi	石橋	proper-noun	a surname
+w_ronsha	論者	register	journalese: the advocate
+w_gyakutengachi	逆転勝ち	register	the sports page
+w_renyou	連用	rare	chronic use, and a grammar term
+w_senja	選者	register	a judging role
+w_chouda	長打	register	the sports page
+w_gendogaku	限度額	artefact	限度 plus 額, counted as a word
+w_ryounai	領内	register	territorial deixis
+w_shokkanhou	食管法	register	an abbreviated statute
+w_hokuou	北欧	proper-noun	a region of Europe
+w_ronsetsu	論説	register	the newspaper's own leading article
+w_kakarichou	係長	register	a title
+w_tachiai	立会い	register	finance and law
+w_gaiyuu	外遊	register	journalese: a politician abroad
+w_yamate	山手	proper-noun	an area of Tokyo
+w_tochou	都庁	proper-noun	a named seat of government
+w_kokko	国庫	register	public finance
+w_zoushi	増資	register	corporate finance
+w_giin	議院	register	parliamentary
+w_kyouwa	協和	rare	mostly in company names
+w_ryouyuu	領有	register	territorial possession
+w_joryuu	女流	register	a dated gendered usage of the arts page
+w_jissei	実勢	register	the markets
+w_nenrai	年来	rare	formal
+w_hongan	本願	rare	Buddhist, and a temple name
+w_ikko	一個	numeral	one thing
+w_shimoki	下期	register	the fiscal half-year
+w_futananuka	二七日	rare	Buddhist memorial observance
+w_niki	二期	register	terms of office
+w_kimigayo	君が代	proper-noun	the national anthem
+w_kokugi	国技	register	the sumo page
+w_tenri	天理	proper-noun	a city and a religion
+w_modoshi	戻し	stem	the noun of 戻す
+w_saikeikoku	最恵国	register	trade law
+w_panmunjomu	板門店	proper-noun	a place in Korea
+w_kensatsukan	検察官	register	a legal office
+w_gendankai	現段階	artefact	現 plus 段階, counted as a word
+w_banzuke	番付	register	the sumo page
+w_keizaikenkyuujo	経済研究所	artefact	経済 plus 研究所, counted as a word
+w_soumubu	総務部	register	a department name
+w_funabashi	船橋	proper-noun	a city
+w_minoshirokinyoukyuu	身代金要求	artefact	a phrase, not a word
+w_yochokin	預貯金	register	banking
+w_jihan	自販	register	an abbreviation of 自動販売
+w_gaiya	外野	register	the sports page
+w_shokyuu	初球	register	the sports page
+w_jijo	自助	register	policy: 自助努力
+w_ichigen	一元	fragment	一元 wants 化
+w_joushin	上申	register	bureaucratic reporting
+w_douchi	同地	register	newspaper deixis: the same place
+w_rensen	連戦	register	the sports page
+w_kokumei	国名	artefact	国 plus 名, counted as a word
+w_jouetsu	上越	proper-noun	a region of Japan
+w_jinjiin	人事院	proper-noun	a named authority
+w_hatsubasho	初場所	register	the sumo calendar
+w_joyaku	助役	register	an official title
+w_sanjikan	参事官	register	a diplomatic rank
+w_kokusaijin	国際人	rare	a journalese cliche
+w_chichuukai	地中海	proper-noun	a sea
+w_hicchaku	必着	register	an administrative instruction
+w_ishihyouji	意思表示	register	legal
+w_kosuu	戸数	register	administrative counting
+w_shunjuu	春秋	rare	literary, for the passing years
+w_chouson	町村	fragment	市町村 without the 市
+w_keizaiseichouritsu	経済成長率	artefact	a compound of three words
+w_souryouji	総領事	register	a diplomatic office
+w_jiyuugata	自由形	register	the sports page
+w_choudendou	超伝導	register	physics
+w_gunpyou	軍兵	rare	archaic military
+w_kousuijun	高水準	artefact	高 plus 水準, counted as a word
+w_kokkai	黒海	proper-noun	a sea
+w_kuuiki	空域	register	aviation
+w_kekki	決起	register	journalese: a rally
+w_kenjin	賢人	rare	literary
+w_heiin	兵員	register	military strength
+w_shuuto	州都	register	the geography of foreign states
+w_niin	二院	register	parliamentary chambers
+w_wakachi	分かち	stem	分かち合う is the use
+w_gekisaku	劇作	fragment	劇作 wants 家
+w_kawakami	川上	proper-noun	a surname
+w_dokusou	独走	register	the sports page
+w_shiroboshi	白星	register	the sumo page
+w_kyokusetsu	曲折	rare	紆余曲折 is the use
+w_getsurei	月例	rare	月例会 is the use
+w_katen	加点	register	the sports page
+w_shinsho	親書	register	diplomatic
+w_nanatsu	七つ	numeral	seven
+w_sando	三度	numeral	three times
+w_uwazumi	上積み	register	business journalese
+w_segin	世銀	register	an abbreviation of 世界銀行
+w_dainin	代人	rare	代理人 is the word
+w_makasu	任す	rare	a contracted 任せる
+w_kyuusuru	休する	rare	not a standalone verb
+w_teisuijun	低水準	artefact	低 plus 水準, counted as a word
+w_ganpon	元本	register	finance
+w_sanbon	三本	numeral	three long things
+w_rippoumeetoru	立方メートル	register	a unit of volume, half in katakana
+w_shoshutsu	初出	register	bibliographic
+w_rikitou	力投	register	the sports page
+w_hokkai	北海	proper-noun	a sea
+w_kokuritsugekijou	国立劇場	proper-noun	a named theatre
+w_kokusaikyouryokujigyoudan	国際協力事業団	proper-noun	a named agency
+w_doseki	土石	fragment	土石 wants 流
+w_zaikyou	在京	register	journalese: being in the capital
+w_chihougikai	地方議会	register	local assemblies
+w_uchuukaihatsujigyoudan	宇宙開発事業団	proper-noun	a named agency
+w_sanyou	山陽	proper-noun	a region of Japan
+w_shuuseifu	州政府	register	the government of a foreign state
+w_sokoire	底入れ	register	the markets
+w_kyoukousaiketsu	強行採決	register	Diet procedure
+w_touno	当の	expression	当 plus の; a grammar point, not a word to teach
+w_daryoku	打力	register	the sports page
+w_oshidashi	押し出し	register	the sumo page
+w_harubasho	春場所	register	the sumo calendar
+w_futsuuyokin	普通預金	register	a banking product
+w_anni	暗に	rare	literary
+w_shokikyoku	書記局	register	party structure
+w_kesshouten	決勝点	register	the sports page
+w_zeihou	税法	register	tax law
+w_daiissei	第一声	register	journalese: his first words
+w_ketsuyuubyou	血友病	register	clinical medicine
+w_gyouseishobun	行政処分	register	administrative law
+w_miataranai	見当たらない	artefact	a negated 見当たる, counted as a word
+w_tokihogusu	解きほぐす	rare	a literary compound verb
+w_hyougiin	評議員	register	a trustee role
+w_ronchou	論調	register	journalese: the tone of comment
+w_goshi	越し	suffix	a suffix: 肩越し
+w_tosei	都政	register	metropolitan government
+w_kansetsuzei	間接税	register	tax categories
+w_keibu	警部	register	a police rank
+w_kamei	仮名	homophone	仮名 is かな in this graph
+w_monko	門戸	rare	門戸を開く is the use
+w_hanbei	反米	register	journalese prefix: anti-American
+w_shimeshi	示し	stem	the noun of 示す
+w_nikkan	日刊	register	publication frequency
+w_ryouron	両論	register	journalese: both sides of the argument
+w_ryuunin	留任	register	political
+w_konsu	公司	rare	a Chinese loanword
+w_kyouken	強権	register	political
+w_shigaku	私学	register	education policy
+w_kisou	起草	register	legislative drafting
+w_roumu	労務	register	labour administration
+w_zaigai	在外	register	journalese: overseas
+w_baken	馬券	register	the racing page
+w_kyakuin	客員	register	an academic title
+w_sanbu	三部	numeral	three parts
+w_kamiki	上期	register	the fiscal half-year
+w_chuuoushuuken	中央集権	register	political theory
+w_kouminken	公民権	register	civil rights as a legal term
+w_enchou	園長	register	a title
+w_natsubasho	夏場所	register	the sumo calendar
+w_daikaiten	大回転	register	the sports page
+w_gakushuushidouyouryou	学習指導要領	register	an education ministry document
+w_inseki	引責	register	journalese: resigning to take responsibility
+w_kouhansen	後半戦	register	the sports page
+w_bunkajin	文化人	register	a journalese cliche
+w_sakunenrai	昨年来	register	a newspaper's own time words
+w_suisanchou	水産庁	proper-noun	a named agency
+w_kaijouhoanchou	海上保安庁	proper-noun	a named agency
+w_shakujin	石神	proper-noun	a surname
+w_shakaijigyou	社会事業	register	a policy field
+w_shibunsho	私文書	register	legal
+w_daisangoku	第三国	register	diplomatic
+w_kettou	結党	register	political
+w_sebangou	背番号	register	the sports page
+w_nougyoukyoudoukumiai	農業協同組合	register	an organisation, and 農協 is already refused
+w_senshumura	選手村	register	the Olympics
+w_zenken	全権	register	diplomatic
+w_tsuukan	通関	register	customs
+w_kaidou	会堂	rare	archaic, and religious
+w_imyou	異名	rare	formal
+w_taian	対案	register	political
+w_kusawake	草分け	rare	an idiom for a pioneer
+w_ichinan	一男	numeral	one son
+w_ranritsu	乱立	register	journalese: too many candidates standing
+w_ippentou	一辺倒	rare	a political cliche
+w_chuuetsu	中越	proper-noun	a region of Japan
+w_ranbai	乱売	register	the markets
+w_nigun	二軍	register	the sports page
+w_karishobun	仮処分	register	legal
+w_toumu	党務	register	party business
+w_nyuukokukanrikyoku	入国管理局	proper-noun	a named bureau
+w_kouaniinkai	公安委員会	register	a named commission
+w_hanrei	判例	register	legal
+w_kachiboshi	勝ち星	register	the sumo page
+w_chihoukoukyoudantai	地方公共団体	register	a legal term for 自治体
+w_chihoukoumuin	地方公務員	fragment	公務員 with 地方 in front
+w_jizume	字詰め	register	typesetting
+w_iwama	岩間	proper-noun	a surname
+w_senpi	戦費	register	war finance
+w_seijiryoku	政治力	artefact	政治 plus 力, counted as a word
+w_kyuukoku	救国	register	a political slogan
+w_suuokunen	数億年	numeral	several hundred million years
+w_shingeki	新劇	register	theatre history
+w_kiba	木場	proper-noun	a district of Tokyo
+w_kensatsuchou	検察庁	proper-noun	a named office
+w_hohei	歩兵	register	military
+w_shikaishi	歯科医師	artefact	歯科 plus 医師, counted as a word
+w_araiageru	洗い上げる	rare	a literary compound verb
+w_shouhizai	消費財	register	economics
+w_shinkokuka	深刻化	artefact	深刻 plus 化, counted as a word
+w_soudanjo	相談所	register	an office type
+w_shouryoku	省力	register	industrial jargon
+w_migaki	磨き	stem	the noun of 磨く
+w_souron	総論	register	the structure of a legal text
+w_jichiken	自治権	register	political
+w_gyouseikikan	行政機関	register	administrative law
+w_seitetsujo	製鉄所	register	heavy industry
+w_tekihou	適法	register	legal
+w_yashu	野手	register	the sports page
+w_sekitori	関取	register	the sumo page
+w_futsugo	仏語	register	the newspaper's one-character country names
+w_kouchoku	硬直	register	clinical medicine
+w_tensa	点差	register	the sports page
+w_seitetsu	製鉄	register	heavy industry
+w_shusen	主戦	register	military and sporting advocacy
+w_yakuba	役場	fragment	役場 wants 町 or 村
+w_daidou	大道	rare	大道芸 is the use
+w_ryuuho	留保	alt-reading	保留 is the spelling the graph should teach
+w_ronkoku	論告	register	legal
+w_jittei	実弟	register	journalese: the biological brother
+w_fukuchou	復調	register	the sports page
+w_sankai	散会	register	meetings
+w_bussan	物産	register	trade fairs
+w_kouko	公庫	register	a kind of state lender
+w_tokusetsu	特設	register	administrative
+w_beijin	米人	register	the newspaper's one-character country names
+w_kaikyoku	開局	register	broadcasting
+w_kuroboshi	黒星	register	the sumo page
+w_ichigenka	一元化	register	policy journalese
+w_sanji	三次	fragment	三次 wants 元 or 産業
+w_chuukou	中高	fragment	中高 wants 生 or 年
+w_shukeikyoku	主計局	register	a budget bureau
+w_teiri	低利	register	finance
+w_hokaku	保革	register	political shorthand
+w_shinyoukumiai	信用組合	register	a kind of bank
+w_yae	八重	rare	八重桜, and a name
+w_betsuin	別院	register	Buddhist institutions
+w_zenhansen	前半戦	register	the sports page
+w_genjin	原人	register	paleoanthropology
+w_kokon	古今	rare	古今東西 is the use
+w_doujidai	同時代	artefact	同 plus 時代, counted as a word
+w_shishikyuu	四死球	register	the sports page
+w_ooakinai	大商い	register	the markets
+w_gakusotsu	学卒	register	recruitment jargon
+w_gakuto	学徒	rare	historical: 学徒動員
+w_shukueki	宿駅	rare	historical post stations
+w_tairon	対論	rare	formal
+w_komusubi	小結	register	a sumo rank
+w_fuken	府県	fragment	都道府県 is the word
+w_mutokuten	無得点	register	the sports page
+w_sanpin	産品	register	trade
+w_kakuitsu	画一	fragment	画一的 is the use
+w_ibun	異文	rare	textual scholarship
+w_rikkoku	立国	register	political: 技術立国
+w_etsunen	越年	register	seasonal journalese
+w_nougakubu	農学部	artefact	農学 plus 部, counted as a word
+w_shuuka	集荷	register	logistics
+w_fukoku	布告	register	official proclamation
+w_seikyou	正教	register	religious denominations
+w_shikisha	識者	register	journalese: the well-informed
+w_futai	付帯	register	legal and insurance
+w_naiki	内規	register	institutional rules
+w_tetori	手取り	gloss	upstream's first sense is a sumo one; the word a learner needs is take-home pay
+w_kuroki	黒木	proper-noun	a surname
+w_yojin	余人	rare	余人をもって代え難い is the use
+w_zenchi	全治	register	medical: 全治二週間
+w_kahi	可否	rare	formal
+w_fuusho	封書	register	postal categories
+w_sanya	山野	rare	literary
+w_touri	党利	register	political: 党利党略
+w_ichou	医長	register	a hospital title
+w_meijitsu	名実	rare	名実ともに is the use
+w_hikidoki	引き時	rare	idiomatic
+w_tokuyaku	特約	register	insurance and contracts
+w_chokuei	直営	register	business
+w_sandai	三代	numeral	three generations
+w_sanmai	三枚	numeral	three flat things
+w_shitappara	下っ腹	rare	a colloquial 下腹
+w_fuseiritsu	不成立	register	parliamentary
+w_futaiten	不退転	rare	a political cliche
+w_shuzeikyoku	主税局	register	a budget bureau
+w_nihondate	二本立て	rare	cinema programming
+w_nihyakuhatsuka	二百二十日	rare	a traditional calendar day
+w_touryaku	党略	register	political: 党利党略
+w_ribarai	利払い	register	finance
+w_shouritsu	勝率	register	the sports page
+w_kitaairurando	北アイルランド	proper-noun	a country
+w_chishima	千島	proper-noun	an island chain
+w_nanbokumondai	南北問題	register	development economics
+w_shusui	取水	register	water engineering
+w_yonhon	四本	numeral	four long things
+w_kouseiseki	好成績	artefact	好 plus 成績, counted as a word
+w_kateinai	家庭内	artefact	家庭 plus 内, counted as a word
+w_fuujite	封じ手	register	the games page
+w_shousuuiken	少数意見	artefact	少数 plus 意見, counted as a word
+w_heinennami	平年並み	register	the weather bureau's own language
+w_jouhoubu	情報部	register	a department name
+w_bunkyou	文教	register	education policy
+w_shinsekai	新世界	rare	the New World, and a district of Osaka
+w_shunki	春季	register	administrative seasons
+w_getsunai	月内	register	a newspaper's own time words
+w_rinyachou	林野庁	proper-noun	a named agency
+w_minzokujiketsu	民族自決	register	political theory
+w_kainan	海難	register	maritime
+w_mujuuryou	無重量	rare	無重力 is the word
+w_sanryou	産量	register	industrial statistics
+w_aitekata	相手方	register	legal
+w_fukusuke	福助	proper-noun	a figure, and a brand
+w_zeibiki	税引き	register	finance
+w_kankukishoudai	管区気象台	proper-noun	a named office
+w_souhonzan	総本山	register	Buddhist institutions
+w_neri	練り	stem	the noun of 練る
+w_higisha	被疑者	register	legal, and 容疑者 is already a pick
+w_seiyujo	製油所	register	heavy industry
+w_mihonichi	見本市	register	trade fairs
+w_giinuneiiinkai	議院運営委員会	proper-noun	a named Diet committee
+w_zaimukan	財務官	register	a government title
+w_yugin	輸銀	register	an abbreviated bank
+w_kincho	近著	register	bibliographic
+w_rentou	連投	register	the sports page
+w_kubarimono	配り物	rare	seldom met
+w_shuzei	酒税	register	tax categories
+w_omoru	重る	rare	a variant of 重くなる
+w_ryouhanten	量販店	register	retail jargon
+w_taieki	退役	register	military
+w_naiji	内示	register	bureaucratic
+w_jinshin	人心	rare	formal: 人心を掌握
+w_keisou	係争	register	legal
+w_kouin	工員	register	factory labour categories
+w_ichini	一二	numeral	one or two
+w_ryougun	両軍	register	journalese: both armies
+w_bankoku	万国	rare	dated: 万国博覧会
+w_henzou	変造	register	legal
+w_shouhei	将兵	register	military
+w_youshoku	要職	register	journalese: an important post
+w_jinbun	人文	fragment	人文 wants 科学 or 学
+w_koubun	公文	fragment	公文書 is the word
+w_oobune	大船	rare	an idiom, and a place name
+w_teiritsu	定率	register	finance and tax
+w_ranpatsu	乱発	register	finance
+w_sanyo	参与	register	bureaucratic
+w_zaibei	在米	register	journalese: in America
+w_oodana	大店	rare	archaic, and 大店法 is the use
+w_kankouchou	官公庁	register	institutional
+w_ichimon	一問	numeral	one question
+w_ichida	一打	register	the sports page
+w_sanken	三権	register	political theory
+w_shitatenage	下手投げ	register	the sumo page
+w_ranchou	乱調	rare	乱調子 is the use
+w_teiraku	低落	register	the markets
+w_sakkyoushisuu	作況指数	register	an agricultural statistic
+w_kenpo	健保	register	health insurance, abbreviated
+w_tousei	党勢	register	political
+w_shussou	出走	register	the racing page
+w_kizami	刻み	stem	the noun of 刻む
+w_kissuru	喫する	rare	formal
+w_yonrinsha	四輪車	register	industry jargon
+w_kakomi	囲み	register	a box in a newspaper
+w_okuyama	奥山	proper-noun	a surname
+w_kononde	好んで	artefact	an inflected 好む, counted as a word
+w_fujoboukou	婦女暴行	register	a dated legal term, and not for a teaching rung
+w_gakkouhoujin	学校法人	register	a legal form of organisation
+w_kousakukikai	工作機械	register	industry
+w_fukutou	復党	register	political
+w_oubun	応分	rare	formal: 応分の負担
+w_shinbunkiji	新聞記事	artefact	新聞 plus 記事, counted as a word
+w_yuube	昨夜	alt-reading	昨夜 is also さくや, and ゆうべ is 夕べ
+w_saika	最下	fragment	最下 wants 位 or 層
+w_gessan	月産	register	industrial statistics
+w_kenjisei	検事正	register	a prosecutor's office
+w_yokote	横手	proper-noun	a city
+w_mazeawasu	混ぜ合わす	rare	a variant compound verb
+w_bukkashisuu	物価指数	register	a statistic
+w_chougikai	町議会	register	local assemblies
+w_nusumi	盗み	stem	the noun of 盗む
+w_kaimodoshi	買い戻し	register	finance
+w_tsuunen	通念	register	formal: 社会通念
+w_kaihatsubu	開発部	register	a department name
+w_shojo	処女	register	not vocabulary for a teaching rung
+w_shokken	職権	register	legal and bureaucratic
+w_genkyou	現況	register	bureaucratic
+w_kashikin	貸金	register	finance: 貸金業
+w_kanton	広東	proper-noun	a province of China
+w_jougai	場外	register	the sumo and racing pages
+w_fuwatari	不渡り	register	banking
+w_rimen	裏面	homophone	裏面 is うらめん in the row above
+w_gensei	原生	fragment	原生 wants 林 or 動物
+w_junan	受難	rare	religious: the Passion
+w_rikukai	陸海	fragment	陸海 wants 空 or 軍
+w_hisha	飛車	register	the games page
+w_shonen	初年	register	administrative: 初年度
+w_kouhatsu	後発	register	business: 後発医薬品
+w_kakkyou	活況	register	the markets
+w_seiryou	清涼	fragment	清涼 wants 飲料水
+w_fukuri	複利	register	finance
+w_ronkyaku	論客	register	journalese
+w_ikkyoku	一局	register	one game of go
+w_ittsuu	一通	numeral	one copy
+w_sanjo	三女	numeral	third daughter
+w_sanshu	三種	numeral	three kinds
+w_shimohanki	下半期	register	the fiscal half-year
+w_geya	下野	register	political: leaving office
+w_hitonaka	人中	rare	archaic
+w_jinminsensen	人民戦線	register	political history
+w_kaikeikensain	会計検査院	proper-noun	a named board
+w_bunritsu	分立	register	political theory: 三権分立
+w_torikuchi	取り口	register	the sumo page
+w_inzuu	員数	register	administrative counting
+w_kokubunji	国分寺	proper-noun	a temple, and a city
+w_shouraizou	将来像	register	journalese: the vision of the future
+w_kousakuin	工作員	register	espionage
+w_jouhoukashakai	情報化社会	register	a policy cliche
+w_kobetsuhoumon	戸別訪問	register	election law
+w_modori	戻り	stem	the noun of 戻る
+w_nisshou	日照	register	meteorology: 日照時間
+w_shokikan	書記官	register	a diplomatic title
+w_songikai	村議会	register	local assemblies
+w_minkanhousou	民間放送	register	broadcasting categories
+w_suisanbutsu	水産物	register	trade categories
+w_rikougakubu	理工学部	artefact	理工学 plus 部, counted as a word
+w_sougoginkou	相互銀行	register	a kind of bank
+w_shourei	省令	register	ministerial ordinances
+w_shakaikyouiku	社会教育	register	a policy field
+w_shishobako	私書箱	register	postal services
+w_kuuten	空転	register	journalese: the Diet going nowhere
+w_kanzai	管財	register	insolvency law
+w_kikigaki	聞き書き	rare	seldom met
+w_nouri	脳裏	rare	a literary idiom
+w_jiyuukeizai	自由経済	register	economics
+w_yakka	薬価	register	health policy
+w_houou	訪欧	register	journalese prefix: a visit to Europe
+w_shuunai	週内	register	a newspaper's own time words
+w_kinseki	金石	rare	archaeology: 金石文
+w_kouhinshitsu	高品質	artefact	高 plus 品質, counted as a word
+w_senkyou	戦況	register	war reporting
+w_chuujou	中将	register	a military rank
+w_butsugi	物議	rare	物議を醸す is the use
+w_kokusei	国勢	fragment	国勢調査 is the word
+w_senretsu	戦列	register	military and sporting journalese
+w_kouwa	講和	register	diplomatic history
+w_tamen	多面	fragment	多面的 is the use
+w_seidou	正道	rare	formal and moralistic
+w_haenuki	生え抜き	register	journalese: the native-born employee
+w_shusa	主査	register	a committee title

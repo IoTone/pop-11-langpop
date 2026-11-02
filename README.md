@@ -137,9 +137,9 @@ syllabus deciding a date. `:status` is the honest answer to "how am I doing":
 it prints this level's exit criteria measured over the last 28 days, not a
 streak.
 
-**To go past the committed fifty words** import the N5 and N4 content. It
-needs two files from the EDRDG — `JMdict_e` and `kanjidic2.xml` — and four
-commands, and takes about a minute:
+**To go past the committed fifty words** import the Japanese content. It
+needs two files from the EDRDG — `JMdict_e` and `kanjidic2.xml` — and eight
+commands, and takes a few minutes:
 
 ```sh
 ./langpop import --source kanjidic --file kanjidic2.xml --level n5 --jlpt 4
@@ -149,12 +149,14 @@ commands, and takes about a minute:
 ./langpop import --source kanjidic --file kanjidic2.xml --level n3 --jlpt 2 \
     --order grade_freq --take 366
 ./langpop import --source jmdict --file JMdict_e --picks graph/ja/picks/n3.pl
+./langpop import --source kanjidic --file kanjidic2.xml --level n2 --jlpt 1
+./langpop import --source jmdict --file JMdict_e --picks graph/ja/picks/n2.pl
 ```
 
-That is 4,036 words and 650 characters: N5, N4 and N3 reading in full. The
-characters of the two rungs above are two more commands — see [Adding content
+That is 6,212 words and 1,023 characters: N5 through N2 reading in full. The
+characters of N1 are one more command — see [Adding content
 from a reference source](#adding-content-from-a-reference-source) — and the
-words above N3 are not written yet. The
+words above N2 are not written yet. The
 licences and what each command does are under [Adding content from a
 reference source](#adding-content-from-a-reference-source), and
 `./langpop --audit` says what every rung still wants afterwards.
@@ -268,15 +270,17 @@ outside that list is allowed in.
 | `graph/ja/picks/n4.pl` | the same for N4, whose count is measured over both | 749 picks |
 | `graph/ja/picks/n3.pl` | the same for N3, where the rung was too big to pick a word at a time and needed a rule | 2,464 picks |
 | `graph/ja/picks/n3-rejects.tsv` | what the N3 review threw out, with a reason for each | 336 rows |
+| `graph/ja/picks/n2.pl` | the same for N2, where the newspaper rather than the dialogue list is the order | 2,176 picks |
+| `graph/ja/picks/n2-rejects.tsv` | what the N2 review threw out; journalese did most of the refusing | 724 rows |
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
 | `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
 | `graph/en/a1.pl` | 552 A1 words with Japanese glosses, hand-written — 519 content words and the 33 function words that carry the corpus | 552 |
 | `graph/en/a2.pl` | the same for A2, whose count is measured over both, plus 4 grammar patterns | 550 words, 4 patterns |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
-| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 6,216 items (ja): 2,230 kanji and 3,986 words; for English, facts only: 1,103 pronunciations, 1,069 frequencies |
+| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 8,392 items (ja): 2,230 kanji and 6,162 words; for English, facts only: 1,103 pronunciations, 1,069 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
 
-1,342 committed items, 7,565 once the imported content is built; 12 ladder
+1,342 committed items, 9,741 once the imported content is built; 12 ladder
 levels, 40 exit criteria, no integrity violations either way. Those are
 the figures `./langpop --check` prints.
 
@@ -711,8 +715,22 @@ upstream recommends rather than one JMdict tags as a phonetic borrowing or
 a rarity -- and 2,800 survivors were read by hand, of which 336 were thrown
 out with a reason recorded for each in `graph/ja/picks/n3-rejects.tsv`. The whole argument, including the parts
 that are not defensible, is in
-[docs/langpop-n3-vocabulary.md](docs/langpop-n3-vocabulary.md). The
-characters needed no curation except for the one rung KANJIDIC2 cannot
+[docs/langpop-n3-vocabulary.md](docs/langpop-n3-vocabulary.md).
+
+**N2 is where the corpus had to change**, and that is the most useful thing
+the two rungs together taught. 判断, 批判, 段階 and 背景 are *absent* from
+the 34,504-form subtitle list — not rare in it, absent — while 捜査 sits at
+rank 109. A list built from film and television is a record of what people
+say; N2 is the rung at which a learner reads editorials. So at N2 the
+newspaper orders the pool and the dialogue count is only the tiebreak, which
+is the exact reverse of N3 and the same principle: ask what each corpus is a
+measurement *of*. 2,900 rows were read by hand and 724 thrown out — 25%
+against N3's 12%, because a newspaper corpus is thick with party names,
+ministries and its own shorthand (同省 “the said ministry”, 与野党, 戦況) and
+carries a whole sports page besides. The argument is in
+[docs/langpop-n2-vocabulary.md](docs/langpop-n2-vocabulary.md).
+
+The characters needed no curation except for the one rung KANJIDIC2 cannot
 answer, which is
 [docs/langpop-n3-kanji.md](docs/langpop-n3-kanji.md).
 
@@ -2123,7 +2141,7 @@ that rung adds, not a running sum.
 | ja | N5 | 876 | 60 KB | 192 KB | **252 KB** |
 | ja | N4 | 930 | 57 KB | 224 KB | **281 KB** |
 | ja | N3 | 2,830 | 177 KB | 782 KB | **958 KB** |
-| ja | N2 | 373 | — | 126 KB | **126 KB** |
+| ja | N2 | 2,549 | 182 KB | 736 KB | **918 KB** |
 | ja | N1 | 1,207 | — | 369 KB | **369 KB** |
 | en | pre-school | 41 | 16 KB | 2 KB | **18 KB** |
 | en | A1 | 555 | 57 KB | 70 KB | **126 KB** |
@@ -2131,10 +2149,10 @@ that rung adds, not a running sum.
 
 Plus 29 KB of `graph/schema.pl`, the two ladders and `graph/resources.pl`,
 which belong to no level. **The whole graph, both languages and every rung
-built, is 2.3 MB** — 2.0 MB of it Japanese, and 1.7 MB of that the product
+built, is 3.0 MB** — 2.8 MB of it Japanese, and 2.3 MB of that the product
 of an import rather than something committed. A pick list costs about a
-quarter of what it builds: `graph/ja/picks/n3.pl` is 164 KB of reference keys
-and becomes 659 KB of items, forms and glosses.
+quarter of what it builds: `graph/ja/picks/n3.pl` is 165 KB of reference keys
+and becomes 659 KB of items, forms and glosses; N2's 147 KB becomes 611 KB.
 
 ### The audio
 
@@ -2146,17 +2164,17 @@ was said and by which voice.
 | | level | files | this level | cumulative |
 | --- | --- | --- | --- | --- |
 | ja | pre-school | 188 | 2.8 MB | 2.8 MB |
-| ja | N5 | 876 | 20.3 MB | 23.1 MB |
-| ja | N4 | 930 | 24.0 MB | 47.1 MB |
-| ja | N3 | 2,830 | 75.2 MB | 122.3 MB |
-| ja | N2 | 373 | 8.0 MB | 130.3 MB |
-| ja | N1 | 1,207 | 25.7 MB | 156.0 MB |
+| ja | N5 | 876 | 20.1 MB | 22.9 MB |
+| ja | N4 | 930 | 23.8 MB | 46.6 MB |
+| ja | N3 | 2,830 | 74.4 MB | 121.1 MB |
+| ja | N2 | 2,549 | 71.6 MB | 192.7 MB |
+| ja | N1 | 1,207 | 25.3 MB | **218.0 MB** |
 | en | pre-school | 82 | 2.0 MB | 2.0 MB |
 | en | A1 | 555 | 13.8 MB | 15.8 MB |
 | en | A2 | 550 | 13.6 MB | 29.4 MB |
 
-So **a Japanese learner who renders every rung needs about 156 MB**, and the
-whole ladder to N3 — which is as far as the words go — is 122 MB. **An
+So **a Japanese learner who renders every rung needs about 218 MB**, and the
+whole ladder to N2 — which is as far as the words go — is 193 MB. **An
 English test-taker needs about 29 MB** for the three rungs that have
 content. **English renders nothing until a voice is named for it.**
 `~/.langpop/audio.conf` here has a `ja` entry and no `en` one, so every
@@ -2172,7 +2190,7 @@ needs saying.
 **Each extra rate is another copy.** `--audio n5 --rate slow` writes a
 second file per item beside the first, because a cached file is keyed by
 item, voice *and* rate. Rendering all three rates of every Japanese rung is
-three times the table above, near 470 MB.
+three times the table above, near 650 MB.
 
 ### How those numbers were got, and how to redo them for another voice
 
@@ -2190,6 +2208,13 @@ bytes  =  7,444  +  5,364 x kana        (R2 = 0.92)
 which is 0.17 s of lead-in and 0.12 s per kana at Kyoko's `normal` 175 wpm.
 Multiply through the real readings in the graph and the per-level totals
 above come out. A kana is a syllable, so the fit is tight.
+
+The readings come from `lp_audio_text`, which is the procedure `--audio`
+hands to the voice, rather than from a reconstruction of what it probably
+says — so the *which items* half of the arithmetic is the program's answer
+and only the *how many bytes* half is a model. That is also why eleven
+Japanese pre-school items and seventeen English ones are missing from the
+file counts: they have no spoken form, and the same procedure says so.
 
 For English the same arithmetic does not work — a Latin letter is not a
 syllable, and the regression over 40 words rendered with Samantha at the
@@ -2263,10 +2288,11 @@ as zero.
 kanji criterion on the Japanese ladder is met — 103, 284, 650, 1023, 2230 —
 because KANJIDIC2 carries the level and the one rung it does not cover is
 argued in [docs/langpop-n3-kanji.md](docs/langpop-n3-kanji.md). The word
-counts are met through N3 and short from N2 up, and JMdict carries no level,
-so each of those is a pick list -- hand-written through N4, and from N3 up a
-ranked pool read by hand, which is argued in
-[docs/langpop-n3-vocabulary.md](docs/langpop-n3-vocabulary.md). `--audit` is
+counts are met through N2 and short only at N1, which wants 3,846 more than
+the graph holds; JMdict carries no level, so each of those is a pick list --
+hand-written through N4, and from N3 up a ranked pool read by hand, argued
+in [docs/langpop-n3-vocabulary.md](docs/langpop-n3-vocabulary.md) and
+[docs/langpop-n2-vocabulary.md](docs/langpop-n2-vocabulary.md). `--audit` is
 the list. Every listening criterion in both languages needs `--audio` run
 once with a voice installed, and that is the largest gap in the project.
 After it, the English B1 words. *Coverage* was the
@@ -2296,6 +2322,7 @@ string.
 | [langpop-japanese-tranche.md](docs/langpop-japanese-tranche.md) | how the N5 word rows were argued |
 | [langpop-n3-kanji.md](docs/langpop-n3-kanji.md) | which 366 of old level 2's characters are N3, and why school grade beats newspaper frequency |
 | [langpop-n3-vocabulary.md](docs/langpop-n3-vocabulary.md) | the rung that was too big to pick a word at a time: why a bridge-level word is one both corpora use -- **done**, 2,464 picks |
+| [langpop-n2-vocabulary.md](docs/langpop-n2-vocabulary.md) | the rung where the corpus had to change: why the newspaper orders this one and the subtitles only break ties -- **done**, 2,176 picks |
 | [langpop-pronunciation.md](docs/langpop-pronunciation.md) | what a Japanese speaker learning English cannot be asked |
 | [langpop-reviews-and-periods.md](docs/langpop-reviews-and-periods.md) | the review intervals and the 28-day period, and which numbers are still arguable |
 | [langpop-production-criteria.md](docs/langpop-production-criteria.md) | should the ladder ask a student to speak, and at what threshold |

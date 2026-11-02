@@ -1474,32 +1474,34 @@ else
     printf(';;; imported content not built -- import probes not checked\n');
 endif;
 
-;;; WHAT THE N3 RULE PROMISED.  A reading question holds one form up and
-;;; asks for another, so a word needs two.  At N5 a word may honestly
-;;; have one -- はい is written はい -- but every N3 pick was chosen BY a
-;;; rule that said its headword is kanji the student already has, so a
-;;; word at this rung with no kanji form is a pick that did not do what
-;;; it claimed.  Four were: JMdict tags 味方, 無茶, 心地 and 日和 as
+;;; WHAT THE RULE PROMISED, at N3 and at every rung built the same way.
+;;; A reading question holds one form up and asks for another, so a word
+;;; needs two.  At N5 a word may honestly have one -- はい is written
+;;; はい -- but every N3 and N2 pick was chosen BY a rule that said its
+;;; headword is kanji the student already has, so a word at those rungs
+;;; with no kanji form is a pick that did not do what it claimed.  Four were: JMdict tags 味方, 無茶, 心地 and 日和 as
 ;;; ateji, import.p will not teach a tagged spelling (rightly -- it is
 ;;; the rule that keeps 珈琲 off a beginner's card), and the pool's
 ;;; filter for those same tags compared JMdict's short codes against the
 ;;; expanded entity text and so matched nothing.  They arrived as
 ;;; kana-only words, the allowance above let them through as such, and
 ;;; nothing anywhere said that a kana-only N3 word is a contradiction.
-lvars n3n = 0, n3bad = [], i3;
+lvars n3n = 0, n2n = 0, n3bad = [], i3, lv3;
 for i3 in lp_items do
-    nextunless(lp_ilang(i3) == "ja" and lp_kind(i3) == "word"
-               and lp_ilevel(i3) == "n3");
-    n3n fi_+ 1 -> n3n;
+    nextunless(lp_ilang(i3) == "ja" and lp_kind(i3) == "word");
+    lp_ilevel(i3) -> lv3;
+    nextunless(lv3 == "n3" or lv3 == "n2");
+    if lv3 == "n3" then n3n fi_+ 1 -> n3n else n2n fi_+ 1 -> n2n endif;
     unless lp_form_of(i3, "kanji") and lp_form_of(i3, "hiragana") then
         n3bad <> [^i3] -> n3bad
     endunless;
 endfor;
 if n3n > 0 then
     check_true('the N3 words are built', n3n > 2000);
+    check_true('and the N2 words', n2n > 2000);
     check('and every one has a kanji form and a reading', n3bad, []);
 else
-    printf(';;; imported content not built -- N3 forms not checked\n');
+    printf(';;; imported content not built -- N3/N2 forms not checked\n');
 endif;
 
 ;;; AND THE INVARIANT THE WHOLE POOL EXISTS TO PROTECT.  Two items
