@@ -2106,6 +2106,12 @@ not. Three runs of ja seed 42 at 9,000 answers reached 371, 392 and 412 of
 the 800 N5 words. 9,000 is not enough to finish that rung — about 12,500
 is.
 
+A fourth run reached 375 after the scheduler stopped scanning the graph
+once per question (2.79 s to 0.01 s at N2, `lp_gates_ok` in `langpop.p`),
+which is the useful part of the figure: the engine got about thirty times
+faster and the distance did not move, because what limits it is the 200ms
+day and the review ladder rather than how quickly the questions arrive.
+
 `oracle.p` is a seeded student that climbs the ladder over JSON-RPC,
 asserting the engine's invariants at every answer — a belief that moved the
 wrong way, an item taught before its prerequisite, a criterion that went

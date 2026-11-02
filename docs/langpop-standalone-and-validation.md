@@ -892,7 +892,17 @@ did what the section above predicted, in order:
    and `vocabulary(50, hear)` needs the audio build before any run can
    move it, exactly as `--audit` says.
 
-Soak state: seeds 1-5 (ja) and 1-3 (en) all pass. Not *deterministically*
+Soak state: seeds 1-5 (ja) and 1-3 (en) all pass, and seed 42 passes on
+the enlarged graph -- 3,000 answers against 9,741 items (2026-11-02),
+climbing pre-school to N5 with 243 items burned and 1,154 of the answers
+reviews, no invariant broken. At 9,000 answers the same seed
+reaches 375 of the 800 N5 words and 62 of the 103 N5 kanji, which lands
+inside the 371/392/412 band three earlier runs gave -- so the thirtyfold
+scheduler speed-up moved the distance not at all, and the thing that
+limits it really is the 200ms day rather than the engine. That run is also
+how finding 27 was confirmed: 87ms an answer, where the same run before the
+`ready/4` fix was about three seconds an answer, which is why it had never
+been run against this content before. Not *deterministically*
 -- finding 16 is what that word was hiding. The answers a seed gives are
 deterministic; how many of them a run fits into its budget is not, because
 the simulated day is 200ms of real time.
