@@ -1785,6 +1785,21 @@ dk, is it not?  Level a2.
   were in ja, and it is kept.)
 ```
 
+#### The same bug, one setting down
+
+The rule is worth more than the fix, because looking for the rest of it found
+`--rate`. It was set in `lp_main` before the profile was read, and
+`lp_load_profile` put the stored rate back over it, so a student who had ever
+chosen a listening speed could not ask for a different one from the command
+line. Quieter than Mr Hill asking for hiragana — nobody would file it, they
+would just type `:rate slow` again — and the same defect, fixed the same way
+with `lp_rate_asked`.
+
+Anything that is both a stored preference and a command-line argument needs
+the pair: the value, and whether it was asked for. A single variable cannot
+hold both answers, and the one it loses is always the one the student typed
+most recently.
+
 And the client now sends a language only when it was given one. It used to
 default to `'ja'` and send that on every connect, which under the new rule
 would have been an instruction — flipping a returning English student back to

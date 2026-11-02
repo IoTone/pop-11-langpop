@@ -1883,7 +1883,9 @@ define lp_load_profile(user) -> found;
     endif;
     ;;; Into the held name, not lp_rate: the profile is read at login and
     ;;; audio.p is not loaded until something asks to hear a word.
-    if o('rate') then consword(o('rate') sys_>< '') -> lp_rate_want endif;
+    if o('rate') and not(lp_rate_asked) then
+        consword(o('rate') sys_>< '') -> lp_rate_want;
+    endif;
     if o('aids_off') then
         for i from 1 to length(o('aids_off')) do
             false -> lp_aids(consword(o('aids_off')(i) sys_>< ''));
@@ -5081,6 +5083,15 @@ vars lp_audio_loaded = false;
 ;;; load that was supposed to honour it.
 vars lp_rate_want = false;
 
+;;; ASKED FOR, or merely stored?  The same distinction lp_lang_asked
+;;; draws, and found by looking for the rest of the bug it came from:
+;;; `--rate slow` was set in lp_main before the profile was read, and
+;;; lp_load_profile then put the stored rate back over it, so a student
+;;; who had ever chosen a rate could not ask for a different one from
+;;; the command line.  Quieter than Mr Hill asking for hiragana, and the
+;;; same defect.
+vars lp_rate_asked = false;
+
 define lp_load_audio();
     unless lp_audio_loaded then
         pop11_compile(langpop_dir <> 'audio.p');
@@ -5704,7 +5715,7 @@ define lp_main();
     ;;; --rate outside --audio is the student saying how they want to be
     ;;; spoken to for the whole session.  audio.p may not be loaded yet,
     ;;; so the name is held and lp_load_audio picks it up.
-    if rate then rate -> lp_rate_want endif;
+    if rate then rate -> lp_rate_want; true -> lp_rate_asked endif;
     ;;; A teacher is needed before the profile is read, because the
     ;;; greeting and the username question come first and somebody has
     ;;; to ask them.  So this is the language as it stands now -- the

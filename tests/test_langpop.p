@@ -2156,6 +2156,25 @@ false -> lp_rate_want;
 check_true('the profile loads', lp_load_profile("switcher"));
 check('the listening rate came back', lp_rate_want, "slow");
 
+;;; AND A RATE THAT WAS ASKED FOR beats the stored one, for the reason
+;;; --lang does: `--rate slow` is something a student typed this
+;;; morning, a stored rate is what they chose some other day.  This was
+;;; the same bug as the language, one file down -- the flag was set in
+;;; lp_main before the profile was read and the profile put its own
+;;; value back over it, so a student who had ever chosen a rate could
+;;; not ask for a different one from the command line.
+"fast" -> lp_rate_want;
+lp_save();
+"slow" -> lp_rate_want; true -> lp_rate_asked;
+check_true('it loads with a rate asked for', lp_load_profile("switcher"));
+check('which is the one that stands', lp_rate_want, "slow");
+false -> lp_rate_asked;
+check_true('and loads again with none asked for',
+           lp_load_profile("switcher"));
+check('where the stored rate is the one that stands', lp_rate_want, "fast");
+"slow" -> lp_rate_want;
+lp_save();
+
 ;;; And a profile that never named one does not invent a rate, so the
 ;;; engine's own default stands.
 lvars withrate = lp_read_file(lp_profile_path("switcher"));
