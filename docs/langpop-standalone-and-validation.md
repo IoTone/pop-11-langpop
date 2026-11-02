@@ -705,7 +705,23 @@ did what the section above predicted, in order:
    `lp_morae`, and at four morae instead of three a *dropped* beat came
    back credited.
 
-19. **Smaller observations, not yet acted on:** a reported-but-never-
+19. **A test that names a thing for being missing has a shelf life
+   ending on the day the project succeeds.** Filling the kanji column
+   (2026-11-01, N3/N2/N1, 2,230 characters) broke four checks and none
+   of them was in the import, which is the fourth time that has
+   happened. All four asserted the ABSENCE of content: `N1 kanji is
+   short` in two suites, chosen for being reliably empty -- one of them
+   already carrying a comment about counts shrinking as content arrives
+   -- `誕 is not an N5 kanji, so nothing requires it`, which asserted
+   the opposite of the rule two lines above it the moment 誕 arrived
+   with N3, and the dump suite's `popmemlim`, now raised twice by a
+   content import. The repair each time is to assert the property over
+   whatever is short or absent NOW, plus the complementary case where
+   it is cheap: "short means it holds fewer than it wanted" and "ok
+   means it holds at least what it wanted" together say the comparison
+   runs the right way round, and one row cannot.
+
+20. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
@@ -740,6 +756,7 @@ later one.
 | 3 | ~~a ceiling report~~ already built: it is `--audit` | nothing to do |
 | 4 | the oracle student over JSON-RPC, and the invariant assertions | `ja preschool` climbs from empty, reproducibly, from a seed |
 | 5 | the okurigana fix and the n5 word tranche to 800 | ~~`ja n5` climbs~~ the reading half does (2026-10-31, 773 picks, 823 words, 804 askable); the listening half wants `--audio n5`. N4's reading half followed (2026-11-01, 749 picks, 1572 words, and its 284 kanji by rule) |
+| 6 | the kanji column, all of it | done (2026-11-01): 650, 1023 and 2230 all read ok. N1 by rule, N3 and N2 by splitting old level 2 on school grade then newspaper frequency -- the one rung the source cannot answer, argued in langpop-n3-kanji.md. 5,061 items, no violations, `--check` 28s to 61s |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
 | 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |
 

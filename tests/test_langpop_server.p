@@ -507,17 +507,37 @@ define aurow(name) -> r;
     endfor;
 enddefine;
 
-vars ac = aurow('kanji(2230, read)');
-check('N1 kanji is short', ac('verdict'), 'short');
-check('it says what was wanted', ac('wanted'), 2230);
-;;; The ARITHMETIC and not a number: short_by was `> 2000` until n4's
-;;; kanji were imported and the shortfall fell to 1946.  Every count on
-;;; the ladder shrinks as content arrives, so a threshold here measures
-;;; how much curation has happened rather than whether the field is the
-;;; subtraction the client was promised.
+;;; A SHORT ONE, whichever it is.  This named kanji(2230, read) and the
+;;; comment below already said why that could not last -- every count on
+;;; the ladder shrinks as content arrives, and that one reached its
+;;; number, taking the check's subject with it.  Both ends of the field
+;;; are asserted instead, which is the protocol's promise rather than a
+;;; measure of how much curation has happened.
+define aufind(verdict) -> r;
+    lvars verdict, i, c;
+    false -> r;
+    for i from 1 to length(au('criteria')) do
+        au('criteria')(i) -> c;
+        if c('verdict') = verdict then c -> r; return endif;
+    endfor;
+enddefine;
+
+vars ac = aufind('short');
+check_true('some criterion is short, or this check is spent', ac /== false);
+check_true('it says what was wanted', ac('wanted') > 0);
 check_true('and how short, so a client need not subtract',
            ac('short_by') == ac('wanted') - ac('askable'));
-check('on the right rung', ac('level'), 'n1');
+check_true('which is a number a client can print', ac('short_by') > 0);
+check_true('and it names the rung the criterion is on',
+           isstring(ac('level')));
+
+;;; And nothing pretends to a shortfall it does not have: short_by is
+;;; null on a criterion that is met, not 0 and not a negative number,
+;;; because a client that printed "short by -47" would be reporting this
+;;; file's arithmetic as the tutor's opinion.
+vars aco = aufind('ok');
+check_true('a criterion that is met is short by nothing at all',
+           aco == false or aco('short_by') == json_null);
 
 vars ah = aurow('vocabulary(50, hear)');
 check('a listening criterion needs audio', ah('verdict'), 'needs_audio');

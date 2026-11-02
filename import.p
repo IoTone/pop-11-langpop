@@ -68,7 +68,16 @@ uses utf8;                              ;;; consutf8, for numeric char refs
 vars imp_source = false, imp_file = false, imp_level = false,
     imp_lang = "ja", imp_jlpt = false, imp_picks = false,
     imp_outpath = false, imp_check = false, imp_gap_want = false,
-    imp_top = 40;
+    imp_top = 40,
+    ;;; THE ONE RUNG THE SOURCE CANNOT ANSWER.  N3 was inserted into the
+    ;;; JLPT in 2010 with no old level of its own, so which of old level
+    ;;; 2's 739 characters belong at N3 and which stay at N2 is a
+    ;;; decision rather than a field -- the argument is written up in
+    ;;; docs/langpop-n3-kanji.md.  --order ranks the selected set,
+    ;;; --take keeps the front of that ranking and --skip the rest, and
+    ;;; the two halves must be generated together or a character ends up
+    ;;; at two levels or at none.
+    imp_order = false, imp_take = false, imp_skip = false;
 
 define imp_args();
     lvars a, rest = poparglist;
@@ -92,10 +101,17 @@ define imp_args();
         elseif a = '--gap' then true -> imp_gap_want
         elseif a = '--top' and rest /== [] then
             strnumber(hd(rest)) -> imp_top; tl(rest) -> rest
+        elseif a = '--order' and rest /== [] then
+            consword(hd(rest)) -> imp_order; tl(rest) -> rest
+        elseif a = '--take' and rest /== [] then
+            strnumber(hd(rest)) -> imp_take; tl(rest) -> rest
+        elseif a = '--skip' and rest /== [] then
+            strnumber(hd(rest)) -> imp_skip; tl(rest) -> rest
         else
             mishap(a, 1, 'import: unknown argument (--source S --file F '
                          <> '--level L --lang L --jlpt N --picks F --out F '
-                         <> '--check --gap --top N)')
+                         <> '--check --gap --top N --order O --take N '
+                         <> '--skip N)')
         endif;
     enduntil;
 enddefine;
@@ -478,6 +494,44 @@ define imp_e_gloss(e);  lvars e; e(5) enddefine;
 define imp_e_reqs(e);   lvars e; e(6) enddefine;
 define imp_e_ranks(e);  lvars e; e(7) enddefine;
 
+define imp_rank(e, name) -> v;
+    lvars e, name, r, v = false;
+    for r in imp_e_ranks(e) do
+        if hd(r) == name then hd(tl(r)) -> v; return endif;
+    endfor;
+enddefine;
+
+;;; ONE NUMBER TO SORT ON, so the comparator stays a comparison.
+;;; grade * 10000 + freq is safe because a frequency rank is at most
+;;; 2501 -- KANJIDIC2 ranks the 2501 commonest characters and nothing
+;;; else -- and an entry missing either sorts last rather than first,
+;;; which is the right way for a rank to be absent.
+;;;
+;;; `grade_freq` reads the school year first and the newspaper second:
+;;; see docs/langpop-n3-kanji.md for why the published curriculum has
+;;; better standing than a corpus when the question is what to teach a
+;;; beginner first.
+define imp_order_key(e) -> k;
+    lvars e, g = imp_rank(e, "grade"), f = imp_rank(e, "freq"), k;
+    if imp_order == "grade_freq" then
+        (g or 99) * 10000 + (f or 9999) -> k;
+    else
+        (f or 9999) -> k;
+    endif;
+enddefine;
+
+;;; What the split was, recorded on every item it produced -- and the
+;;; same term on both halves, because the same decision made both.
+;;; Empty when nothing was split, so the n5 and n4 files regenerate
+;;; byte for byte.
+define imp_split_term() -> s;
+    lvars s = '', n = imp_take or imp_skip;
+    if n then
+        ', split(' <> (imp_order sys_>< '') <> ', ' <> (n sys_>< '') <> ')'
+            -> s;
+    endif;
+enddefine;
+
 ;;; Lines printed once, after the generated/5 stamp: a fact about the
 ;;; IMPORT rather than about any one item.  The frequency source needs
 ;;; one -- a count means nothing without the total it is a count out of.
@@ -661,7 +715,8 @@ define imp_kanjidic(path, want_jlpt) -> es;
             es <> [% imp_entry_ranked(consword('k_' <> uppertolower(ucs)),
                                "grapheme",
                                'kanjidic2(ucs(' <> imp_atom(ucs) <> '), jlpt('
-                                   <> (want_jlpt sys_>< '') <> '))',
+                                   <> (want_jlpt sys_>< '') <> ')'
+                                   <> imp_split_term() <> ')',
                                forms, g,
                                ;;; Every kanji needs the kana, because its
                                ;;; reading is written in them.  Radical and
@@ -678,6 +733,28 @@ define imp_kanjidic(path, want_jlpt) -> es;
                                   if strokes then [strokes ^strokes] endif %])
                      %] -> es;
         endprocedure);
+
+    ;;; THE SPLIT, before the sort below rather than after it: what is
+    ;;; kept is decided by the ranking and what is WRITTEN is sorted by
+    ;;; id, so the file still diffs cleanly against the last one.
+    if imp_take or imp_skip then
+        syssort(es, false, procedure(a, b); lvars a, b;
+            imp_order_key(a) < imp_order_key(b) endprocedure) -> es;
+        lvars kept = [], i = 0, e2;
+        for e2 in es do
+            i + 1 -> i;
+            if imp_take then
+                if i <= imp_take then kept <> [^e2] -> kept endif;
+            elseif i > imp_skip then
+                kept <> [^e2] -> kept endif;
+        endfor;
+        if kept == [] then
+            mishap(imp_skip or imp_take, 1,
+                   'import: the split kept nothing -- more were skipped than '
+                   <> 'the level has')
+        endif;
+        kept -> es;
+    endif;
 
     ;;; Sorted by id, which for kanji is the codepoint.  Upstream's own
     ;;; order is JIS code order and stable enough in practice, but a
@@ -1347,6 +1424,23 @@ define imp_main();
 
     if imp_source == "kanjidic" then
         unless imp_jlpt then mishap(0, 'import: --source kanjidic needs --jlpt N') endunless;
+        ;;; A split is three arguments that only mean anything together.
+        if (imp_take or imp_skip) and not(imp_order) then
+            mishap(0, 'import: --take/--skip need --order (freq or grade_freq)')
+        endif;
+        if imp_take and imp_skip then
+            mishap(0, 'import: --take and --skip are the two halves of one '
+                      <> 'split -- pass one of them, and run the other half '
+                      <> 'as its own import')
+        endif;
+        if imp_order and not(imp_take or imp_skip) then
+            mishap(imp_order, 1, 'import: --order ranks a split and there is '
+                                 <> 'none -- add --take N or --skip N')
+        endif;
+        unless imp_order == false or imp_order == "freq"
+        or imp_order == "grade_freq" then
+            mishap(imp_order, 1, 'import: --order takes freq or grade_freq')
+        endunless;
         'KANJIDIC2' -> srcname;
         imp_kanjidic(imp_file, imp_jlpt) -> es;
     elseif imp_source == "jmdict" then

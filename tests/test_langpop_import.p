@@ -309,8 +309,20 @@ check_true('every kanji edge points at an item the graph holds',
 check_true('and an edge exists for each kanji of 誕生日 that IS an item',
            not(any([k_8a95 k_751f k_65e5], procedure(r); lvars r;
                lp_ilang(r) and not(member(r, imp_e_reqs(bd))) endprocedure)));
-check_true('誕 is not an N5 kanji, so nothing requires it',
-           not(lp_ilang("k_8a95")) and not(member("k_8a95", imp_e_reqs(bd))));
+;;; The other direction, over whatever is absent rather than over a
+;;; named character.  k_8a95 (誕) was the instance of it for as long as
+;;; only N5's 103 kanji existed; 誕 is old JLPT level 2 and arrived with
+;;; N3, so a check that named it asserted the opposite of the rule the
+;;; moment the column filled.  Vacuously true on a graph that holds
+;;; every JLPT kanji, which is the honest state of it -- and a real
+;;; check again on any thinner checkout, including a fresh clone.
+lvars kgone = [], kc;
+for kc in [k_8a95 k_751f k_65e5] do
+    unless lp_ilang(kc) then kgone <> [^kc] -> kgone endunless;
+endfor;
+check_true('and a kanji the graph does not hold gets no edge',
+           not(any(kgone, procedure(r); lvars r;
+               member(r, imp_e_reqs(bd)) endprocedure)));
 check_true('a hand-written prerequisite is added',
            member("t_yama", imp_e_reqs(bd)));
 

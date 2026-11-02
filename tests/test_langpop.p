@@ -1974,10 +1974,32 @@ check_true('a thin verdict needs few QUESTIONS, not few items',
 
 ;;; A count criterion reports the shortfall rather than a percentage of
 ;;; a student who has never been shown the content.
-lvars an1 = arow("ja", "n1", 'kanji(2230, read)');
-check('N1 kanji is short, not failed', an1(4), "short");
-check('and says how short', an1(7), 2230);
-check_true('against what the graph actually holds', an1(6) < 2230);
+;;;
+;;; WHICHEVER COUNT IS SHORT, and not a named one.  This asked about
+;;; kanji(2230, read) at N1 for as long as N1's kanji were unimported,
+;;; which is the shelf life of naming a criterion for being empty: the
+;;; whole kanji column reads ok now and the row it chose went with it.
+;;; What is checked is the shape of a short verdict, which is a promise
+;;; about the report and not about how much curation has happened.
+lvars ashort = false, aok = false, ae;
+for ae in arows do
+    nextunless(ae(7));                      ;;; a count criterion, so it has one
+    if ae(4) == "short" and ashort == false then ae -> ashort endif;
+    if ae(4) == "ok" and aok == false then ae -> aok endif;
+endfor;
+check_true('some count criterion is short, or this check is spent',
+           ashort /== false);
+check_true('and what it wants is the number the criterion names',
+           ashort /== false and ashort(7) > 0);
+check_true('and it holds fewer than that, which is what short means',
+           ashort /== false and ashort(6) < ashort(7));
+
+;;; The other verdict, on the same field: a criterion that is met is met
+;;; BY the count, so what it holds is at least what it wanted.  Between
+;;; them these two say the comparison runs the right way round, which a
+;;; single row cannot.
+check_true('and a count that is ok holds at least what it wanted',
+           aok == false or aok(6) >= aok(7));
 
 ;;; Counts are cumulative: kanji(2230) at N1 means every kanji through
 ;;; N1, so the pool is this level and below rather than this level only.

@@ -1850,3 +1850,75 @@ It cannot catch an error in `zine_width` itself, since the fitting uses the
 same estimate. What it catches is type sized for one language and set in the
 other, which is the thing that happened, and the thing that will happen again
 the next time a string in `ZINE_WORDS` is translated.
+
+### The kanji column, and the one rung the source could not answer
+
+Filling N3, N2 and N1 took three commands and one decision.
+
+Two of the three are rules. `<jlpt>` is the pre-2010 four-level syllabus, and
+its per-level counts sum to the ladder's cumulative numbers exactly: 103,
++181 = 284, +739 = 1023, +1207 = 2230. Nothing was fitted to make that true —
+`graph/ja/ladder.pl` took its counts from the published syllabus and the
+import reads the same field — so old level 1 imported at N1 finishes
+`kanji(2230, read)` to the character, the way N5 and N4 did.
+
+N3 is the rung inserted in 2010 with no old level of its own, and
+`provenance(exit(ja, n3, kanji(_, _), _, _), estimate(community))` has said so
+since the ladder was written. 650 cumulative minus the 284 already taught
+leaves 366 of old level 2's 739 characters to be chosen, and no upstream field
+chooses them. The argument is in [docs/langpop-n3-kanji.md](docs/langpop-n3-kanji.md);
+the short version is that the two available rules disagree about 118
+characters, and the disagreement has a shape:
+
+| | |
+| --- | --- |
+| by grade, then frequency | 雪 雲 湖 湯 酒 船 歯 鼻 血 衣 箱 笑 泣 泳 焼 皿 祭 … |
+| by frequency alone | 党 劇 券 貿 販 警 蔵 脳 療 禁 歳 殺 権 批 論 識 賞 … |
+
+`<freq>` is a *newspaper* rank. Its top of old level 2 reads 政議連対部党内相定選,
+which is honestly what a Japanese newspaper uses most and is not what a
+learner at the bridge level meets. `<grade>` is the year of Japanese school
+in which a character is taught — a published curriculum, written by people
+answering the same question about the same characters with better standing
+than a corpus. So: all of grades 1 to 4, then the most frequent of grade 5
+until the count is met, with frequency breaking ties only inside the one
+school year where the syllabus is silent.
+
+#### A decision belongs in the data, not only in the prose
+
+```prolog
+item(k_96ea, grapheme, ja, n3, kanjidic2(ucs('96ea'), jlpt(2), split(grade_freq, 366))).
+```
+
+`jlpt(2)` is a fact about upstream. `split(grade_freq, 366)` is this file's
+judgment sitting next to it, and it is on both halves of the split because
+one decision made both. The split is `--order`/`--take`/`--skip` rather than a
+checked-in list, so disagreeing with it is one command and not a diff.
+
+#### Four tests, and all four were asserting that content was missing
+
+The import raised four failures and none of them was in the import — the
+fourth time this has happened, and by now the pattern is specific enough to
+name. Every one asserted the *absence* of content:
+
+- `N1 kanji is short` (twice, once in the engine suite and once over the
+  protocol) chose that criterion precisely because it was reliably empty. One
+  of them already carried a comment explaining that counts shrink as content
+  arrives; the comment was right and the row it was attached to was not.
+- `誕 is not an N5 kanji, so nothing requires it` named a character for being
+  absent. 誕 is old level 2 and arrived with N3, at which point the check
+  asserted the opposite of the rule two lines above it.
+- the dump suite's `popmemlim` has now been raised twice by a content import,
+  which is the price of holding whole exports in memory to read them back,
+  and still cheaper than not reading them back.
+
+A test that names a thing for being missing has a shelf life ending on the day
+the project succeeds at its stated goal. The repair in each case was to assert
+the property over whatever is short, absent or thin *now* — plus, where it was
+cheap, the complementary case, because "short means it holds fewer than it
+wanted" and "ok means it holds at least what it wanted" together say the
+comparison runs the right way round, and one row cannot.
+
+`--check` went from 28 seconds to 61 on the way, which is the cycle guard's own
+comment holding: what the cost grows with is the roll-ups and the characters
+rather than the vocabulary, and the characters just went up sevenfold.

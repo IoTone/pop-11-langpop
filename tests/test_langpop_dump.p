@@ -26,7 +26,14 @@ pop11_compile(HERE <> '../dump.p');
 ;;; failure (popmemlim, in conspair under dump_html) says nothing about
 ;;; the exporter: `dump.p --html` on the same graph writes 187 KB and
 ;;; does not come close.  A test harness limit, raised as one.
-8000000 -> popmemlim;
+;;;
+;;; Raised again at 5,061 items, when the kanji column was filled: 103
+;;; characters became 2,230 and 8,000,000 was no longer enough for four
+;;; exports at once.  The number is this suite's appetite and nothing
+;;; else -- it has now been raised twice by a content import and will be
+;;; again, which is the cost of holding whole exports in memory to read
+;;; them back, and still cheaper than not reading them back.
+48000000 -> popmemlim;
 
 find_dir() -> langpop_dir;
 lp_load();

@@ -148,6 +148,9 @@ commands, and takes about a minute:
 ```
 
 That is 1,572 words and 284 characters: N5 and N4 reading in full. The
+characters of every rung above are three more commands — see [Adding content
+from a reference source](#adding-content-from-a-reference-source) — and the
+words above N4 are not written yet. The
 licences and what each command does are under [Adding content from a
 reference source](#adding-content-from-a-reference-source), and
 `./langpop --audit` says what every rung still wants afterwards.
@@ -261,10 +264,10 @@ outside that list is allowed in.
 | `graph/en/a1.pl` | 519 A1 words with Japanese glosses, hand-written | 519 |
 | `graph/en/a2.pl` | the same for A2, whose count is measured over both | 550 |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
-| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 1,806 items (ja); for English, facts only: 1,103 pronunciations, 1,069 frequencies |
+| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 3,752 items (ja): 2,230 kanji and 1,522 words; for English, facts only: 1,103 pronunciations, 1,069 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
 
-1,309 committed items, 3,115 once the imported content is built; 12 ladder
+1,309 committed items, 5,061 once the imported content is built; 12 ladder
 levels, 40 exit criteria, no integrity violations either way. Those are
 the figures `./langpop --check` prints.
 
@@ -855,11 +858,25 @@ whose id is `k_<codepoint>`, and a codepoint is not anybody's opinion.
 tools/fetch-upstream.sh ~/langpop-upstream
 
 # KANJIDIC2 carries the level, so the selection is a RULE.
-# Old level 4 became N5 and old level 3 became N4.
+# Old level 4 became N5, old level 3 became N4 and old level 1 became N1.
 ./langpop import --source kanjidic \
     --file ~/langpop-upstream/kanjidic2.xml --level n5 --jlpt 4
 ./langpop import --source kanjidic \
     --file ~/langpop-upstream/kanjidic2.xml --level n4 --jlpt 3
+./langpop import --source kanjidic \
+    --file ~/langpop-upstream/kanjidic2.xml --level n1 --jlpt 1
+
+# N3 is the rung the 2010 syllabus added with no old level of its own, so
+# old level 2 has to be SPLIT between N3 and N2 -- 366 and 373 characters.
+# The rule is school grade first and newspaper frequency only within a
+# grade, and it is argued in docs/langpop-n3-kanji.md.  Both halves have
+# to be generated together or a character lands at two levels or none.
+./langpop import --source kanjidic \
+    --file ~/langpop-upstream/kanjidic2.xml --level n3 --jlpt 2 \
+    --order grade_freq --take 366
+./langpop import --source kanjidic \
+    --file ~/langpop-upstream/kanjidic2.xml --level n2 --jlpt 2 \
+    --order grade_freq --skip 366
 
 # JMdict does not, so the selection is a PICK LIST
 ./langpop import --source jmdict \
@@ -874,7 +891,7 @@ tools/fetch-upstream.sh ~/langpop-upstream
 
 | Source | Licence | Knows | So the selection is |
 | --- | --- | --- | --- |
-| KANJIDIC2 | CC BY-SA 4.0 | the JLPT level of a character | a **rule** — `--jlpt 4`, `--jlpt 3` |
+| KANJIDIC2 | CC BY-SA 4.0 | the JLPT level of a character, its school grade and its newspaper rank | a **rule** — `--jlpt 4`, `--jlpt 3`, `--jlpt 1`; and a **split** for N3, `--order grade_freq --take 366` |
 | JMdict | CC BY-SA 4.0 | readings and meanings, no level | a **pick list** |
 | CMUdict | 2-clause BSD | how an English word is pronounced | **nothing** — it enriches |
 
@@ -2033,7 +2050,7 @@ content and without it, and the second case is the one that catches an
 assumption about content that happens to be built. `LANGPOP_NO_CONTENT=1`
 holds the generated files back at load time rather than moving them, so the
 two runs differ by a switch and not by the state of the working tree: 617
-checks and 3,115 items with the content, 522 and 1,309 without.
+checks and 5,061 items with the content, 566 and 1,309 without.
 
 One number worth knowing before you read a failing oracle: the scratch
 server runs a 200ms day so that the review ladder actually advances, which
@@ -2076,10 +2093,15 @@ there. `hear` needs a voice installed and the sound already cached. Where
 either is missing, the affected criteria report as unmeasurable rather than
 as zero.
 
-**What the graph is short of.** Content, on almost every rung. `--audit` is
-the list. N5 reading is met; its listening half needs `--audio n5` run once
-with a voice installed. The English A2 word count is the largest gap, and
-the English function words are the largest gap in *coverage*.
+**What the graph is short of.** Words, now, rather than characters. Every
+kanji criterion on the Japanese ladder is met — 103, 284, 650, 1023, 2230 —
+because KANJIDIC2 carries the level and the one rung it does not cover is
+argued in [docs/langpop-n3-kanji.md](docs/langpop-n3-kanji.md). The word
+counts are met through N4 and short from N3 up, and JMdict carries no level,
+so each of those is a hand-written pick list. `--audit` is the list. Every
+listening criterion in both languages needs `--audio` run once with a voice
+installed. The English B1 word count is the largest gap above that, and the
+English function words are the largest gap in *coverage*.
 
 **What the two front ends do not share.** `./langpop` and
 `./langpop client` are the same engine, and `:time` is now in both. The
@@ -2101,6 +2123,7 @@ string.
 | --- | --- |
 | [langpop-function-words.md](docs/langpop-function-words.md) | 33 function words, the only lever on coverage, awaiting marks |
 | [langpop-japanese-tranche.md](docs/langpop-japanese-tranche.md) | how the N5 word rows were argued |
+| [langpop-n3-kanji.md](docs/langpop-n3-kanji.md) | which 366 of old level 2's characters are N3, and why school grade beats newspaper frequency |
 | [langpop-pronunciation.md](docs/langpop-pronunciation.md) | what a Japanese speaker learning English cannot be asked |
 | [langpop-reviews-and-periods.md](docs/langpop-reviews-and-periods.md) | the review intervals and the 28-day period, and which numbers are still arguable |
 | [langpop-production-criteria.md](docs/langpop-production-criteria.md) | should the ladder ask a student to speak, and at what threshold |
