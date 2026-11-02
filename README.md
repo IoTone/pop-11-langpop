@@ -73,6 +73,7 @@ phone app would not have.
 - [Looking at the graph](#looking-at-the-graph)
 - [Commands](#commands)
 - [Repository layout](#repository-layout)
+- [What it costs on disk](#what-it-costs-on-disk)
 - [Limits](#limits)
 
 ---
@@ -160,8 +161,11 @@ reference source](#adding-content-from-a-reference-source), and
 
 **Sound is a separate build**, because it is a few hundred files and it is
 yours: `./langpop --audio n5` renders every N5 word with the system voice
-under `~/.langpop/audio/`. Until it is run, listening questions have nothing
-to play and `--audit` says so rather than asking them.
+under `~/.langpop/audio/`. That rung is 876 files and 20 MB; the whole
+Japanese ladder is 156 MB, and [What it costs on
+disk](#what-it-costs-on-disk) has the rest of the arithmetic. Until it is
+run, listening questions have nothing to play and `--audit` says so rather
+than asking them.
 
 **What to expect at the keyboard.** Being asked a character a day after
 getting it right is the review ladder working, not a bug — the gap widens
@@ -2096,6 +2100,138 @@ not just in a field called `answer`.
 Three checks in the card and dump suites compare **bytes**, because a mangled
 encoding parses perfectly and comes out wrong: a JSON round trip cannot tell
 あ from mojibake, and the glyphs are the content.
+
+
+---
+
+## What it costs on disk
+
+Three separate things take space, and only one of them is large. Every
+figure below is measured on this machine rather than estimated, and the
+method is given so that a different voice can be costed without guessing.
+
+### The graph
+
+The committed column is what is in git; the built column is what an import
+writes into `graph/*/generated/`. Both are text, and a level's total is what
+that rung adds, not a running sum.
+
+| | level | items | committed | built | level total |
+| --- | --- | --- | --- | --- | --- |
+| ja | pre-school | 199 | 26 KB | — | **26 KB** |
+| ja | N5 | 876 | 60 KB | 192 KB | **252 KB** |
+| ja | N4 | 930 | 57 KB | 224 KB | **281 KB** |
+| ja | N3 | 2,832 | 177 KB | 782 KB | **958 KB** |
+| ja | N2 | 373 | — | 126 KB | **126 KB** |
+| ja | N1 | 1,207 | — | 369 KB | **369 KB** |
+| en | pre-school | 41 | 16 KB | 2 KB | **18 KB** |
+| en | A1 | 555 | 57 KB | 70 KB | **126 KB** |
+| en | A2 | 554 | 55 KB | 77 KB | **132 KB** |
+
+Plus 29 KB of `graph/schema.pl`, the two ladders and `graph/resources.pl`,
+which belong to no level. **The whole graph, both languages and every rung
+built, is 2.3 MB** — 2.0 MB of it Japanese, and 1.7 MB of that the product
+of an import rather than something committed. A pick list costs about a
+quarter of what it builds: `graph/ja/picks/n3.pl` is 164 KB of reference keys
+and becomes 659 KB of items, forms and glosses.
+
+### The audio
+
+This is the part that is large, and it is also the part that does not exist
+until a student runs `--audio` — which is deliberate, because the files are
+theirs. One file per item per rate, plus a small JSON sidecar recording what
+was said and by which voice.
+
+| | level | files | this level | cumulative |
+| --- | --- | --- | --- | --- |
+| ja | pre-school | 188 | 2.8 MB | 2.8 MB |
+| ja | N5 | 876 | 20.3 MB | 23.1 MB |
+| ja | N4 | 930 | 24.0 MB | 47.1 MB |
+| ja | N3 | 2,832 | 75.2 MB | 122.3 MB |
+| ja | N2 | 373 | 8.0 MB | 130.3 MB |
+| ja | N1 | 1,207 | 25.7 MB | 156.0 MB |
+| en | pre-school | 82 | 2.0 MB | 2.0 MB |
+| en | A1 | 555 | 13.8 MB | 15.8 MB |
+| en | A2 | 550 | 13.6 MB | 29.4 MB |
+
+So **a Japanese learner who renders every rung needs about 156 MB**, and the
+whole ladder to N3 — which is as far as the words go — is 122 MB. **An
+English test-taker needs about 29 MB** for the three rungs that have
+content. English pre-school is 82 files for 41 items because a contrast's
+drill words are not items: the 13 sound contrasts and 12 written confusions
+carry 58 distinct words between them over 30 `pair/3` rows, and each
+needs saying.
+
+**Each extra rate is another copy.** `--audio n5 --rate slow` writes a
+second file per item beside the first, because a cached file is keyed by
+item, voice *and* rate. Rendering all three rates of every Japanese rung is
+three times the table above, near 470 MB.
+
+### How those numbers were got, and how to redo them for another voice
+
+`~/.langpop/audio.conf` here renders mono 16-bit PCM at 22.05 kHz, which is
+**44,100 bytes of WAV per second of speech** whatever the voice says. The
+rest is how long the voice talks.
+
+For Japanese, measured over the 243 files already in
+`~/.langpop/audio/ja/`, size is linear in the length of the reading:
+
+```
+bytes  =  7,444  +  5,364 x kana        (R2 = 0.92)
+```
+
+which is 0.17 s of lead-in and 0.12 s per kana at Kyoko's `normal` 175 wpm.
+Multiply through the real readings in the graph and the per-level totals
+above come out. A kana is a syllable, so the fit is tight.
+
+For English the same arithmetic does not work — a Latin letter is not a
+syllable, and the regression over 40 words rendered with Samantha at the
+same settings is R2 = 0.48. What is stable is the mean: **25.7 KB a word**,
+between 17.8 KB and 36.7 KB. The English rows use that mean.
+
+To cost a voice of your own, render twenty words with it and take the mean:
+
+```sh
+/usr/bin/say -v <voice> -r 175 -f one-word.txt -o out.wav \
+    --file-format=WAVE --data-format=LEI16@22050
+```
+
+A neural voice at 24 kHz stereo would be roughly three times these numbers;
+an MP3 or Opus pipeline, a tenth. Nothing in the project assumes WAV beyond
+what the configured command happens to write.
+
+### The sources, which are only needed while building
+
+The reference files are not committed and are not needed to run — only to
+import. `tools/fetch-upstream.sh` puts them in `~/langpop-upstream/`:
+
+| | size |
+| --- | --- |
+| `JMdict_e` | 60 MB (10 MB gzipped) |
+| `kanjidic2.xml` | 15 MB (1.4 MB gzipped) |
+| `cmudict.dict` | 3.5 MB |
+| `en_50k.txt`, `ja_full.txt` | 1 MB together |
+
+**91 MB**, archives included, and every byte of it deletable once the
+generated files exist. The repository itself is 9.8 MB with 6.4 MB of that
+git history, so a working tree with every rung built and no reference files
+is about 12 MB before any audio.
+
+### The student's own files
+
+Small enough to ignore, and listed so that nobody has to wonder.
+
+| | measured |
+| --- | --- |
+| a profile (`~/.langpop/<student>.json`) | 3.4 KB |
+| the journal, per answer | 43 bytes |
+| the journal after 196 answers | 8.6 KB |
+| a card (`:card`) | 800 bytes |
+| a sheet or a zine page (`:sheet`, `:zine`) | 11 KB |
+
+A student who answers two hundred questions a day for a year writes about
+3 MB of journal, which is the only file in the project that grows without
+bound — and it grows at one line an answer, in a format a shell can read.
 
 ---
 
