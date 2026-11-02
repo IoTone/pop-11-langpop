@@ -906,7 +906,48 @@ did what the section above predicted, in order:
    client can tell the two apart. No new API was needed for "the next
    one": asking again IS asking for the next one now.
 
-29. **Smaller observations, not yet acted on:** `vocabulary(50, hear)`
+29. **`coverage(reading, 0.95)` cannot be reached by writing word
+   lists, and the first hundred words are worth more than the next
+   thirteen hundred.** The English B1 rung wants 1,383 more askable
+   words, so the pool was built the way the Japanese ones were:
+   `en_50k.txt` minus what the graph teaches, minus the apostrophe
+   halves (`don`, `hasn`, `isn`), minus the subtitle corpus's own stage
+   directions (`bleep`, `groaning`), minus English's inflections --
+   which needed a named table of irregulars, because no suffix rule
+   reaches `been`, `were`, `got`, `made`, `thought`, or the case forms
+   `him`, `her`, `his`. 47,174 candidates, 38,575 with no mechanical
+   doubt against them. Then the arithmetic that matters, measured
+   against the list's own 725 million tokens (2026-11-02):
+
+   | words added | coverage of the corpus |
+   | --- | --- |
+   | what the graph teaches today | 55.2% |
+   | + the first 100 clean candidates | 65.4% |
+   | + the first 200 | 67.2% |
+   | + the first 800 | 70.2% |
+   | + the first 1,383 (B1's whole gap) | 71.5% |
+   | + the first 2,000 | 72.4% |
+
+   The 55.2% is a cross-check: the README already claims 55% from the
+   function-word tranche, measured a different way. The rest says two
+   things. **0.95 is not a vocabulary target.** A Zipf tail means
+   closing the last 24 points needs tens of thousands of words, so the
+   criterion as written cannot be met by curation and should be either
+   restated or dropped -- an owner's call, and the ten arguable numbers
+   in langpop-reviews-and-periods.md are where it belongs. And **the
+   top hundred are worth two thirds of the whole B1 gap**, so whatever
+   is written next should start there: `just`, `now`, `well`, `from`,
+   `back`, `really`, `some`, `too`, `more`, `only`, `because`.
+
+   Which raises the placement question this stops at rather than
+   deciding: those are A1 and A2 words by any CEFR list and by
+   frequency, but the gap that needs them is B1's. Declaring them at B1
+   would mean an A2 student never meets `because`. The 33 function words
+   already in `a1.pl` are the precedent for putting them low, and A1 and
+   A2 are both met on their counts, so adding to either destabilises
+   nothing.
+
+30. **Smaller observations, not yet acted on:** `vocabulary(50, hear)`
    needs the audio build before any run can move it, exactly as
    `--audit` says.
 

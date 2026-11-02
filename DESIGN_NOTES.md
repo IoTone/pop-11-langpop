@@ -2429,3 +2429,54 @@ assignments. The version that stands seeds two outstanding rows with old
 timestamps, takes whatever the plan will give with newer ones, and then
 knows which row is the oldest open one whether the plan gave fourteen items
 or none.
+
+### The English pool, and a criterion that cannot be met by writing lists
+
+B1 wants 1,383 more askable English words, so the pool was built the way
+the Japanese ones were: the frequency list minus what the graph already
+teaches, with the mechanical doubts named in a column rather than left for
+a reader to spot.
+
+The diseases are the same three, in a third dialect. Its tokenizer gives
+`don`, `hasn`, `isn`, `ve`, `re` -- halves of contractions -- and `bleep`,
+`groaning`, `sighs`, which are subtitle stage directions, the corpus's own
+operating manual again. Its proper nouns give michael, george, europe,
+smith. Its register is film and television, so murderer, evidence,
+kidding, goodbye arrive early.
+
+And one that is English's own: the list counts surface forms and the graph
+teaches lemmas, so `works`, `needed`, `watching`, `trees` are not new
+words. Suffix rules catch most of it. They catch none of `been`, `were`,
+`got`, `made`, `thought`, `does`, `done`, or of `him`, `her`, `his`, which
+are `he` and `she` one part of speech over -- so there is a named table of
+irregulars, and without it the clean half of the pool opened with eleven
+rows that were the verbs a learner met at A1.
+
+47,174 candidates; 38,575 with no mechanical doubt against them.
+
+Then the measurement, against the list's own 725 million tokens: what the
+graph teaches covers **55.2%** of the corpus -- which is a cross-check,
+because the README already claims 55% from the function-word tranche,
+arrived at a different way. Adding the first hundred clean candidates
+takes it to **65.4%**. The first two hundred, 67.2%. The whole 1,383-word
+B1 gap, 71.5%. Two thousand words, 72.4%.
+
+So `coverage(reading, 0.95)` cannot be met by writing word lists. Zipf
+decides that, not effort: the last twenty-four points are tens of
+thousands of words, and the criterion as written is a target no amount of
+curation reaches. That belongs with the other arguable numbers rather than
+being quietly worked towards.
+
+And the shape of the curve is the useful part: **the top hundred words are
+worth two thirds of what the entire B1 gap is worth.** `just`, `now`,
+`well`, `from`, `back`, `really`, `some`, `too`, `more`, `only`,
+`because`. Whatever gets written next should start there and not at the
+alphabet.
+
+Which leaves one question this stops at rather than answering, because it
+is a teaching decision and not a measurement: those words are A1 and A2
+by any CEFR list and by frequency, but the gap that needs them is B1's.
+Declaring them at B1 would mean an A2 student never meets `because`. The
+33 function words already in `a1.pl` are the precedent for putting them
+low, and A1 and A2 are both met on their counts, so adding to either
+breaks nothing.
