@@ -1966,3 +1966,121 @@ The pair differ in exactly one thing -- whether the speaker and the
 listener already share the book -- and they deliberately do not require
 each other, since neither is a prerequisite for the other. `no` and `not`
 sit adjacent in `a1.pl` for the same reason.
+
+### The newspaper knew the word; the subtitles knew the speaker
+
+N3 Japanese is the first rung too big to pick a word at a time. 2,236 words
+is not an afternoon's judgment, and a judgment made four thousand times is
+not the same judgment at the end as at the start, so the rung needed a rule.
+
+Both corpora were already in the tree. JMdict carries priority marks, and
+the `nf` bands among them are the Mainichi Shimbun frequency corpus in
+blocks of 500 -- a published ranking, which is exactly the kind of thing
+this project prefers to its own opinion. So the first pool was ordered by
+them, and its opening three hundred words were 議員, 当局, 外相, 安保,
+地検, 議席, 税制, 支局, 書記, 五輪, 日米, 連立, 比例, 定数.
+
+That is Diet reporting. Every word in it is genuinely common and the ranking
+is not wrong about anything; it is answering a question nobody asked. The
+words a bridge-level learner needs -- 友人, 父親, 母親, 理解, 人生, 夕食 --
+were reaching the list only where the *other* corpus happened to rescue
+them.
+
+Reordering by the dialogue list (OpenSubtitles, the same file the English
+side uses for coverage) put those six in the first twenty and pushed the
+Diet down where it belongs. The newspaper marks did not stop being useful;
+they stopped being the order. They are the **gate** -- a word upstream does
+not mark common at all never enters the pool -- and that is the division the
+rung turned out to need: *the newspaper knows the word exists, the subtitles
+know that a person says it, and a bridge-level word is one both of them
+use.*
+
+The same shape as the N3 kanji rule one decision earlier, where school grade
+was the curriculum and `<freq>` was the newspaper. Twice now, when two
+sources disagreed, the right move was not to pick the better source but to
+ask what each one is actually a measurement *of*.
+
+#### A filter that matches nothing looks exactly like a filter with nothing to reject
+
+The pool's mechanical filters are written against JMdict's abbreviations:
+skip `arch`, `vulg`, `uk`; skip an entry whose senses are all `exp` or
+`ctr`; treat `v1` and `adj-i` as verbs. None of them fired, and nothing said
+so.
+
+ElementTree **expands the DTD entities**. `<pos>&v1;</pos>` arrives as the
+text `Ichidan verb`, `&uk;` as `usually written using kana alone`, and every
+test against the short form compares a long string to a two-letter one and
+quietly says no. The pool looked plausible the whole time -- 10,149
+candidates, correctly ranked -- because the filters that *did* work were
+doing the visible work, and the ones that did not were only supposed to
+remove things.
+
+That is the failure mode worth remembering: a filter that silently matches
+nothing is indistinguishable, from the outside, from a filter that found
+nothing to remove. It was caught by a counter ticket in the output -- 出来
+and 面白 still at the top after a rule that should have removed both --
+rather than by any error.
+
+The fix is in the file's own header: JMdict ships its DTD inline, so the
+expansion is reversible, and `abbr()` maps the long text back. 10,149
+candidates became 8,437 the moment the entity table was read: 1,712 words
+the pool had been offering that its own rules had always meant to refuse.
+The single tag doing the most of that work is `uk` -- *usually written using
+kana alone* -- which is the one removal that was never a matter of taste,
+since a word nobody writes in kanji has no reading question to ask.
+
+#### 人間らしい is not a stem of 人間
+
+The stem rule is the one piece of linguistics in the pool builder, and it
+earned its place: the dialogue list counts surface forms, so every 出来る
+was counted as 出来 and every 面白い as 面白, and both arrive at the very top
+of a frequency ranking carrying a verb's weight. A stem is not a word to
+teach. The verb is.
+
+The first version of the rule was: reject the headword if any verb or
+adjective's headword begins with it. It threw out 人間, 女性, 理解 and
+several hundred others, because 人間らしい begins with 人間, 女性らしい with
+女性, and 理解しがたい with 理解. The rule had quietly become *reject any
+noun some adjective is built on*, which is most nouns.
+
+What makes 出来 a stem of 出来る and 人間 not a stem of 人間らしい is the
+**size of the extension**: one verb ending, not a word. So the test is now
+`vk[len(keb):] in TAILS`, with `TAILS` the sixteen okurigana a verb or an
+adjective can end in, and the reading has to extend by the same characters.
+30 stems still got through it, every one with an ending that is not a verb
+ending -- 教え, 始まり, 動き, 読み -- and those were thrown out by hand, one
+line each, with the verb named in the reason.
+
+#### The graph's own inventory is the only honest one
+
+The pool excludes any word the graph already teaches, because minting a
+second id for a word a student has beliefs about splits those beliefs in
+half and nothing downstream can tell. The first draft of that check read
+the `form/3` facts out of `graph/ja/**/*.pl` with a regular expression, and
+学校 came back as the sixth most important word the rung was missing.
+
+`w_gakkou` has been an item since the first week. It is not written as
+`item/5` and `form/3`; it comes out of `starter/4` and `starter_kanji/2`
+rules in `items.pl`, which is how all fifty pre-school starters are
+written. A text scan of the source sees none of them. A second bug was in
+the same two lines -- the generated files put several facts on one line, and
+`re.match` only ever returned the first.
+
+The fix is to ask the graph rather than read it: `./langpop dump --lang ja`
+prints every item with its forms and its level, derived rules included, and
+the pool builder reads that. Which also means the kanji-availability filter
+gets its 650 characters from the same place, so it cannot disagree with the
+import that produced them.
+
+#### The audit got 6.6 times slower for 1.48 times the graph
+
+`./langpop --check` was 28 seconds before the kanji column, 61 after it, and
+402 after these 2,466 words. Items went 5,101 to 7,567. A factor of 1.48 in
+the data for a factor of 6.6 in the time is the signature of something
+quadratic, not something merely large -- the same smell as the `reaches/2`
+blow-up, which the cycle guard's own comment predicted would come back.
+
+It is recorded rather than fixed, which is a deliberate choice and not a
+happy one: the import is correct, the audit's answer is correct, and
+guessing at a Prolog goal's cost without measuring it is how the 288-second
+version got written in the first place.

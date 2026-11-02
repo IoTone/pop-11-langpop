@@ -1,0 +1,75 @@
+% graph/ja/picks/n3.pl -- which words are N3, and who they are.
+%
+% The same arrangement as graph/ja/picks/n5.pl, and that file's header is
+% the one to read first: a pick is an identity, a level and a lookup key,
+% import.p fetches the forms and the glosses from JMdict at build time,
+% and no Japanese that upstream wrote is committed here.
+%
+% WHY THIS RUNG NEEDED A RULE OF ITS OWN.  N5 and N4 are small enough to
+% pick a word at a time.  N3 asks for 3750 cumulative, which is 2236 more
+% than the graph had, and nobody reads four thousand dictionary entries
+% without a principle.  The principle is in docs/langpop-n3-vocabulary.md
+% and it is one sentence: a bridge-level word is one that BOTH corpora
+% use.  JMdict's own priority marks say a word is common; the dialogue
+% frequency list says people say it; a word needs the first to enter the
+% pool at all and the second to be ranked in it.
+%
+% WHAT THAT RULED OUT, AND WHY IT MATTERED.  Ordering by the newspaper
+% marks alone -- JMdict's nf bands, which come from the Mainichi corpus
+% -- put 外相, 安保, 議席, 地検 and 連立 in the first three hundred
+% words of the rung.  That is Diet reporting, not the bridge level, and
+% a learner who meets 議員 before 友人 is being taught somebody else's
+% vocabulary.  Ranking by dialogue instead puts 友人, 父親, 母親, 理解,
+% 人生 and 夕食 where they belong.  The newspaper marks still do real
+% work -- they are the gate -- but they are no longer the order.
+%
+% WHAT WAS MECHANICAL AND WHAT WAS JUDGMENT.  Four filters are rules and
+% ran without me: the headword must be written in kanji the graph
+% teaches at or below N3 (650 characters, so a reading question at this
+% rung is answerable at this rung); the word must not already be in the
+% graph under any form or id; JMdict must mark it common; and the
+% headword must not be a verb or adjective STEM, which the pool is full
+% of because the segmenter counted every 出来る as 出来 and every 面白い
+% as 面白.  A stem is not a word to teach -- the verb is -- and its
+% frequency is the verb's, borrowed.
+%
+% Then @REVIEWED@ survivors were read by hand, in rank order, and
+% @REJECTS@ of them thrown out.  The reasons, in the order they cost the
+% most rows:
+%
+%     241  register   the word is real but belongs to a trade: legal
+%                     offices, military organisation, clinical medicine,
+%                     parliamentary procedure, corporate titles.  A
+%                     subtitle corpus of police and hospital drama is
+%                     generous with 令状 and 皮質.
+%      30  stem       a nominalised verb the mechanical rule missed,
+%                     because its okurigana is not a verb ending: 教え,
+%                     始まり, 動き, 読み.
+%      23  proper     a country, city, island or organisation.  A name
+%                     is not vocabulary; JMnedict is where names live.
+%      15  homophone  two readings of one headword, where the graph
+%                     should teach one of them: 生物 as せいぶつ and not
+%                     なまもの, 寒気 as さむけ and not かんき.
+%      11  rare       a reading or sense upstream marks common that a
+%                     learner will not meet: 客人 as きゃくじん.
+%       7  fragment   half of a longer word: 百聞, 商工, 不老, 先住.
+%       3  alt-read   the formal reading of a word the graph already
+%                     teaches: 今日 is きょう here, not こんにち.
+%
+% The rejections are kept, with their reasons, in n3-rejects.tsv beside
+% this file -- a rejection is a judgment, and a judgment nobody
+% can see is a judgment nobody can argue with.
+%
+% THE COUNT.  @COUNT@ picks here.  With n5.pl's 773, n4.pl's 749 and the
+% fifty at pre-school that is the 3750 the ladder asks for, plus a
+% margin, and the margin is not padding: a pick can fail to be ASKABLE,
+% and the audit counts questions rather than rows.
+%
+% WHAT THIS IS NOT.  Not a published list.  JLPT has published no word
+% list since 2010 and JMdict carries no level marking, so
+% provenance(exit(ja, _, vocabulary(_, _), _, _), estimate(community))
+% in the ladder says what this is: a teaching claim, made by a person,
+% from two corpora that were counting something else.  The boundary is
+% not meaningful at any one word -- the word at rank 2800 is not harder
+% than the word at rank 2801, it is just rarer in the data.
+%

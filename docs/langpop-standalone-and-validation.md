@@ -721,11 +721,44 @@ did what the section above predicted, in order:
    means it holds at least what it wanted" together say the comparison
    runs the right way round, and one row cannot.
 
-20. **Smaller observations, not yet acted on:** a reported-but-never-
+20. **A filter that silently matches nothing looks exactly like a
+   filter with nothing to reject.** The N3 word pool (2026-11-01) is
+   built in Python over JMdict, and ElementTree expands the DTD
+   entities: `<pos>&v1;</pos>` arrives as the text `Ichidan verb` and
+   `&uk;` as `usually written using kana alone`, so every filter
+   written against the abbreviation compared a long string to a
+   two-letter one and said no. Nothing errored. The pool looked
+   plausible -- 10,149 candidates, correctly ranked -- because the
+   filters that worked were doing the visible work and the broken ones
+   were only ever supposed to REMOVE things. What caught it was a word
+   that should not have survived (出来, still at the top after a rule
+   written to drop verb stems), not any message. Reading JMdict's own
+   inline DTD back into a text-to-abbreviation map removed 1,712
+   candidates the pool's rules had always meant to refuse. The general
+   version: a rule whose only effect is subtraction needs a test that
+   names something it must subtract.
+
+21. **An exclusion that reads the source instead of asking the graph
+   will miss whatever the graph derives.** The same pool excludes words
+   already taught, and its first draft scanned `form/3` facts out of
+   `graph/ja/**/*.pl` -- so 学校 came back as the sixth most important
+   word N3 was missing, while `w_gakkou` had been an item since the
+   first week. All fifty pre-school starters come out of `starter/4`
+   and `starter_kanji/2` RULES, which no text scan sees, and the
+   generated files put several facts on one line, which `re.match` only
+   half-reads. `./langpop dump --lang ja` is the inventory; it prints
+   derived items too, and the kanji-availability filter now takes its
+   650 characters from the same place, so it cannot disagree with the
+   import that wrote them.
+
+22. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
-   move it, exactly as `--audit` says.
+   move it, exactly as `--audit` says. And `--check` is now 402 seconds
+   where it was 61: the graph grew by a factor of 1.48 and the audit got
+   6.6 times slower, which is quadratic rather than merely large, and is
+   the next thing to measure.
 
 Soak state: seeds 1-5 (ja) and 1-3 (en) all pass. Not *deterministically*
 -- finding 16 is what that word was hiding. The answers a seed gives are
@@ -756,6 +789,7 @@ later one.
 | 3 | ~~a ceiling report~~ already built: it is `--audit` | nothing to do |
 | 4 | the oracle student over JSON-RPC, and the invariant assertions | `ja preschool` climbs from empty, reproducibly, from a seed |
 | 5 | the okurigana fix and the n5 word tranche to 800 | ~~`ja n5` climbs~~ the reading half does (2026-10-31, 773 picks, 823 words, 804 askable); the listening half wants `--audio n5`. N4's reading half followed (2026-11-01, 749 picks, 1572 words, and its 284 kanji by rule) |
+| 6 | N3 vocabulary, 2,236 words | done (2026-11-01): 2,466 picks, `vocabulary(3750, read)` ok with 226 askable to spare, N2 short by 2,024 where it was 4,486. The rung was too big to pick a word at a time, so it has a rule instead -- JMdict's priority marks gate the pool, the dialogue corpus orders it -- argued in langpop-n3-vocabulary.md. 7,567 items, no violations, `--check` 61s to 402s |
 | 6 | the kanji column, all of it | done (2026-11-01): 650, 1023 and 2230 all read ok. N1 by rule, N3 and N2 by splitting old level 2 on school grade then newspaper frequency -- the one rung the source cannot answer, argued in langpop-n3-kanji.md. 5,061 items, no violations, `--check` 28s to 61s |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
 | 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |
