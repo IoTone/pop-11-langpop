@@ -122,11 +122,18 @@ gate_ok(_, Pre) :- lp_unverifiable(Pre).
 at_or_below(Lang, Lv, Level) :-
     ladder(Lang, N, Lv), ladder(Lang, Top, Level), N =< Top.
 
+% lp_gates_ok/2 is what `all_hold(requires(I, Pre), gate_ok(S, Pre))`
+% said, asked of the edge table instead of the clause store: with I bound
+% that goal still walked all 12,505 requires facts, once per item, and
+% ready/4 considers every item in the language.  One plan was 2.8 seconds
+% at N2 and the engine asks for a plan once per question.  See
+% lp_gates_ok in langpop.p; gate_ok/2 below is still the statement of
+% what "in place" means, and is still what why/1 and the tests read.
 ready(S, Lang, Level, I) :-
     item(I, _, Lang, Lv, _),
     at_or_below(Lang, Lv, Level),
     \+ lp_known(S, I),
-    all_hold(requires(I, Pre), gate_ok(S, Pre)).
+    lp_gates_ok(S, I).
 
 % Everything ready at the student's current level or below, for the
 % Pop-11 driver.

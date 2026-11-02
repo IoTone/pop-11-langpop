@@ -2095,8 +2095,8 @@ the cards, the sheets, the audio and the dump. They pass with the imported
 content and without it, and the second case is the one that catches an
 assumption about content that happens to be built. `LANGPOP_NO_CONTENT=1`
 holds the generated files back at load time rather than moving them, so the
-two runs differ by a switch and not by the state of the working tree: 617
-checks and 5,097 items with the content, 567 and 1,342 without.
+two runs differ by a switch and not by the state of the working tree: 679
+checks and 9,741 items with the content, 581 and 1,342 without.
 
 One number worth knowing before you read a failing oracle: the scratch
 server runs a 200ms day so that the review ladder actually advances, which

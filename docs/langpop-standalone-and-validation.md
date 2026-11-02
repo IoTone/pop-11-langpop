@@ -867,7 +867,26 @@ did what the section above predicted, in order:
    it is not worth an upstream dependency, so it is recorded here with
    its recipe rather than wired in.
 
-27. **Smaller observations, not yet acted on:** a reported-but-never-
+27. **The same unindexed lookup, a third time, and this one was in
+   front of the student.** Finding 24 fixed `--check`; measuring the N2
+   content (2026-11-02) found the identical pattern in `lp_plan()`,
+   which the engine calls once per QUESTION. `ready/4` ended in
+   `all_hold(requires(I, Pre), gate_ok(S, Pre))`, so for each of 9,741
+   items it scanned all 12,505 `requires` facts. Per rung: 0.02 s at
+   pre-school, 0.03 at N5, 0.11 at N4, **1.01 at N3 and 2.79 at N2** --
+   three seconds of waiting between questions, growing with every
+   tranche of content (it was about 0.3 s before the N3 words, and N1
+   would have made it six). `lp_gates_ok/2` asks the edge property that
+   `lp_why` already reads -- an item has two or three prerequisites --
+   and says what `gate_ok/2`'s two clauses say, in their order.
+   **2.79 s to 0.01 s, flat across every rung**, same check counts in
+   both passes. The rule for this engine, now three for three: a Prolog
+   goal whose first argument is bound is a full scan, so any such goal
+   inside a loop over the graph is quadratic in the content. The ones
+   left are in `--audit`, which runs them once per criterion rather than
+   once per item.
+
+28. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can

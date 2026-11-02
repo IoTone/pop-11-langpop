@@ -2336,3 +2336,48 @@ holds above the N2 line, specialist tail and all: 6,800 rows read to admit
 溶媒 and 砲台 along with 矛盾 and 衝撃. That is a decision about what N1
 MEANS, which is the owner's, and it is a better use of an hour than the
 first three hundred rows would have been.
+
+### The same lookup, this time in front of the student
+
+`--check` was 402 seconds because a Prolog goal with its first argument
+bound still walks every clause of the predicate (finding 24). That was a
+report nobody runs twice a day. Measuring the N2 content turned up the same
+thing in the one place it is not an inconvenience: **`lp_plan()`, which the
+engine calls once per question.**
+
+Per rung, before:
+
+```
+ja pre-school  0.02 s        ja N3  1.01 s
+ja N5          0.03 s        ja N2  2.79 s
+ja N4          0.11 s        en A2  1.25 s
+```
+
+A student at N2 waited nearly three seconds for every question, and the
+pre-school number is only small because `at_or_below` keeps 199 items in
+scope. The cost is (items at or below the student's rung) x (requires
+facts), both of which grow with every tranche of content, so this was
+always going to arrive: it was 0.3 s before the N3 words and nobody
+noticed, and N1 would have made it six.
+
+The goal was `all_hold(requires(I, Pre), gate_ok(S, Pre))` -- for each of
+9,741 items, a scan of 12,505 requires facts. The edges are already in a
+Pop-11 property that `lp_why` and `lp_infer` read, and an item has two or
+three of them. `lp_gates_ok/2` walks that instead and says exactly what the
+two clauses of `gate_ok/2` say, in the same order. **2.79 s to 0.01 s, and
+flat across every rung** -- which is the part that matters, because flat
+means the next tranche does not bring it back.
+
+`gate_ok/2` stays in `schema.pl`. It is still the statement of what "in
+place" means, `why/1` still reads it, and the test suite still asserts
+through it; what moved is where `ready/4` does the lookup. Both passes
+green, with the same check counts as before the change.
+
+The lesson is now three for three, so it is worth stating as a rule for
+this engine rather than as three anecdotes: **a Prolog goal whose first
+argument is bound is a full scan, so any such goal inside a loop over the
+graph is quadratic in the content.** `reaches/2` was one, the three
+violation clauses were another, and `ready/4` was the third and the only
+one a student could feel. The remaining per-item scans are in `--audit`'s
+`skill_leaf/2` and `criterion_item/2`, which run once per criterion rather
+than once per item, and the audit is a second and a half.

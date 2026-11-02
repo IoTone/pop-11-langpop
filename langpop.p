@@ -778,6 +778,29 @@ define lp_edges_of(item) -> es;
     lp_edges(item) -> es;
 enddefine;
 
+;;; EVERY PREREQUISITE OF AN ITEM IN PLACE, which is ready/4's last goal
+;;; and was the slowest thing a student ever waited for.
+;;;
+;;; It used to be all_hold(requires(I, Pre), gate_ok(S, Pre)) in
+;;; schema.pl, and Poplog's Prolog does not index clause heads: with I
+;;; bound, requires(I, Pre) still walks all 12,505 requires facts, once
+;;; per item, on every call.  ready/4 considers every item in the
+;;; language, so one plan cost 9,741 x 12,505 unifications -- 2.8 seconds
+;;; at N2, where it had been 0.03 at N5, and the engine asks for a plan
+;;; once per QUESTION.  Measured per rung: 0.02, 0.03, 0.11, 1.01, 2.79.
+;;;
+;;; The edge table is the same one lp_why and lp_infer already read, and
+;;; the walk is over an item's own two or three prerequisites.  What the
+;;; two clauses of gate_ok/2 say is said here instead, in the same order:
+;;; mastered, or else nothing can check it.
+define :prolog lp_gates_ok/2(s, i, contn);
+    lvars s, i, contn, pre;
+    for pre in lp_edges_of(prolog_deref(i)) do
+        returnunless(lp_mastered(pre) or lp_ungateable(pre));
+    endfor;
+    chain(contn);
+enddefine;
+
 ;;; Is the prerequisite WRITTEN INSIDE the item?
 ;;;
 ;;; This is what decides whether a correct answer says anything about a
