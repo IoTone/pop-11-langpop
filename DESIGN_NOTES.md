@@ -2075,7 +2075,7 @@ import that produced them.
 #### The audit got 6.6 times slower for 1.48 times the graph
 
 `./langpop --check` was 28 seconds before the kanji column, 61 after it, and
-402 after these 2,466 words. Items went 5,101 to 7,567. A factor of 1.48 in
+402 after these 2,464 words. Items went 5,101 to 7,565. A factor of 1.48 in
 the data for a factor of 6.6 in the time is the signature of something
 quadratic, not something merely large -- the same smell as the `reaches/2`
 blow-up, which the cycle guard's own comment predicted would come back.
@@ -2084,3 +2084,62 @@ It is recorded rather than fixed, which is a deliberate choice and not a
 happy one: the import is correct, the audit's answer is correct, and
 guessing at a Prolog goal's cost without measuring it is how the 288-second
 version got written in the first place.
+
+#### A margin that absorbs exactly four items
+
+The day the N3 words went in, the audit said 4,038 words have and 3,976
+askable, and I wrote in `docs/langpop-n3-vocabulary.md` that four of the
+2,466 picks are not askable for `read`, *which is what the margin is for*.
+The margin is real and the sentence was true. It was also a bug describing
+itself, and I filed it as an accounting note.
+
+The four were 味方, 無茶, 心地 and 日和. JMdict tags all four `ateji` --
+kanji chosen for sound and not for sense — and `import.p` has refused since
+N5 to teach a tagged spelling, which is the rule that keeps 珈琲 off a
+beginner's コーヒー card. So the importer emitted no kanji form, and four
+Japanese words arrived written in kana at the one rung whose entire
+selection rule is *written in kanji the student already has*. A reading
+question holds one form up and asks for another. With one form there is no
+question, and nothing in the project said that a kana-only N3 word is a
+contradiction in terms.
+
+`tools/draft-picks.py` had a filter for exactly those tags, from the first
+draft. It compared JMdict's short codes to text ElementTree had already
+expanded — `&ateji;` arrives as `ateji (phonetic) reading` — and so
+matched nothing, which is the third time that one bug has been found in this
+file. The first two were caught by a word that should not have survived.
+This one was caught by a number I had explained.
+
+Fixing it moved the hand-reviewed boundary by four rows, which is the part
+worth saying out loud: the pool is a ranking, the review went 2,800 deep,
+and removing four candidates pulls four more in at the bottom. 初回, 格安
+and 自伝 are picks and 有線 is a reject (telecoms), and バラ色, which was
+in the window all along, is a reject too — its kanji spelling is 薔薇色 and
+this rung does not teach 薔 or 薇, so the headword JMdict leads with is
+バラ色 and there is no reading exercise in it either. 2,464 picks, 336
+rejections, and the two together still account for every one of the 2,800
+rows that was read.
+
+#### A test that could not have failed
+
+Writing the check that would have caught those four turned up a second one
+of the same shape, in the test suite rather than the pool. `no two English
+items of one kind share a spelling` has been green since A2. It builds its
+key by concatenating the spelling, a slash and the kind — a fresh string
+every iteration — and a Pop-11 property compares keys with `==`. Equal
+strings are not the same string. Every lookup missed, every iteration stored
+a key nothing would ever find again, and the check would have stayed green
+if every English word in the graph had been spelled `service`.
+
+`import.p` knows this. It is why its own lookup tables are keyed by words,
+and its comment says so in as many words: *a property compares its keys with
+== , so two equal strings are two different keys and every single lookup
+missed*. That was written about this exact failure, one file over, and did
+not reach the test that needed it. Both checks key on `consword` now, and
+the new Japanese one — no two words share a kanji spelling, 3,840 forms in
+one pass — was written that way from the start.
+
+Each of them also ends with a lookup of a key its own loop has certainly
+stored: `people/word` must come back `e_people`, 人間 must come back
+`w_ningen`. One line, and it is the difference between a check that found
+nothing and a check that cannot find anything.

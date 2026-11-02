@@ -751,7 +751,45 @@ did what the section above predicted, in order:
    650 characters from the same place, so it cannot disagree with the
    import that wrote them.
 
-22. **Smaller observations, not yet acted on:** a reported-but-never-
+22. **The same expansion bit a third time, in the filter whose only job
+   was to agree with another program.** The N3 pool refuses the spellings
+   JMdict does not recommend -- `ateji`, `rK`, `oK`, `iK`, `sK` --
+   because `import.p` refuses to TEACH them, and the two rules have to
+   say the same thing or a pick arrives as something other than what it
+   claimed. That filter was the one place `abbr()` was not applied
+   (finding 20), so it matched nothing, and four phonetic borrowings
+   walked into the rung: 味方, 無茶, 心地, 日和. The importer then did
+   exactly what it promises -- no kanji form for a tagged spelling -- so
+   four Japanese words arrived written in kana at the rung whose entire
+   selection rule is *written in kanji the student has*, with no reading
+   question at all. **And the audit said so, in a number I explained
+   instead of chasing:** "four of the 2,466 picks are not askable for
+   `read`, which is what the margin is for" is a sentence I wrote into
+   `docs/langpop-n3-vocabulary.md` the same day. A margin that absorbs
+   exactly four items is four items that should not be there. Fixed with
+   one `abbr()` call and the test the rule always needed: every N3 word
+   has a kanji form and a reading.
+
+23. **A test that cannot fail passes.** `tests/test_langpop.p` has
+   asserted since A2 that no two English items of one kind share a
+   spelling -- the check written the day `service` and `excited` turned
+   up in `a2.pl` while `items.pl` already held both as katakana traps.
+   It built its key by concatenating strings, and a Pop-11 property
+   compares keys with `==`, so every iteration made a fresh string, no
+   lookup ever hit, and the check could not have failed if every English
+   word in the graph had been spelled the same. `import.p` had learned
+   this exact lesson about its own lookup tables and written it in a
+   comment -- *keyed by WORDS and not by strings... every single lookup
+   missed* -- and the lesson did not travel one file over. The keys are
+   `consword`ed now, and the new Japanese kanji-spelling check was
+   written that way from the start, and both now end with a lookup of a
+   key the loop has certainly stored -- `people/word` is `e_people`,
+   人間 is `w_ningen` -- which is the whole fixture and costs one line.
+   The general version: a test that reports an empty list of problems
+   should also show that it can find one, or all it tests is that
+   iteration terminates.
+
+24. **Smaller observations, not yet acted on:** a reported-but-never-
    masterable item (a pattern at `TIER2_CAP`) is re-assigned on every
    `assign` call, with no way for a client to ask for the *next* one;
    and `vocabulary(50, hear)` needs the audio build before any run can
@@ -789,7 +827,7 @@ later one.
 | 3 | ~~a ceiling report~~ already built: it is `--audit` | nothing to do |
 | 4 | the oracle student over JSON-RPC, and the invariant assertions | `ja preschool` climbs from empty, reproducibly, from a seed |
 | 5 | the okurigana fix and the n5 word tranche to 800 | ~~`ja n5` climbs~~ the reading half does (2026-10-31, 773 picks, 823 words, 804 askable); the listening half wants `--audio n5`. N4's reading half followed (2026-11-01, 749 picks, 1572 words, and its 284 kanji by rule) |
-| 6 | N3 vocabulary, 2,236 words | done (2026-11-01): 2,466 picks, `vocabulary(3750, read)` ok with 226 askable to spare, N2 short by 2,024 where it was 4,486. The rung was too big to pick a word at a time, so it has a rule instead -- JMdict's priority marks gate the pool, the dialogue corpus orders it -- argued in langpop-n3-vocabulary.md. 7,567 items, no violations, `--check` 61s to 402s |
+| 6 | N3 vocabulary, 2,236 words | done (2026-11-01): 2,464 picks, `vocabulary(3750, read)` ok with 228 askable to spare, N2 short by 2,022 where it was 4,486. The rung was too big to pick a word at a time, so it has a rule instead -- JMdict's priority marks gate the pool, the dialogue corpus orders it -- argued in langpop-n3-vocabulary.md. 7,565 items, no violations, `--check` 61s to 402s. Four picks were withdrawn the next day as findings 22 and 23 -- ateji spellings the pool's own filter had always meant to refuse, and the two property checks that now say so |
 | 6 | the kanji column, all of it | done (2026-11-01): 650, 1023 and 2230 all read ok. N1 by rule, N3 and N2 by splitting old level 2 on school grade then newspaper frequency -- the one rung the source cannot answer, argued in langpop-n3-kanji.md. 5,061 items, no violations, `--check` 28s to 61s |
 | 6 | the model harness: adversarial suite and sampled chat turns | the suite runs in CI-time and its failures are transcripts |
 | 7 | English: the frequency corpus, the coverage criteria, the TOEIC band table | ~~`en a1` climbs~~ it does (2026-10-31, 519 words); `coverage` measures something real -- 13.57% of 95%, and the function-word queue is what moves it |

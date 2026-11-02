@@ -332,3 +332,5 @@ w_aiba	register	horsemanship
 w_hyakka	fragment	百科 wants 事典 to be a word
 w_kokkou	register	diplomacy
 w_ryounin	register	formal and legal
+w_barairo	orthography	the kanji spelling is 薔薇色, which N3 does not teach
+w_yuusen	register	telecoms

@@ -23,21 +23,33 @@
 % 人生 and 夕食 where they belong.  The newspaper marks still do real
 % work -- they are the gate -- but they are no longer the order.
 %
-% WHAT WAS MECHANICAL AND WHAT WAS JUDGMENT.  Four filters are rules and
+% WHAT WAS MECHANICAL AND WHAT WAS JUDGMENT.  Five filters are rules and
 % ran without me: the headword must be written in kanji the graph
 % teaches at or below N3 (650 characters, so a reading question at this
 % rung is answerable at this rung); the word must not already be in the
-% graph under any form or id; JMdict must mark it common; and the
-% headword must not be a verb or adjective STEM, which the pool is full
-% of because the segmenter counted every 出来る as 出来 and every 面白い
-% as 面白.  A stem is not a word to teach -- the verb is -- and its
-% frequency is the verb's, borrowed.
+% graph under any form or id; JMdict must mark it common; the headword
+% must not be a verb or adjective STEM, which the pool is full of
+% because the segmenter counted every 出来る as 出来 and every 面白い as
+% 面白 -- a stem is not a word to teach, the verb is, and its frequency
+% is the verb's, borrowed; and the spelling must be one upstream
+% recommends, which means NOT tagged ateji, rarely used, out-dated,
+% irregular or search-only.
+%
+% That last filter is import.p's rule as much as this file's, and the
+% two have to agree.  The importer refuses to teach a tagged spelling,
+% so a pick whose only kanji spelling is tagged arrives as a word
+% written in kana with no reading question at all.  Four did -- 味方,
+% 無茶, 心地 and 日和, phonetic borrowings every one by JMdict's
+% reckoning -- because this file's filter was written against the short
+% tag codes and read the expanded text, and so matched nothing.  The
+% test suite now asserts what it was supposed to guarantee: every N3
+% word has a kanji form and a reading.
 %
 % Then 2800 survivors were read by hand, in rank order, and
-% 334 of them thrown out.  The reasons, in the order they cost the
+% 336 of them thrown out.  The reasons, in the order they cost the
 % most rows:
 %
-%     241  register   the word is real but belongs to a trade: legal
+%     242  register   the word is real but belongs to a trade: legal
 %                     offices, military organisation, clinical medicine,
 %                     parliamentary procedure, corporate titles.  A
 %                     subtitle corpus of police and hospital drama is
@@ -60,10 +72,16 @@
 % this file -- a rejection is a judgment, and a judgment nobody
 % can see is a judgment nobody can argue with.
 %
-% THE COUNT.  2466 picks here.  With n5.pl's 773, n4.pl's 749 and the
+% THE COUNT.  2464 picks here.  With n5.pl's 773, n4.pl's 749 and the
 % fifty at pre-school that is the 3750 the ladder asks for, plus a
-% margin, and the margin is not padding: a pick can fail to be ASKABLE,
-% and the audit counts questions rather than rows.
+% margin, because a pick can fail to be ASKABLE and the audit counts
+% questions rather than rows.
+%
+% The margin is also the place a bug hides.  The four ateji picks above
+% showed up as exactly four unaskable rows, which is small enough to
+% write off as what a margin is for -- and that is what happened for a
+% day.  A margin explains a gap it did not cause; a gap it did cause is
+% four picks that should not be there.
 %
 % WHAT THIS IS NOT.  Not a published list.  JLPT has published no word
 % list since 2010 and JMdict carries no level marking, so
@@ -145,7 +163,6 @@ pick(w_shidai,          ja, n3, word, jmdict_kanji('次第')).
 pick(w_inai,            ja, n3, word, jmdict_kanji('以内')).
 pick(w_ouji,            ja, n3, word, jmdict_kanji('王子')).
 pick(w_doui,            ja, n3, word, jmdict_kanji('同意')).
-pick(w_mikata,          ja, n3, word, jmdict_kanji('味方')).
 pick(w_isshou,          ja, n3, word, jmdict_kanji('一生')).
 pick(w_houkou,          ja, n3, word, jmdict_kanji('方向')).
 pick(w_shinkei,         ja, n3, word, jmdict_kanji('神経')).
@@ -608,7 +625,6 @@ pick(w_kumiai,          ja, n3, word, jmdict_kanji('組合')).
 pick(w_ikinokori,       ja, n3, word, jmdict_kanji('生き残り')).
 pick(w_kiraku,          ja, n3, word, jmdict_kanji('気楽')).
 pick(w_honshin,         ja, n3, word, jmdict_kanji('本心')).
-pick(w_mucha,           ja, n3, word, jmdict_kanji('無茶')).
 pick(w_chiteki,         ja, n3, word, jmdict_kanji('知的')).
 pick(w_seiritsu,        ja, n3, word, jmdict_kanji('成立')).
 pick(w_sentou,          ja, n3, word, jmdict_kanji('先頭')).
@@ -919,7 +935,6 @@ pick(w_gehin,           ja, n3, word, jmdict_kanji('下品')).
 pick(w_kaika,           ja, n3, word, jmdict_kanji('階下')).
 pick(w_kouhan,          ja, n3, word, jmdict_kanji('後半')).
 pick(w_tokai,           ja, n3, word, jmdict_kanji('都会')).
-pick(w_kokochi,         ja, n3, word, jmdict('1360820')).  % ここち feeling; sensation; mood
 pick(w_kannen,          ja, n3, word, jmdict_kanji('観念')).
 pick(w_muchi,           ja, n3, word, jmdict_kanji('無知')).
 pick(w_kidori,          ja, n3, word, jmdict_kanji('気取り')).
@@ -1957,7 +1972,6 @@ pick(w_kakubetsu,       ja, n3, word, jmdict_kanji('格別')).
 pick(w_iroke,           ja, n3, word, jmdict_kanji('色気')).
 pick(w_keiryou,         ja, n3, word, jmdict_kanji('計量')).
 pick(w_asobiba,         ja, n3, word, jmdict_kanji('遊び場')).
-pick(w_barairo,         ja, n3, word, jmdict_kanji('バラ色')).
 pick(w_kyoushoku,       ja, n3, word, jmdict_kanji('教職')).
 pick(w_buntsuu,         ja, n3, word, jmdict_kanji('文通')).
 pick(w_okimono,         ja, n3, word, jmdict_kanji('置物')).
@@ -2003,7 +2017,6 @@ pick(w_youyaku,         ja, n3, word, jmdict_kanji('要約')).
 pick(w_juubyou,         ja, n3, word, jmdict_kanji('重病')).
 pick(w_nisan,           ja, n3, word, jmdict_kanji('二三')).
 pick(w_dasan,           ja, n3, word, jmdict_kanji('打算')).
-pick(w_hiyori,          ja, n3, word, jmdict('1464950')).  % ひより weather; climatic conditions; fine weather
 pick(w_otte,            ja, n3, word, jmdict_kanji('追っ手')).
 pick(w_imadoki,         ja, n3, word, jmdict('1289180')).  % いまどき these days; nowadays; today
 pick(w_chokketsu,       ja, n3, word, jmdict_kanji('直結')).
@@ -2539,3 +2552,6 @@ pick(w_shuuseki,        ja, n3, word, jmdict_kanji('集積')).
 pick(w_kugiri,          ja, n3, word, jmdict_kanji('区切り')).
 pick(w_seigou,          ja, n3, word, jmdict_kanji('整合')).
 pick(w_honba,           ja, n3, word, jmdict_kanji('本場')).
+pick(w_shokai,          ja, n3, word, jmdict_kanji('初回')).
+pick(w_kakuyasu,        ja, n3, word, jmdict_kanji('格安')).
+pick(w_jiden,           ja, n3, word, jmdict_kanji('自伝')).

@@ -144,7 +144,14 @@ for ev, el in ET.iterparse(UP + '/JMdict_e', events=('end',)):
     seq = el.findtext('ent_seq')
     kebs = []
     for k in el.findall('k_ele'):
-        if {t.text for t in k.findall('ke_inf')} & SKIP_KTAG:
+        # abbr() HERE TOO.  This filter was written against the short
+        # codes and read the expanded text, so it matched nothing and
+        # the ateji spellings walked in: JMdict calls 味方, 無茶, 心地
+        # and 日和 phonetic borrowings, import.p refuses to teach a
+        # tagged spelling, and the four arrived as kana-only items with
+        # no reading question at all.  The pool must refuse exactly
+        # what the importer refuses -- see import.p's RARE_KANJI.
+        if abbr(t.text for t in k.findall('ke_inf')) & SKIP_KTAG:
             continue
         kebs.append((k.findtext('keb'), {p.text for p in k.findall('ke_pri')}))
     rebs = [(r.findtext('reb'), {p.text for p in r.findall('re_pri')},

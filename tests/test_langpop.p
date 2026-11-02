@@ -67,10 +67,26 @@ for ii in lp_items do
     nextunless(ff);
     ;;; sys_>< first: lp_form_of hands back a WORD, and <> on a word is
     ;;; ILLEGAL ARGUMENTS FOR <>, which is this project's oldest trap.
-    (ff sys_>< '') <> '/' <> (lp_kind(ii) sys_>< '') -> ff;
+    ;;;
+    ;;; And consword at the end, which is the trap one layer down.  A
+    ;;; property made by newproperty compares its keys with == , so two
+    ;;; equal STRINGS are two different keys: this test built a fresh
+    ;;; string every iteration, every lookup missed, and the check could
+    ;;; not have failed if every English word in the graph had been
+    ;;; spelled `service`.  Words are interned, so equal words are the
+    ;;; same word -- import.p learned this about its own lookup tables
+    ;;; and the lesson did not reach here.
+    consword((ff sys_>< '') <> '/' <> (lp_kind(ii) sys_>< '')) -> ff;
     if enform(ff) then fclash <> [^ff] -> fclash else ii -> enform(ff) endif;
 endfor;
 check('no two English items of one kind share a spelling', fclash, []);
+
+;;; AND THE CHECK ABOVE CAN FAIL, which is not a tautology: the version
+;;; of it that stood here for two weeks could not.  One lookup of a key
+;;; the loop has certainly stored is the whole fixture.
+check('a spelling already stored is found again, so that check could '
+      <> 'have failed',
+      enform(consword('people/word')), "e_people");
 
 check('ja ladder', lp_levels("ja"), [preschool n5 n4 n3 n2 n1]);
 check('en ladder', lp_levels("en"), [preschool a1 a2 b1 b2 c1]);
@@ -1456,6 +1472,60 @@ if lp_ilang("k_65e5") then
     check_true('and so does the shorter spelling', member('tanjobi', wans));
 else
     printf(';;; imported content not built -- import probes not checked\n');
+endif;
+
+;;; WHAT THE N3 RULE PROMISED.  A reading question holds one form up and
+;;; asks for another, so a word needs two.  At N5 a word may honestly
+;;; have one -- はい is written はい -- but every N3 pick was chosen BY a
+;;; rule that said its headword is kanji the student already has, so a
+;;; word at this rung with no kanji form is a pick that did not do what
+;;; it claimed.  Four were: JMdict tags 味方, 無茶, 心地 and 日和 as
+;;; ateji, import.p will not teach a tagged spelling (rightly -- it is
+;;; the rule that keeps 珈琲 off a beginner's card), and the pool's
+;;; filter for those same tags compared JMdict's short codes against the
+;;; expanded entity text and so matched nothing.  They arrived as
+;;; kana-only words, the allowance above let them through as such, and
+;;; nothing anywhere said that a kana-only N3 word is a contradiction.
+lvars n3n = 0, n3bad = [], i3;
+for i3 in lp_items do
+    nextunless(lp_ilang(i3) == "ja" and lp_kind(i3) == "word"
+               and lp_ilevel(i3) == "n3");
+    n3n fi_+ 1 -> n3n;
+    unless lp_form_of(i3, "kanji") and lp_form_of(i3, "hiragana") then
+        n3bad <> [^i3] -> n3bad
+    endunless;
+endfor;
+if n3n > 0 then
+    check_true('the N3 words are built', n3n > 2000);
+    check('and every one has a kanji form and a reading', n3bad, []);
+else
+    printf(';;; imported content not built -- N3 forms not checked\n');
+endif;
+
+;;; AND THE INVARIANT THE WHOLE POOL EXISTS TO PROTECT.  Two items
+;;; presenting one spelling are two sets of beliefs about one word: a
+;;; student who has answered 人間 correctly is asked it again tomorrow
+;;; as a word they have never seen.  import.p refuses a pick whose form
+;;; the graph already holds and draft-picks.py refuses to offer one;
+;;; this says the refusals worked, for every pair at once, in one pass
+;;; rather than four thousand squared comparisons.
+lvars kform = newproperty([], 8192, false, "perm"), kclash = [], kf, i4;
+for i4 in lp_items do
+    nextunless(lp_ilang(i4) == "ja" and lp_kind(i4) == "word");
+    lp_form_of(i4, "kanji") -> kf;
+    nextunless(kf);
+    if kform(kf) then kclash <> [^kf] -> kclash else i4 -> kform(kf) endif;
+endfor;
+check('no two Japanese words share a kanji spelling', kclash, []);
+
+;;; Same fixture, same reason.  Without the imported content there is no
+;;; Japanese word with a kanji form at all, and then the check above has
+;;; nothing to say rather than something false.
+if lp_form_of("w_ningen", "kanji") then
+    check('a kanji spelling already stored is found again',
+          kform(lp_form_of("w_ningen", "kanji")), "w_ningen")
+else
+    printf(';;; imported content not built -- kanji clash fixture skipped\n')
 endif;
 
 ;;; Two skills, two strictnesses, and the difference is deliberate: がっこう

@@ -151,7 +151,7 @@ commands, and takes about a minute:
 ./langpop import --source jmdict --file JMdict_e --picks graph/ja/picks/n3.pl
 ```
 
-That is 4,038 words and 650 characters: N5, N4 and N3 reading in full. The
+That is 4,036 words and 650 characters: N5, N4 and N3 reading in full. The
 characters of the two rungs above are two more commands — see [Adding content
 from a reference source](#adding-content-from-a-reference-source) — and the
 words above N3 are not written yet. The
@@ -266,17 +266,17 @@ outside that list is allowed in.
 | `graph/ja/items.pl` | 50 starter words, kana-only, 3 sentence patterns | 53 |
 | `graph/ja/picks/n5.pl` | which words are N5, by reference key — the curation | 773 picks |
 | `graph/ja/picks/n4.pl` | the same for N4, whose count is measured over both | 749 picks |
-| `graph/ja/picks/n3.pl` | the same for N3, where the rung was too big to pick a word at a time and needed a rule | 2,466 picks |
-| `graph/ja/picks/n3-rejects.tsv` | what the N3 review threw out, with a reason for each | 334 rows |
+| `graph/ja/picks/n3.pl` | the same for N3, where the rung was too big to pick a word at a time and needed a rule | 2,464 picks |
+| `graph/ja/picks/n3-rejects.tsv` | what the N3 review threw out, with a reason for each | 336 rows |
 | `graph/en/ladder.pl` | pre-school → A1 → C1, CEFR bands and section floors | 6 levels |
 | `graph/en/items.pl` | 13 sound contrasts, 12 loanword traps, 12 written confusions | 40 |
 | `graph/en/a1.pl` | 552 A1 words with Japanese glosses, hand-written — 519 content words and the 33 function words that carry the corpus | 552 |
 | `graph/en/a2.pl` | the same for A2, whose count is measured over both, plus 4 grammar patterns | 550 words, 4 patterns |
 | `graph/resources.pl` | the catalogue: URLs and check dates, never content | 9 |
-| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 6,218 items (ja): 2,230 kanji and 3,988 words; for English, facts only: 1,103 pronunciations, 1,069 frequencies |
+| `graph/*/generated/*.pl` | content imported from reference sources; a build product, never committed | 6,216 items (ja): 2,230 kanji and 3,986 words; for English, facts only: 1,103 pronunciations, 1,069 frequencies |
 | `viewer/page.html` | the curator's view of all of it, filled by `dump.p` | — |
 
-1,342 committed items, 7,567 once the imported content is built; 12 ladder
+1,342 committed items, 7,565 once the imported content is built; 12 ladder
 levels, 40 exit criteria, no integrity violations either way. Those are
 the figures `./langpop --check` prints.
 
@@ -704,11 +704,12 @@ that both corpora use*. JMdict's priority marks say a word is common and
 gate the pool; the dialogue frequency list says people say it and orders it.
 Ordering by the newspaper marks instead put 外相, 安保 and 議席 in the
 rung's first three hundred words, which is Diet reporting rather than the
-bridge level. Four filters then ran as rules -- the kanji must be taught at
+bridge level. Five filters then ran as rules -- the kanji must be taught at
 or below N3, the word must not already be in the graph, upstream must mark
-it common, and it must not be a verb stem -- and 2,800 survivors were read
-by hand, of which 334 were thrown out with a reason recorded for each in
-`graph/ja/picks/n3-rejects.tsv`. The whole argument, including the parts
+it common, it must not be a verb stem, and its spelling must be one
+upstream recommends rather than one JMdict tags as a phonetic borrowing or
+a rarity -- and 2,800 survivors were read by hand, of which 336 were thrown
+out with a reason recorded for each in `graph/ja/picks/n3-rejects.tsv`. The whole argument, including the parts
 that are not defensible, is in
 [docs/langpop-n3-vocabulary.md](docs/langpop-n3-vocabulary.md). The
 characters needed no curation except for the one rung KANJIDIC2 cannot
@@ -2121,7 +2122,7 @@ that rung adds, not a running sum.
 | ja | pre-school | 199 | 26 KB | — | **26 KB** |
 | ja | N5 | 876 | 60 KB | 192 KB | **252 KB** |
 | ja | N4 | 930 | 57 KB | 224 KB | **281 KB** |
-| ja | N3 | 2,832 | 177 KB | 782 KB | **958 KB** |
+| ja | N3 | 2,830 | 177 KB | 782 KB | **958 KB** |
 | ja | N2 | 373 | — | 126 KB | **126 KB** |
 | ja | N1 | 1,207 | — | 369 KB | **369 KB** |
 | en | pre-school | 41 | 16 KB | 2 KB | **18 KB** |
@@ -2147,7 +2148,7 @@ was said and by which voice.
 | ja | pre-school | 188 | 2.8 MB | 2.8 MB |
 | ja | N5 | 876 | 20.3 MB | 23.1 MB |
 | ja | N4 | 930 | 24.0 MB | 47.1 MB |
-| ja | N3 | 2,832 | 75.2 MB | 122.3 MB |
+| ja | N3 | 2,830 | 75.2 MB | 122.3 MB |
 | ja | N2 | 373 | 8.0 MB | 130.3 MB |
 | ja | N1 | 1,207 | 25.7 MB | 156.0 MB |
 | en | pre-school | 82 | 2.0 MB | 2.0 MB |
@@ -2294,7 +2295,7 @@ string.
 | [langpop-function-words.md](docs/langpop-function-words.md) | 33 function words, the only lever on coverage — **done**, and the decisions recorded |
 | [langpop-japanese-tranche.md](docs/langpop-japanese-tranche.md) | how the N5 word rows were argued |
 | [langpop-n3-kanji.md](docs/langpop-n3-kanji.md) | which 366 of old level 2's characters are N3, and why school grade beats newspaper frequency |
-| [langpop-n3-vocabulary.md](docs/langpop-n3-vocabulary.md) | the rung that was too big to pick a word at a time: why a bridge-level word is one both corpora use -- **done**, 2,466 picks |
+| [langpop-n3-vocabulary.md](docs/langpop-n3-vocabulary.md) | the rung that was too big to pick a word at a time: why a bridge-level word is one both corpora use -- **done**, 2,464 picks |
 | [langpop-pronunciation.md](docs/langpop-pronunciation.md) | what a Japanese speaker learning English cannot be asked |
 | [langpop-reviews-and-periods.md](docs/langpop-reviews-and-periods.md) | the review intervals and the 28-day period, and which numbers are still arguable |
 | [langpop-production-criteria.md](docs/langpop-production-criteria.md) | should the ladder ask a student to speak, and at what threshold |

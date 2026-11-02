@@ -23,21 +23,33 @@
 % 人生 and 夕食 where they belong.  The newspaper marks still do real
 % work -- they are the gate -- but they are no longer the order.
 %
-% WHAT WAS MECHANICAL AND WHAT WAS JUDGMENT.  Four filters are rules and
+% WHAT WAS MECHANICAL AND WHAT WAS JUDGMENT.  Five filters are rules and
 % ran without me: the headword must be written in kanji the graph
 % teaches at or below N3 (650 characters, so a reading question at this
 % rung is answerable at this rung); the word must not already be in the
-% graph under any form or id; JMdict must mark it common; and the
-% headword must not be a verb or adjective STEM, which the pool is full
-% of because the segmenter counted every 出来る as 出来 and every 面白い
-% as 面白.  A stem is not a word to teach -- the verb is -- and its
-% frequency is the verb's, borrowed.
+% graph under any form or id; JMdict must mark it common; the headword
+% must not be a verb or adjective STEM, which the pool is full of
+% because the segmenter counted every 出来る as 出来 and every 面白い as
+% 面白 -- a stem is not a word to teach, the verb is, and its frequency
+% is the verb's, borrowed; and the spelling must be one upstream
+% recommends, which means NOT tagged ateji, rarely used, out-dated,
+% irregular or search-only.
+%
+% That last filter is import.p's rule as much as this file's, and the
+% two have to agree.  The importer refuses to teach a tagged spelling,
+% so a pick whose only kanji spelling is tagged arrives as a word
+% written in kana with no reading question at all.  Four did -- 味方,
+% 無茶, 心地 and 日和, phonetic borrowings every one by JMdict's
+% reckoning -- because this file's filter was written against the short
+% tag codes and read the expanded text, and so matched nothing.  The
+% test suite now asserts what it was supposed to guarantee: every N3
+% word has a kanji form and a reading.
 %
 % Then @REVIEWED@ survivors were read by hand, in rank order, and
 % @REJECTS@ of them thrown out.  The reasons, in the order they cost the
 % most rows:
 %
-%     241  register   the word is real but belongs to a trade: legal
+%     242  register   the word is real but belongs to a trade: legal
 %                     offices, military organisation, clinical medicine,
 %                     parliamentary procedure, corporate titles.  A
 %                     subtitle corpus of police and hospital drama is
@@ -62,8 +74,14 @@
 %
 % THE COUNT.  @COUNT@ picks here.  With n5.pl's 773, n4.pl's 749 and the
 % fifty at pre-school that is the 3750 the ladder asks for, plus a
-% margin, and the margin is not padding: a pick can fail to be ASKABLE,
-% and the audit counts questions rather than rows.
+% margin, because a pick can fail to be ASKABLE and the audit counts
+% questions rather than rows.
+%
+% The margin is also the place a bug hides.  The four ateji picks above
+% showed up as exactly four unaskable rows, which is small enough to
+% write off as what a margin is for -- and that is what happened for a
+% day.  A margin explains a gap it did not cause; a gap it did cause is
+% four picks that should not be there.
 %
 % WHAT THIS IS NOT.  Not a published list.  JLPT has published no word
 % list since 2010 and JMdict carries no level marking, so
