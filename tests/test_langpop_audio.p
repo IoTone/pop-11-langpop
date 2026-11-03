@@ -128,6 +128,35 @@ if ipa_only then
     check('IPA is a notation and is never read aloud', why, 'no_spoken_form');
 endif;
 
+;;; ------------------------------------------------------ bytes to send
+;;; A PATH IS NO USE TO A CLIENT THAT DOES NOT SHARE THE DISK, so the
+;;; sound has to be able to travel as bytes.  An encoder is either
+;;; exactly right or worthless, and the padding is where a hand-written
+;;; one goes wrong, so these are RFC 4648's own vectors.
+check('base64 of nothing is nothing', lp_base64(''), '');
+check('one byte is two characters and two pads', lp_base64('f'), 'Zg==');
+check('two bytes are three and one', lp_base64('fo'), 'Zm8=');
+check('three bytes are four and no padding', lp_base64('foo'), 'Zm9v');
+check('and then the cycle starts again', lp_base64('foob'), 'Zm9vYg==');
+check('five bytes', lp_base64('fooba'), 'Zm9vYmE=');
+check('six bytes', lp_base64('foobar'), 'Zm9vYmFy');
+check('and the sentence vector', lp_base64('any carnal pleasure.'),
+      'YW55IGNhcm5hbCBwbGVhc3VyZS4=');
+
+;;; THE TOP BIT, which is the whole reason lp_read_bytes exists.  A wav
+;;; is full of bytes over 127 and a text device is not promised to hand
+;;; them back unchanged -- so the encoder has to be right about them and
+;;; the reader has to be raw.
+check('a byte with the top bit set survives',
+      lp_base64(consstring(255, 1)), '/w==');
+check('and a pair of them', lp_base64(consstring(255, 254, 2)), '//4=');
+;;; No line breaks.  LIB * MIMENCODE wraps at 72 columns, which is right
+;;; for a mail body and wrong for a JSON string.
+check_true('and nothing is wrapped, however long it runs',
+           issubstring('\n', lp_base64(lp_base64(
+               'the quick brown fox jumped over the lazy dog, twice over')))
+           == false);
+
 ;;; ------------------------------------------------------------- the key
 ;;; Same text, same voice, same model -> same name, or the cache never
 ;;; hits.  Change any one of the three and the name has to move, or the
@@ -206,6 +235,17 @@ check('the voice ran exactly once', length(lp_read_file(callfile)), 2);
 ;;; suite knows the kana arrived intact rather than as whatever the shell
 ;;; made of them.
 check('the text arrived as bytes, unmangled', lp_read_file(path), 'あ');
+
+;;; And off the disk again the raw way, which is the path a client that
+;;; cannot see this filesystem gets its sound by.  あ is three bytes of
+;;; UTF-8 -- E3 81 82 -- so the answer is checkable by eye, and every one
+;;; of those three has the top bit set.
+check('the raw read agrees with the text read on length',
+      datalength(lp_read_bytes(path)), datalength(lp_read_file(path)));
+check('and あ comes back through raw read and base64 together',
+      lp_base64(lp_read_bytes(path)), '44GC');
+check_true('a file that is not there reads as false, not as empty',
+           lp_read_bytes(path <> '.nope') == false);
 
 lp_audio_make("hi_a", false) -> (path, made, why);
 check_true('a second ask is not a second render', not(made));

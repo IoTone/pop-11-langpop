@@ -69,7 +69,7 @@ enddefine;
 ;;; ------------------------------------------------------------- the door
 check('ping', result('ping', false), 'pong');
 check_true('methods are listable',
-           length(result('langpop/methods', false)) == 19);
+           length(result('langpop/methods', false)) == 20);
 check_true('and the list names them, not just counts them',
            member('langpop/card.render',
                   [% explode(result('langpop/methods', false)) %]) /== false);
@@ -81,6 +81,10 @@ check_true('recognition is on the wire, not only in the TUI',
 ;;; that names a command and a file.
 check_true('what to say is a method of its own',
            member('langpop/audio.text',
+                  [% explode(result('langpop/methods', false)) %]) /== false);
+;;; And the sound itself, for a client that does not share the disk.
+check_true('and so is the sound itself',
+           member('langpop/audio.fetch',
                   [% explode(result('langpop/methods', false)) %]) /== false);
 check('an unknown method is -32601',
       errcode('langpop/nope', false), -32601);
@@ -1143,6 +1147,22 @@ check('audio: cached_only reaches the same answer with no voice',
               jsonrpc_obj([% 'item', 'hi_a', 'cached_only', true %])),
       -32005);
 
+;;; audio.fetch is audio.say plus the bytes, so EVERY error audio.say can
+;;; give is its error too, with the same code.  Checked here rather than
+;;; taken on trust, because a method that wrapped another and quietly
+;;; reclassified its errors would be the worst of both.
+check('fetch: no item is the same params error',
+      errcode('langpop/audio.fetch', jsonrpc_obj([])), -32602);
+check('fetch: an unknown item is the same item error',
+      errcode('langpop/audio.fetch', jsonrpc_obj([% 'item', 'nonesuch' %])),
+      -32003);
+check('fetch: a skill has nothing to say here either',
+      errcode('langpop/audio.fetch', jsonrpc_obj([% 'item', 'mora_count' %])),
+      -32003);
+check('fetch: and no voice is -32005, not a transport problem',
+      errcode('langpop/audio.fetch', jsonrpc_obj([% 'item', 'hi_a' %])),
+      -32005);
+
 ;;; Now give the server a voice, and the method stops being a stub.  The
 ;;; voice is `cp`, so the wav is the text -- which is what lets this
 ;;; check that the Japanese reached the command intact over the wire.
@@ -1215,6 +1235,64 @@ check_true('audio: a geminate is flagged as timing sensitive',
 check('audio: an unknown rate is -32602',
       errcode('langpop/audio.say',
               jsonrpc_obj([% 'item', 'hi_a', 'rate', 'glacial' %])), -32602);
+
+;;; ---------------------------------------------------------- audio.fetch
+;;; THE SAME SOUND, down the same line, for a client with no disk in
+;;; common with this process.  The voice here is `cp`, so the "wav" is
+;;; the text -- which makes the round trip checkable by eye: あ is three
+;;; bytes of UTF-8, E3 81 82, and base64 of those three bytes is 44GC.
+lvars fv = result('langpop/audio.fetch', jsonrpc_obj([% 'item', 'hi_a' %]));
+check('fetch: the item', fv('item'), 'hi_a');
+check('fetch: the encoding is named, not assumed', fv('encoding'), 'base64');
+check('fetch: the length is of the BYTES, not of the base64', fv('bytes'), 3);
+check('fetch: and the glyph survived the round trip through base64',
+      fv('data'), '44GC');
+
+;;; The path is WITHDRAWN and says so.  It names a file on a machine this
+;;; caller is not on, and false is a statement where a missing key would
+;;; be an omission.
+check_true('fetch: no path is offered to a caller that cannot use one',
+           fv('path') == false);
+check_true('fetch: and the key is on the wire saying so, not absent',
+           issubstring('"path"', raw('langpop/audio.fetch',
+                       jsonrpc_obj([% 'item', 'hi_a' %]))) /== false);
+
+;;; Everything audio.say said is still said: a client that took the bytes
+;;; still wants to know whose voice it is about to play.
+check('fetch: the voice is still named', fv('voice'), 'jf_test');
+check('fetch: and the model', fv('model'), 'rpc-stub');
+check('fetch: and the rate', fv('rate'), 'normal');
+check('fetch: and the text, for a client that wants to show it after',
+      fv('text'), 'あ');
+
+;;; cached_only with nothing cached is not an error here either -- the
+;;; answer is "not yet", and there is nothing to send.
+lvars f2 = result('langpop/audio.fetch',
+                  jsonrpc_obj([% 'item', 'hi_e', 'cached_only', true %]));
+check_true('fetch: nothing cached is not an error', not(f2('generated')));
+check_true('fetch: and no data is invented', f2('data') == false);
+
+;;; THE CAP, and it is tested rather than trusted, because the one reply
+;;; whose size is set by a file rather than by the graph is this one.  A
+;;; voice that writes three megabytes gets refused by code and told which
+;;; method to use instead.
+lp_write_file(lp_audio_conf_path(),
+    '{"ja": {"cmd": "head -c 3000000 /dev/zero > %o", "voice": "jf_big",'
+    <> ' "model": "rpc-stub"}}');
+lp_voices_load();
+check('fetch: a file over the cap is -32006, its own code',
+      errcode('langpop/audio.fetch', jsonrpc_obj([% 'item', 'hi_o' %])),
+      -32006);
+;;; And audio.say is unaffected by the size, which is the point of there
+;;; being two methods: the path costs nothing to hand over.
+check_true('say: the same file is served happily as a path',
+           isstring(result('langpop/audio.say',
+                           jsonrpc_obj([% 'item', 'hi_o' %]))('path')));
+
+lp_write_file(lp_audio_conf_path(),
+    '{"ja": {"cmd": "cp %i %o", "voice": "jf_test", "model": "rpc-stub",'
+    <> ' "rates": {"slow": "0.7", "normal": "1.0"}}}');
+lp_voices_load();
 
 ;;; An English item with no voice for English: the per-language table
 ;;; means one installed voice does not imply the other.

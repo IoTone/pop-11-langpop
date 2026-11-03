@@ -775,9 +775,14 @@ not one able to run `say -o %o`.
    §6.6. A listening question's stimulus *is* its answer, so a client
    that synthesises it has to be told the answer. The `tts` claim stays
    carried and untrusted, now with a reason rather than a pending task.
-2. **A `url` or bytes delivery mode**, so web and mobile can play sound
-   they cannot read. This is what §6.6 leaves as the actual portable path
-   for `hear`. One new moving part: a static file door.
+2. ~~**A `url` or bytes delivery mode**, so web and mobile can play sound
+   they cannot read.~~ **Shipped as `langpop/audio.fetch`** — bytes,
+   base64, down the line the client is already on. Bytes before a URL on
+   purpose: a URL needs a second listener, a second port and a second
+   security surface, and the JSON-RPC line is already open and already
+   authenticated by having a session. A static file door is still the
+   right answer for a page that wants to cache sounds across loads, and
+   it is now an optimisation rather than the only way in.
 3. **The microphone, which is a privacy decision and not a design one.**
    Recording is unavoidably the client's and the CTC model will never run
    in a browser, so bytes go *up* — which turns *samples are scratch,

@@ -2726,3 +2726,85 @@ unmeasured"* now read **`yes`**, with nothing excused.
 `coverage(reading, 0.95)` sits, is its own small proof: the listening
 channel is now as measured as the reading one, and what is left is the
 Zipf problem both of them have.
+
+## Sound down the line the client is already on
+
+`audio.fetch` is the portable path for `hear`, and after the last section
+it had to be bytes rather than text: a listening question's stimulus is
+its answer, so synthesis on the client cannot serve measurement. What was
+left was delivery.
+
+**Bytes before a URL, deliberately.** A static file door wants a second
+listener, a second port and a second security surface; the JSON-RPC line
+is already open and already carries a session. So `audio.fetch` sends
+base64 on the existing connection, and an HTTP door becomes an
+optimisation for a page that wants to cache sounds across loads rather
+than the only way in.
+
+`audio.say`'s header argues against exactly this — *putting a wav down a
+JSON-RPC line would make every caller pay for it in base64* — and the
+argument is still right about the caller it had in mind. It assumed the
+caller shared the disk. Over a socket to a phone a path names nothing and
+bytes are not the expensive option but the only one. So both methods
+exist and **the client chooses**, which is the `capabilities` principle
+again: the server does not guess which door a program on the other end
+can walk through.
+
+`lp_m_audio_fetch` calls `lp_m_audio_say` straight through and adds the
+bytes. That is the whole implementation, and it is why the two cannot
+disagree about rates, caching, or what a missing voice means — and why
+every error `audio.say` gives is this method's error with the same code,
+which there are four checks asserting rather than taking on trust.
+
+### Three things the implementation turned on
+
+**There is no `fi_>>` in Pop-11.** The first encoder used it throughout
+and the failure was a compile error inside a procedure nothing had called
+yet, reported as `DOING: datalength lp_base64 trycompile` — which points
+at the wrong line entirely. `LIB * MIMENCODE` mixes `>>` with `fi_<<` on
+adjacent lines for this reason, which reads like sloppiness and is not.
+
+**`sysopen(path, 0, true, \`A\`)`, where `true` is the org argument** —
+Poplog's raw mode (REF * SYSIO). `discin` and `lp_read_file` are text
+devices and are not promised to hand back a 0x8b in the middle of a wav
+unchanged. The first attempt passed `false` as a fourth argument, which
+is an err_char and not a flag, and failed.
+
+**The encoder was written rather than borrowed, for two reasons.**
+`LIB * MIMENCODE` writes to a consumer or a file where this wants a
+string, and it reads through `discin`, which is the text device the whole
+exercise exists to avoid. It also wraps at 72 columns, right for a mail
+body and wrong for a JSON string where a newline is an escape sequence
+paid for twice.
+
+### Verified against the only authority that counts
+
+`/usr/bin/base64`, not a reimplementation of the same idea:
+
+- RFC 4648's own vectors — the empty string, `f`, `fo`, `foo`, `foob`,
+  `fooba`, `foobar`, `any carnal pleasure.` — all seven padding cases;
+- a byte of 0xFF and a pair 0xFF 0xFE, which is the top-bit path that raw
+  mode exists for;
+- five real wavs out of the cache, 77,897 characters, byte-identical;
+- and then over a real socket: `w_neko` at 20,300 bytes and `w_gakkou` at
+  29,298, each decoding to exactly the file on disk and each matching
+  `/usr/bin/base64` character for character.
+
+### Two small decisions worth the comments they have
+
+`path` comes back **`false` and not removed**. A false member and a
+missing member are different statements, and this one is a statement:
+there is no path for you. That distinction only works because
+`jsonrpc_obj` was fixed to put `false` on the wire — a bug found from
+this very server, written up in the Poplog tree as
+`docs/bugs/jsonrpc-obj-drops-false.md`.
+
+`-32006` is its own code. Too big to hand over *this way* is not invalid
+params — the call was well formed — and not unbuilt, because the file
+exists. A client that gets it should fall back to `audio.say` if it shares
+the filesystem, and otherwise say it cannot carry this one, rather than
+retrying the same call. The cap is 2 MB of WAV, roughly fifty words, and
+it exists for the case the graph does not control: a voice configured to
+say something long. It is tested with a voice that writes three megabytes
+of zeros, because this is the one reply whose size is set by a file rather
+than by the graph.

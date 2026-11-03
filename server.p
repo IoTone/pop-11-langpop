@@ -153,6 +153,19 @@ lconstant
     LP_E_ITEM       = -32003,
     LP_E_ASSIGNMENT = -32004,
     LP_E_UNBUILT    = -32005,
+    ;;; Too big to hand over THIS WAY.  Not a params error -- the call
+    ;;; was well formed -- and not unbuilt, because the thing exists and
+    ;;; is on disk.  A client that gets it should fall back to `path` if
+    ;;; it shares the filesystem, and otherwise report that it cannot
+    ;;; carry this one rather than retrying the same call.
+    LP_E_TOO_BIG    = -32006,
+    ;;; The most audio.fetch will put on one line, in bytes of WAV before
+    ;;; base64 makes it a third bigger again.  A rendered word is 20-40 KB
+    ;;; at the configured 22.05 kHz mono, so this is roughly fifty words'
+    ;;; worth and nothing the graph holds comes near it -- the cap is for
+    ;;; the case the graph does not control, a voice configured to say
+    ;;; something long.
+    AUDIO_FETCH_MAX = 2097152,
 ;
 
 define lp_err(code, text) -> o;
@@ -1265,6 +1278,77 @@ define lp_m_audit(msg) -> res;
         endfor %]) %]) -> res;
 enddefine;
 
+;;; ---------------------------------------------------------- audio.fetch
+;;; THE SOUND ITSELF, for a client that does not share the disk.
+;;;
+;;; audio.say hands back a path, and its header defends that well: a wav
+;;; down a JSON-RPC line makes every caller pay for it in base64.  The
+;;; argument holds for a caller on this machine and collapses for one in
+;;; a browser, where a path names nothing and bytes are not the expensive
+;;; option but the only one.  So both exist and the CLIENT chooses, which
+;;; is the same principle as `capabilities`: the server does not guess
+;;; which door a program on the other end of a socket can walk through.
+;;;
+;;; And this is the whole portable path for the `hear` channel.  It
+;;; cannot be replaced by handing over the text for the client to speak,
+;;; however many platform voices there are: a listening question asks
+;;; what did you hear, so its stimulus IS its answer, and `listen_pick`
+;;; is no better -- lp_pair_question sends both words as options and the
+;;; position of the right one as the answer, so naming which to say names
+;;; which position is right.  Sound, not text.  See section 6.6 of
+;;; docs/langpop-audio.md.
+;;;
+;;; Everything about WHICH sound is audio.say's, called straight through,
+;;; so the two cannot disagree about rates, caching or what a missing
+;;; voice means.  This method adds exactly one thing: the bytes.
+define lp_m_audio_fetch(msg) -> res;
+    lvars msg, res, item, path, raw, b64;
+    lp_m_audio_say(msg) -> res;
+    ;;; Every error audio.say can give is this method's error too, and
+    ;;; `generated: false` -- a cached_only call with nothing cached -- is
+    ;;; not an error and has nothing to send.
+    returnif(lp_is_err(res));
+    returnunless(res('generated'));
+    res('path') -> path;
+    lp_read_bytes(path) -> raw;
+    unless raw then
+        lp_err(LP_E_UNBUILT, 'audio.fetch: the file went away: ' <> path) -> res;
+        return;
+    endunless;
+    ;;; A WORD IS A FEW TENS OF KILOBYTES and the cap is not about them.
+    ;;; It is about this being the one method whose reply size is set by
+    ;;; a file rather than by the graph: a pattern, a sentence or a voice
+    ;;; configured to render something long would put a megabyte on one
+    ;;; line, and a line-framed protocol makes every reader hold the
+    ;;; whole of it.  Four thirds of the file, because that is what
+    ;;; base64 costs.
+    if datalength(raw) > AUDIO_FETCH_MAX then
+        lp_err(LP_E_TOO_BIG,
+               'audio.fetch: ' <> (datalength(raw) sys_>< '')
+               <> ' bytes is over the ' <> (AUDIO_FETCH_MAX sys_>< '')
+               <> ' this method will send; use audio.say and the path')
+            -> res;
+        return;
+    endif;
+    lp_base64(raw) -> b64;
+    ;;; Added to what audio.say said, not replacing it: a client that
+    ;;; fetched the bytes still wants the voice, the model, the rate and
+    ;;; timing_sensitive, and they mean the same here as there.
+    'base64' -> res('encoding');
+    datalength(raw) -> res('bytes');
+    b64 -> res('data');
+    ;;; AND THE PATH IS WITHDRAWN, deliberately.  It names a file on a
+    ;;; machine this caller is not on, so leaving it in invites a client
+    ;;; to try it -- and a client that could have used it would have
+    ;;; called audio.say.  `false` and not a removal, because a false
+    ;;; member and a missing member are different statements and this one
+    ;;; is a statement: there is no path for you.  (That distinction only
+    ;;; works at all because jsonrpc_obj was fixed to put false on the
+    ;;; wire; see docs/bugs/jsonrpc-obj-drops-false.md in the Poplog
+    ;;; tree, which was found from this very server.)
+    false -> res('path');
+enddefine;
+
 ;;; ----------------------------------------------------------- audio.text
 ;;; WHAT TO SAY, with nothing in it about who says it.  The
 ;;; platform-free half of audio.say: no voice, no command, no file, no
@@ -1427,6 +1511,7 @@ lconstant METHODS = [
     ['langpop/card.render'   ^lp_m_card_render]
     ['langpop/sheet.render'  ^lp_m_sheet_render]
     ['langpop/audio.text'    ^lp_m_audio_text]
+    ['langpop/audio.fetch'   ^lp_m_audio_fetch]
     ['langpop/audio.say'     ^lp_m_audio_say]
 ];
 

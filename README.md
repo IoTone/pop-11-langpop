@@ -1920,6 +1920,7 @@ shim. `--port N` for TCP, nothing for stdio.
 | `langpop/sheet.render` | a page to print: a chart, today, or the booklet |
 | `langpop/audio.text` | **what to say**, with nothing about who says it |
 | `langpop/audio.say` | the sound file for an item, if one is cached |
+| `langpop/audio.fetch` | **the sound itself**, for a client with no disk in common |
 | `langpop/assign` / `report` | work to do elsewhere, and what came of it; `again` marks a reply that is a reminder of outstanding work rather than something new |
 
 Three things are deliberately on the server's side of the line, and each one
@@ -2014,18 +2015,47 @@ items whose rhythm *is* the lesson — きて against きって — and a client
 voice is not the voice the mora scorer was calibrated against. Say them by
 all means; do not measure them.
 
-**And the seam this stops at.** A `tts` claim is carried and *not yet
-trusted*: a listening question still refuses to be asked until a wav is
-cached **here**, at the normal rate, so a browser that says 日本語 perfectly
-well is recorded as able to and still not asked. Lifting that precondition
-means giving `timing_sensitive` teeth in the same breath — a geminate judged
-against a voice nobody has heard is a measurement of nothing — so the two
-belong together, and neither belongs with carrying the claim.
+**And `audio.fetch` is the sound itself**, for a client with no disk in
+common with the server:
+
+```json
+{"item": "w_gakkou", "encoding": "base64", "bytes": 29298,
+ "data": "UklGRi...", "path": false,
+ "voice": "Kyoko", "model": "macos-say", "rate": "normal",
+ "timing_sensitive": true}
+```
+
+It is `audio.say` called straight through, plus the bytes, so the two cannot
+disagree about rates, caching or what a missing voice means — and every
+error `audio.say` can give is this method's error too, with the same code.
+Both exist because **the client chooses**, which is the same principle as
+`capabilities`: a path costs nothing to hand to a caller on this machine and
+names nothing to a caller in a browser. The `path` comes back `false` rather
+than absent, because a false member and a missing member are different
+statements and this one is a statement: *there is no path for you*.
+
+`-32006` is its own code because the limit is the transport's and not the
+graph's: a rendered word is 20–40 KB, the cap is 2 MB of WAV before base64
+makes it a third bigger again, and nothing in the graph comes near it. A
+client that hits it should fall back to `audio.say` rather than retry.
+
+**Why the sound and not the text.** A client that can synthesise cannot be
+sent the text instead, however many platform voices it has. A listening
+question asks *what did you hear*, so its stimulus **is** its answer, and
+`listen_pick` is no better: the options are both words and the answer is
+which position the played one is in, so naming the word to speak names the
+right position. That collides with *the answer never leaves*, so it is a
+permanent limit and not a missing feature. **Client TTS for exposure
+(`:say`), server-delivered sound for measurement.**
+
+**The seam that remains.** A `tts` claim is therefore carried and *not
+trusted*: it is right for playing a word the student is already looking at,
+and can never serve a listening question.
 
 Errors are typed, so a client can tell a mistake it made from a bug in here:
 `-32602` invalid params, `-32001` no such session, `-32002` no such student,
 `-32003` no such item, `-32004` no such assignment, `-32005` that rendering
-style does not exist yet.
+style does not exist yet, `-32006` too large to hand over this way.
 
 `client.p` holds no graph, no beliefs and no judgement — 566 lines of asking,
 printing and one clock. That is the only honest test of an API: the reference client
