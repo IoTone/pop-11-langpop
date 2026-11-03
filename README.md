@@ -167,7 +167,13 @@ under `~/.langpop/audio/`. That rung is 876 files and 20 MB; the whole
 Japanese ladder is 156 MB, and [What it costs on
 disk](#what-it-costs-on-disk) has the rest of the arithmetic. Until it is
 run, listening questions have nothing to play and `--audit` says so rather
-than asking them.
+than asking them — as `unrendered`, which is a different word from `short`
+on purpose.
+
+English is rendered the same way, with `--lang en`: `./langpop --lang en
+--audio a1`. The three English rungs together are 1,193 files and 37 MB,
+and running them is what turned the twelve sound contrasts from *cannot be
+asked* into asked.
 
 **What to expect at the keyboard.** Being asked a character a day after
 getting it right is the review ladder working, not a bug — the gap widens
@@ -380,8 +386,8 @@ pass anything — an unmeasurable criterion is still reported as
 unmeasurable.
 
 **And the tool says what it cannot check.** `hear` is verifiable only
-where a voice is installed and the sound is already cached; `speak` needs
-a microphone and a scorer:
+where a voice is installed, the client can play sound, and the item is
+already rendered; `speak` needs a microphone and a scorer:
 
 ```
 vocabulary(50, read): 0 of 50 words mastered (40 in the graph)
@@ -462,28 +468,38 @@ against a graph holding 103 characters. It is simply unreachable.
   ja    preschool  skill(mora_count)         1     51       ok
   ja    preschool  vocabulary(50, read)      50    50       ok
   ja    n5         vocabulary(800, read)     823   804      ok
-  ja    n5         vocabulary(800, hear)     823   63       short by 737
+  ja    n5         vocabulary(800, hear)     823   63       unrendered by 737
   ja    n5         kanji(103, read)          103   103      ok
-  ja    n1         kanji(2230, read)         103   103      short by 2127
-  en    preschool  sound_contrasts           13    0        needs_audio -- 13 of 13 cannot be asked
+  ja    n1         vocabulary(10000, hear)   6212  98       short by 9902
+  en    preschool  sound_contrasts           13    30       ok -- 4 of 13 cannot be asked
   en    preschool  written_confusions        12    24       ok
-  en    a1         vocabulary(500, read)     531   531      ok
-  en    b1         coverage(reading, 0.95)   519   14       short by 81
+  en    a1         vocabulary(500, hear)     567   567      ok
+  en    b1         coverage(reading, 0.95)   1105  55       short by 40
 ```
 
-Six verdicts, because they mean different things to whoever reads them:
+Seven verdicts, because they mean different things to whoever reads them:
 
 | verdict | meaning | whose problem |
 | --- | --- | --- |
 | `ok` | enough askable content exists to satisfy it | nobody's |
 | `thin` | passes on fewer than 3 askable items | the graph's |
 | `short` | measurable, content is thin | curation |
+| `unrendered` | the content is there and unsaid — run `--audio <level>` | this machine's |
 | `no probe` | the item set exists and nothing in it can be asked | a bug |
 | `needs audio` | every item in the set is on a channel this build cannot check | this build's |
 | `unmeasured` | nothing measures it at all | the design's |
 
 Only `short` is allowed to be large. The others are each a claim the
 ladder makes and cannot cash.
+
+`unrendered` is the one that is nobody's fault and everybody's confusion.
+The two `hear` lines above differ by one word, and that word is the whole
+difference: n5 needs one command, n1 needs 3,846 words that do not exist.
+Both read `short` until the audit learned to tell them apart, and `short`
+says *curation* — so the report sent a reader looking for words that were
+already in the graph. It blocks the rung exactly as `short` does, since
+the channel is verifiable and the engine excuses nothing; it is simply not
+a hole in the content.
 
 `thin` exists because of Goodhart's law. A criterion measured over one
 item is not a measurement, it is an anecdote, and it passes. Three is the
@@ -505,19 +521,22 @@ by meeting **every** criterion on it:
 ```
   lang  level      criteria  can it be left?
   ja    preschool  7         yes
-  ja    n5         3         not yet -- short
-  en    preschool  4         yes -- with an audio criterion excused, so partly unmeasured
-  en    a1         2         yes -- with an audio criterion excused, so partly unmeasured
+  ja    n5         3         not yet -- but only for want of running --audio here
+  ja    n1         3         not yet -- short
+  en    preschool  4         yes
+  en    a1         2         yes
   en    b1         3         not yet -- short
 
-  3 of 12 rungs can be left as the graph stands, 2 of them with
-  something nothing here can measure.
+  4 of 12 rungs can be left as the graph stands.
 ```
 
 The verdict names the **worst** blocker, ordered by whose problem it is:
 no exit criterion at all is a bug in the ladder, `unmeasured` is a hole in
-the design, `short` is curation, and `needs audio` is a limit of this
-build.
+the design, `short` is curation, `unrendered` is one command on this
+machine, and `needs audio` is a limit of this build. `unrendered` sits
+below `short` and above `needs audio`, which is right on both sides: it
+blocks the rung as surely as `short` does, since the channel is verifiable
+and nothing is excused, but it is not a hole in the content.
 
 **A criterion nothing on this machine can measure is excused by name.** The
 student moves up, and the tutor says which criterion it could not ask
@@ -2246,18 +2265,23 @@ was said and by which voice.
 | ja | N3 | 2,830 | 74.4 MB | 121.1 MB |
 | ja | N2 | 2,549 | 71.6 MB | 192.7 MB |
 | ja | N1 | 1,207 | 25.3 MB | **218.0 MB** |
-| en | pre-school | 82 | 2.0 MB | 2.0 MB |
-| en | A1 | 555 | 13.8 MB | 15.8 MB |
-| en | A2 | 550 | 13.6 MB | 29.4 MB |
+| en | pre-school | 88 | 2.3 MB | 2.3 MB |
+| en | A1 | 555 | 14.0 MB | 16.3 MB |
+| en | A2 | 550 | 13.9 MB | 30.2 MB |
 
 So **a Japanese learner who renders every rung needs about 218 MB**, and the
 whole ladder to N2 — which is as far as the words go — is 193 MB. **An
-English test-taker needs about 29 MB** for the three rungs that have
-content. **English renders nothing until a voice is named for it.**
-`~/.langpop/audio.conf` here has a `ja` entry and no `en` one, so every
-English item is skipped as `no_voice` and the English rows above are what it
-*would* cost — which is also why `--audit` reports every English listening
-criterion as `needs_audio` rather than as zero.
+English test-taker needs 30 MB** for the three rungs that have content.
+
+**The English rows are now measured, not predicted**, and the prediction
+held: 1,193 files at a mean of **25.9 KB** against the 25.7 KB the
+regression gave, 30.2 MB against 29.4 MB. The R² of 0.48 did not matter
+because only the mean was ever used.
+
+One caveat the arithmetic cannot see: `du` says **37 MB** for those same
+files. The difference is filesystem block rounding over 1,193 small files,
+roughly 5.8 KB of slack apiece — so 30 MB of audio costs 37 MB of disk, and
+the Japanese figures carry the same kind of slack.
 
 English pre-school is 82 files for 41 items because a contrast's
 drill words are not items: the 13 sound contrasts and 12 written confusions
@@ -2296,7 +2320,10 @@ file counts: they have no spoken form, and the same procedure says so.
 For English the same arithmetic does not work — a Latin letter is not a
 syllable, and the regression over 40 words rendered with Samantha at the
 same settings is R2 = 0.48. What is stable is the mean: **25.7 KB a word**,
-between 17.8 KB and 36.7 KB. The English rows use that mean.
+between 17.8 KB and 36.7 KB. The English rows used that mean, and now that
+all 1,193 are rendered the mean is **25.9 KB** — which is the useful lesson
+about a weak fit: a model nobody relied on was replaced by a number that
+was right.
 
 To cost a voice of your own, render twenty words with it and take the mean:
 

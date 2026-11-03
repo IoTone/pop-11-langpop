@@ -2134,11 +2134,11 @@ else
 endif;
 "ja" -> lp_lang;
 
-;;; Every verdict is one of the six, so a client can switch on it.
+;;; Every verdict is one of the seven, so a client can switch on it.
 check_false('no verdict is outside the set',
             [% lvars e; for e in arows do
-                   unless member(e(4), [ok thin short no_probe needs_audio
-                                        unmeasured])
+                   unless member(e(4), [ok thin short unrendered no_probe
+                                        needs_audio unmeasured])
                    then e(4) endunless
                endfor %] /== []);
 

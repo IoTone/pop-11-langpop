@@ -2591,3 +2591,138 @@ than a design one. Recording is unavoidably the client's, the phoneme CTC
 model will never run in a browser, so bytes have to go **up** — and that
 turns *samples are scratch, scored and deleted* into a claim about a
 network hop. Not decided here.
+
+## Client-side TTS cannot serve a listening question
+
+Step 2 of the portability work was going to be *askability stops being a
+fact about the server's disk*, so a `tts` claim could be trusted and a
+browser with its own Japanese voice could be asked to listen. That is
+wrong, and the reason is not the one the previous section gave.
+
+**A listening question's stimulus IS its answer.** `lp_hear_question`
+turns a `type` question into `listen` and a `pick` into `listen_pick`,
+and both ask *what did you hear*. So a client that synthesises the
+stimulus has to be told the word it is about to say — which is the answer
+to the question it is asking.
+
+`listen_pick` does not escape it either. `lp_pair_question` sends
+`[said, other]` as the options and the position of `said` as the answer;
+the client already holds both words, and telling it which to speak is
+exactly telling it which position is right.
+
+This collides with the first of the three things the protocol keeps on
+the server's side: *the answer never leaves*. A protocol that hands over
+the answer key is a quiz file, not a tutor. So the limit is **structural
+and permanent**, not a calibration problem waiting on a better scorer:
+
+> **A `hear` question requires the server to deliver sound, not text.**
+
+Client TTS is still right for `:say` — exposure, where the student asks
+to hear a word they are looking at and already knows. It can never serve
+measurement. The earlier note had the right policy line, *client TTS for
+exposure, server render for measurement*, but the reason given was
+`timing_sensitive` and calibration, which covers only the geminates. The
+real reason covers every listening question there is.
+
+So the portable path for `hear` is **delivery**, not synthesis: a `url`
+or bytes, so the client plays sound it cannot read. That is a smaller
+job than the one that was planned, and the `tts` claim stays carried and
+untrusted — now permanently, with a reason, rather than pending.
+
+### What the step turned into instead
+
+The thing actually wrong with askability was not where it lived but what
+the report made of it. `--audit` said this:
+
+```
+  ja    n5         vocabulary(800, hear)     823   63       short by 737
+```
+
+`short` is defined in this file's own legend as **curation: the criterion
+works, the content is thin**. For n5 that was false in every particular.
+823 words are there, every one of them has kana, and the whole shortfall
+is that nobody has run `--audio n5` on this machine. One of those is a
+month of reading dictionaries; the other is one command. The report said
+the same word about both, and a reader would have gone looking for words
+that were already in the graph.
+
+`lp_renderable(item, ch)` answers the question the cache is not part of —
+*is there something to say, and would the question build around it once it
+was said* — and the audit gains a seventh verdict:
+
+```
+  ja    n5         vocabulary(800, hear)     823   63       unrendered by 737
+  ja    n1         vocabulary(10000, hear)   6212  98       short by 9902
+```
+
+Those two lines differ by one word and that word is the whole difference:
+n5 needs a command, n1 needs 3,846 words that do not exist yet. Nothing
+was told to distinguish them — `lp_renderable` worked it out from the
+graph, which is the test that it means something.
+
+`lp_hear_question` is untouched, and deliberately: it still requires the
+wav to be cached, because a student waiting on a model load mid-question
+is a tutor that feels broken. The fix was never to relax it.
+
+Three details worth keeping:
+
+- the roll-up ranks `unrendered` **below** `short` and **above**
+  `needs_audio`, which is right on both sides. It blocks the rung as
+  surely as `short` does — the channel is verifiable, so the engine does
+  not excuse the criterion — but it is not a hole in the content.
+- `lp_coverage` gained a third mode, and the word has to be tested
+  *before* the truth: a word is true in Pop-11, so `if every then` would
+  have swallowed `"renderable"` and silently answered the probeable
+  question.
+- a skill must never become `unrendered`. `mora_count` has no utterance,
+  so no amount of rendering reaches it, and there is a check saying so.
+
+## The English voice, and three rungs that stopped being excused
+
+`audio.conf` gained an `en` block — `say -v Samantha`, the same shape as
+Kyoko's. Worth saying plainly: **macOS has no regional US voices.** The
+en_US set here is Samantha plus novelty voices (Fred, Ralph, Zarvox,
+Bells), and Samantha is General American. A West Coast accent is not
+something any voice on this machine encodes, and the Premium en_US
+downloads (Ava, Allison, Tom) are not regional either. Samantha is the
+only serious en_US voice installed, so that is the honest pick for a US
+West Coast request, and the thing it gets right — a General American
+reference the TOEIC listening section also uses — is the part that
+matters for teaching.
+
+1,193 wavs over three rungs: 88 at pre-school, 555 at a1, 550 at a2,
+with 4 patterns skipped as `has_blank` and 17 pre-school items with no
+spoken form.
+
+And the estimate held. The README costed English at **25.7 KB a word**
+from a regression over 40 Samantha renders whose R² was only 0.48 —
+openly a mean rather than a model. Measured over all 1,193: **25.9 KB**,
+and 30.2 MB against the 29.4 MB predicted. The weak fit did not matter
+because only the mean was ever used.
+
+One thing the estimate could not have known: `du` reports **37 MB**, not
+30.2. The difference is filesystem block rounding over 1,193 small files,
+about 5.8 KB of slack each. For a disk-cost table that is the honest
+number to quote, so both belong — 30.2 MB of audio, 37 MB of disk.
+
+What it bought, and this is the part worth the disk:
+
+```
+  before                                  after
+  en preschool sound_contrasts  needs_audio -- 13 of 13   ok (30 askable)
+  en a1  vocabulary(500, hear)  needs_audio               ok (567)
+  en a2  vocabulary(1000, hear) needs_audio               ok (1117)
+  en b2  coverage(listening)    needs_audio               short by 40
+```
+
+**Every `needs_audio` row in the audit is gone** — eight of them. The
+twelve English sound contrasts have been unaskable since the day they
+were written, and `--audit` said so for just as long; they are now asked
+through the pairs the graph already linked. And the three English rungs
+that read *"yes — with an audio criterion excused, so partly
+unmeasured"* now read **`yes`**, with nothing excused.
+
+`coverage(listening, 0.95)` landing on 55, exactly where
+`coverage(reading, 0.95)` sits, is its own small proof: the listening
+channel is now as measured as the reading one, and what is left is the
+Zipf problem both of them have.

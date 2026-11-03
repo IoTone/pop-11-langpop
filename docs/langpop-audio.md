@@ -770,19 +770,50 @@ not one able to run `say -o %o`.
 
 ### Still open, and in this order
 
-1. **Askability is still a fact about the server's disk.**
-   `lp_hear_question` wants a wav cached here at the normal rate, so a
-   `tts` claim is carried and not yet trusted. Lifting it means giving
-   `timing_sensitive` teeth in the same breath — a geminate judged
-   against a voice nobody has heard is a measurement of nothing. The
-   policy is one line: **client TTS for exposure, server render for
-   measurement.**
-2. **A `url` delivery mode**, so web and mobile can fetch and cache what
-   the server rendered. One new moving part: a static file door.
+1. ~~**Askability should stop being a fact about the server's disk**, so a
+   `tts` claim could be trusted.~~ **Ruled out, permanently** — see
+   §6.6. A listening question's stimulus *is* its answer, so a client
+   that synthesises it has to be told the answer. The `tts` claim stays
+   carried and untrusted, now with a reason rather than a pending task.
+2. **A `url` or bytes delivery mode**, so web and mobile can play sound
+   they cannot read. This is what §6.6 leaves as the actual portable path
+   for `hear`. One new moving part: a static file door.
 3. **The microphone, which is a privacy decision and not a design one.**
    Recording is unavoidably the client's and the CTC model will never run
    in a browser, so bytes go *up* — which turns *samples are scratch,
    scored and deleted* into a claim about a network hop.
+
+## 6.6 Why client-side TTS can never ask a listening question
+
+A listening question asks *what did you hear*. `lp_hear_question` turns a
+`type` question into `listen` and a `pick` into `listen_pick`, and in
+both the sound is the stimulus — so **the stimulus is the answer.** A
+client told to synthesise it is a client told the answer.
+
+`listen_pick` does not escape it. `lp_pair_question` sends `[said,
+other]` as options and the position of `said` as the answer; the client
+already holds both words, and naming the one to speak names the right
+position.
+
+That collides with the first thing the protocol keeps server-side: *the
+answer never leaves*. So the limit is structural, not a scorer problem:
+
+> **A `hear` question requires the server to deliver sound, not text.**
+
+Client TTS remains right for `:say` — exposure, a word the student is
+looking at and already knows. It can never serve measurement. The
+policy line from §6.5 survives, **client TTS for exposure, server render
+for measurement**, but the reason is bigger than `timing_sensitive`:
+calibration covers only the geminates, this covers every listening
+question there is.
+
+What the step turned into instead was a reporting fix. `--audit` said
+`short by 737` for ja/n5, and `short` means *curation: the content is
+thin* — while 823 words were there with kana on every one of them, and
+the whole shortfall was that nobody had run `--audio n5`. There is now a
+seventh verdict, `unrendered`, and `lp_renderable` works the difference
+out from the graph: n5 reads `unrendered by 737`, n1 still reads `short`,
+because n1 needs 3,846 words that do not exist.
 
 ## 7. What not to do
 

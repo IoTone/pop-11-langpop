@@ -4005,7 +4005,12 @@ define lp_coverage(ch, every) -> (frac, nwords, scale);
         nextunless(lp_ilang(i) == lp_lang);
         nextunless(lp_freqs(i) > 0);
         lp_fscale(i) -> scale;
-        if every then
+        ;;; THE WORD IS TESTED BEFORE THE TRUTH, and must be: a word
+        ;;; is true in Pop-11, so `if every then` would swallow
+        ;;; "renderable" and silently answer the probeable question.
+        if every == "renderable" then
+            nextunless(lp_renderable(i, ch))
+        elseif every then
             nextunless(lp_probeable(i, ch))
         else
             nextunless(lp_mastered_on(i, ch))
@@ -4466,6 +4471,54 @@ define lp_probeable(item, ch) -> yes;
     lp_drillable_on(item, ch) -> yes;
 enddefine;
 
+;;; WOULD IT BE ASKABLE IF EVERYTHING WERE RENDERED.
+;;;
+;;; The audit has been saying one word about two facts.  A listening
+;;; criterion reads `short by 737`, and `short` is defined in this file's
+;;; own legend as CURATION -- the criterion works, the content is thin.
+;;; For ja/n5 that was never true: 823 words are there, every one of them
+;;; has kana, and the entire shortfall is that nobody has run
+;;; `--audio n5` on this machine.  One of those is a month of reading
+;;; dictionaries and the other is one command, and the report could not
+;;; tell them apart.
+;;;
+;;; This is NOT answered by relaxing lp_hear_question, which wants the
+;;; wav already cached and is right to: a student waiting on a model load
+;;; mid-question is a tutor that feels broken.  It is answered by asking
+;;; the question the cache is not part of -- is there something to say,
+;;; and would the question build around it once it was said.
+define lp_renderable(item, ch) -> yes;
+    lvars item, ch, yes = false, text, why, shape, pr, p;
+    returnunless(lp_verifiable(ch));
+    returnunless(member(ch, lp_channels(item)));
+    ;;; Every channel but hearing is waiting on no renderer at all, so
+    ;;; there renderable and askable are the same question.
+    returnunless(ch == "hear")(lp_probeable(item, ch) -> yes);
+    returnunless(lp_audio_loaded);
+    ;;; A contrast has no written form of its own -- it is not a word --
+    ;;; so it is asked through the two words it keeps apart, and what has
+    ;;; to be sayable is them.
+    if lp_kind(item) == "sound" or lp_kind(item) == "confusion" then
+        lp_pair_item(item) -> pr;
+        returnunless(pr);
+        for p in pr do
+            lp_audio_text(p) -> (text, why);
+            returnif(why);
+        endfor;
+        true -> yes;
+        return;
+    endif;
+    lp_audio_text(item) -> (text, why);
+    returnif(why);
+    ;;; And the question must have a shape for the sound to go into.  A
+    ;;; counting probe is deliberately not turned into a listening
+    ;;; question -- "how many beats in what you just heard" is a real
+    ;;; question but a different one -- so an item whose reading question
+    ;;; is one of those would stay unaskable however much was rendered.
+    lp_question(item, lp_primary(item)) -> (shape, , , );
+    (shape == "type" or shape == "pick") -> yes;
+enddefine;
+
 ;;; CAN THIS BUILD ASK ABOUT IT AT ALL, on any channel it has.  One item
 ;;; at a time, which is what a criterion measured over a set needs: a set
 ;;; where not one member can be asked is not a student's failure, it is
@@ -4525,6 +4578,15 @@ enddefine;
 ;;; unchanged and deliberately so -- accuracy is measured over the
 ;;; answers given, which is the argument in the branch below -- but a
 ;;; criterion measured over part of its set now says which part.
+;;; How many of a pool would be askable once the voice had been run
+;;; over it.  Its own procedure because the arm it is called from is an
+;;; expression, and because it must not be counted unless the criterion
+;;; has already failed -- it asks lp_question of every item in the pool.
+define lp_count_renderable(pool, ch) -> n;
+    lvars pool, ch, i, n = 0;
+    for i in pool do if lp_renderable(i, ch) then n + 1 -> n endif endfor;
+enddefine;
+
 define lp_audit_one(crit, level) -> (verdict, have, askable, want, silent);
     lvars crit, level, f, i, pool, items, ch, n = 0;
     false -> want; 0 -> silent;
@@ -4539,6 +4601,11 @@ define lp_audit_one(crit, level) -> (verdict, have, askable, want, silent);
         n -> askable;
         if not(lp_verifiable(ch)) then "needs_audio"
         elseif askable >= want then "ok"
+        ;;; Short is curation.  This is the case that is not: the content
+        ;;; is there and unsaid, which is one command and not a month.
+        ;;; Counted only on the failing branch, because it asks lp_question
+        ;;; of every item in the pool.
+        elseif lp_count_renderable(pool, ch) >= want then "unrendered"
         else "short"
         endif -> verdict;
     elseif f == "coverage" then
@@ -4554,10 +4621,13 @@ define lp_audit_one(crit, level) -> (verdict, have, askable, want, silent);
         lp_coverage(ch, true) -> (frac, nw, scale);
         lp_freq_count() -> have;
         round(frac * 100) -> askable;
+        lvars rfrac;
         if     not(scale)             then "unmeasured"
         elseif not(lp_verifiable(ch)) then 0 -> askable; "needs_audio"
         elseif askable >= want        then "ok"
-        else                               "short"
+        else
+            lp_coverage(ch, "renderable") -> (rfrac, , );
+            if round(rfrac * 100) >= want then "unrendered" else "short" endif
         endif -> verdict;
     else
         ;;; An item-set criterion: recognise/1, skill/1.  Accuracy is
@@ -4567,10 +4637,14 @@ define lp_audit_one(crit, level) -> (verdict, have, askable, want, silent);
         ;;; so that a criterion measured over part of its set says so.
         lp_ask(crit, "criterion_items", 1) -> items;
         length(items) -> have;
-        lvars audible = 0;
+        lvars audible = 0, rend = 0;
         for i in items do
             unless lp_probeable(i, lp_primary(i)) then
                 silent + 1 -> silent;
+                ;;; Unaskable, but only for want of a render: the twelve
+                ;;; English contrasts are this case the moment an English
+                ;;; voice exists and nothing has been said in it yet.
+                if lp_renderable(i, lp_primary(i)) then rend + 1 -> rend endif;
             endunless;
             if lp_probeable(i, lp_primary(i)) then
                 ;;; DISTINCT QUESTIONS, not items.  A skill with a
@@ -4594,6 +4668,7 @@ define lp_audit_one(crit, level) -> (verdict, have, askable, want, silent);
         ;;; missing, the microphone is.
         if     have == 0                     then "unmeasured"
         elseif askable == 0 and audible == have then "needs_audio"
+        elseif askable == 0 and rend > 0     then "unrendered"
         elseif askable == 0                  then "no_probe"
         elseif askable < AUDIT_THIN          then "thin"
         else                                      "ok"
@@ -4646,6 +4721,13 @@ define lp_audit_rungs() -> rows;
         elseif member("no_probe", seen)      then "no_probe"
         elseif member("unmeasured", seen)    then "unmeasured"
         elseif member("short", seen)         then "short"
+        ;;; BELOW short and ABOVE needs_audio, which is where it belongs
+        ;;; on both sides.  It blocks the rung as surely as short does --
+        ;;; the channel is verifiable, so the engine does not excuse the
+        ;;; criterion and the student does not go up -- but it is not a
+        ;;; hole in the content, and a reader who cannot tell the two
+        ;;; apart will go looking for words that are already there.
+        elseif member("unrendered", seen)    then "unrendered"
         elseif member("needs_audio", seen)   then "needs_audio"
         elseif member("thin", seen)          then "thin"
         else                                      "ok"
@@ -4674,6 +4756,8 @@ define lp_audit_rungs_show();
                [% lp_pad(r(1), 6), lp_pad(r(2), 11), lp_pad(r(3), 10),
                   if r(4) == "ok" then 'yes'
                   elseif r(4) == "no_exit" then 'NO -- it declares no exit criterion'
+                  elseif r(4) == "unrendered" then
+                      'not yet -- but only for want of running --audio here'
                   elseif r(4) == "needs_audio" then
                       'yes -- with an audio criterion excused, so partly unmeasured'
                   else 'not yet -- ' <> (r(4) sys_>< '') endif %]);
@@ -4701,7 +4785,8 @@ define lp_audit_show();
                [% lp_pad(r(1), 6), lp_pad(r(2), 11),
                   lp_pad(lp_term_str(r(3)), 26), lp_pad(r(5), 6),
                   lp_pad(r(6), 9), v,
-                  if v == "short" then ' by ' <> ((r(7) - r(6)) sys_>< '')
+                  if v == "short" or v == "unrendered"
+                  then ' by ' <> ((r(7) - r(6)) sys_>< '')
                   elseif r(8) > 0 then
                       ;;; Not a different verdict: the same one, with the
                       ;;; part of the set it does not reach.
@@ -4710,7 +4795,7 @@ define lp_audit_show();
                   else '' endif %]);
     endfor;
     printf('\n');
-    for k in [ok thin short no_probe needs_audio unmeasured] do
+    for k in [ok thin short unrendered no_probe needs_audio unmeasured] do
         if tot(k) > 0 then printf('  %p %p\n', [% tot(k), k %]) endif;
     endfor;
     ;;; Said plainly, because the three are not the same problem and a
@@ -4718,6 +4803,7 @@ define lp_audit_show();
     lp_audit_rungs_show();
     printf('\n  thin        = passes on fewer than %p askable items\n', [^AUDIT_THIN]);
     printf('  short       = curation: the criterion works, the content is thin\n');
+    printf('  unrendered  = the content is there and unsaid: run --audio <level>\n');
     printf('  no probe    = a criterion nothing can ask about -- a bug, or an unbuilt import\n');
     printf('  needs audio = outside VERIFIABLE; see docs/langpop-pronunciation.md\n');
     printf('  unmeasured  = nothing measures it at all\n');

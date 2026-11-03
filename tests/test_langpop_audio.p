@@ -489,6 +489,56 @@ conf_rates('cp %i %o', 'jf_alpha', 'stub-1',
 check_true('a voice makes hearing verifiable in principle',
            lp_verifiable("hear"));
 
+;;; --- AND WHICH KIND OF SHORT IT IS
+;;; An item nobody has rendered is not askable, and it is also not
+;;; MISSING: the content is in the graph and one command says it.  The
+;;; audit reported both as `short`, and `short` is defined in langpop.p's
+;;; own legend as curation -- the criterion works, the content is thin --
+;;; so a reader went looking for words that were already there.  ja/n5
+;;; read `short by 737` with 823 words present, every one of them with
+;;; kana.
+if unsaid then
+    check_true('an unrendered item cannot be asked',
+               not(lp_probeable(unsaid, "hear")));
+    check_true('and yet it is renderable, which is the other fact',
+               lp_renderable(unsaid, "hear"));
+endif;
+
+;;; No channel but hearing waits on a voice, so there the two questions
+;;; are one question and must give one answer.
+check('on another channel renderable and askable are the same question',
+      lp_renderable("w_neko", "read") and true,
+      lp_probeable("w_neko", "read") and true);
+
+;;; A skill has no utterance at all, so no amount of rendering reaches
+;;; it -- which is the case that must stay `short` or `no_probe` and
+;;; never become `unrendered`.
+check_true('a skill is not renderable on a channel it has not got',
+           not(lp_renderable("mora_count", "hear")));
+
+;;; And the verdict itself.  Pre-school was rendered by the level pass
+;;; above and n5 was not, so the two rungs must not read the same way.
+if unsaid then
+    lvars arow = false, ar;
+    for ar in lp_audit() do
+        if ar(1) == "ja" and ar(2) == "n5"
+        and issubstring('hear', lp_term_str(ar(3))) /== false then
+            ar -> arow; quitloop
+        endif;
+    endfor;
+    if arow then
+        check('a rung whose words are all unsaid reads unrendered',
+              arow(4), "unrendered");
+    endif;
+    for ar in lp_audit() do
+        if ar(1) == "ja" and ar(2) == "preschool"
+        and issubstring('hear', lp_term_str(ar(3))) /== false then
+            ar -> arow; quitloop
+        endif;
+    endfor;
+    check('and the rung that was rendered reads ok', arow(4), "ok");
+endif;
+
 ;;; --- AND WHOSE VOICE IT IS: the client's claim
 ;;; A voice is installed now, so every check in this block is about the
 ;;; claim alone.  lp_client_caps is false here and by default everywhere,
