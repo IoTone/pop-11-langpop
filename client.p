@@ -483,7 +483,27 @@ define client_main();
     returnunless(reg);
     p(reg, 'teacher') -> lp_teacher;
 
-    rpc('langpop/session.open', jsonrpc_obj([% 'student_id', user %])) -> sess;
+    ;;; THIS CLIENT HAS NO SPEAKER, AND SAYS SO.  Look at ask_one: it
+    ;;; handles `pick` and prints `prompt` for everything else.  A
+    ;;; listening question's prompt is null by design -- there is nothing
+    ;;; to read, that being the question -- and its sound arrives in
+    ;;; `audio` as a path this program never looks at.  So the honest
+    ;;; declaration is an empty list of formats, and the server stops
+    ;;; offering a question this client cannot ask.
+    ;;;
+    ;;; An empty list and an absent key are not the same thing here: see
+    ;;; lp_client_caps.  Saying nothing would mean "do as you did
+    ;;; before", which is exactly the behaviour being fixed.
+    ;;;
+    ;;; This is also the half of portability that costs nothing to state:
+    ;;; a browser or phone build of this client fills the same field in
+    ;;; with what it really has, and nothing on the server changes.
+    rpc('langpop/session.open',
+        jsonrpc_obj([% 'student_id', user,
+                       'capabilities', jsonrpc_obj([%
+                           'audio', jsonrpc_obj([% 'play', {},
+                                                   'record', false %])
+                       %]) %])) -> sess;
     returnunless(sess);
     p(sess, 'session_id') -> lp_sid;
     ;;; The sitting starts at the greeting rather than at connect: the

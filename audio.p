@@ -254,6 +254,26 @@ define lp_audio_text(item) -> (text, why);
     endif;
 enddefine;
 
+;;; WHICH SCRIPT the spoken form came from, walking the same constant in
+;;; the same order as lp_audio_text -- it is the same question asked a
+;;; second time, and the two must not be able to disagree.
+;;;
+;;; A client that synthesises for itself needs this and the language is
+;;; not enough.  Every platform's TTS is configured by something like a
+;;; BCP-47 tag, and an item whose only form is katakana is Japanese text
+;;; that a browser handed `ja-JP` will say correctly and a browser handed
+;;; the item's language alone may not: `latin` says pick an English
+;;; voice, `hiragana` and `katakana` say pick a Japanese one, and `kanji`
+;;; says this is the last resort in SPOKEN_JA and the reading was missing.
+define lp_audio_script(item) -> sc;
+    lvars item, sc = false, s, order;
+    returnunless(lp_kind(item));
+    if lp_ilang(item) == "en" then SPOKEN_EN else SPOKEN_JA endif -> order;
+    for s in order do
+        if lp_form_of(item, s) then s -> sc; return endif;
+    endfor;
+enddefine;
+
 ;;; ---------------------------------------------------- rate and rhythm
 ;;; A SLOWED VOICE IS NOT A SLOWED LANGUAGE, and for one family of items
 ;;; that matters.  Japanese length is contrastive: きて and きって differ

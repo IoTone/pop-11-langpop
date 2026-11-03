@@ -728,6 +728,62 @@ The two checks that gate work rather than planning:
 - ~~**`speechocean762`'s licence**, before Stage 3 depends on it.~~
   **Done, 2026-10-23: CC BY 4.0.** See §4.
 
+## 6.5 Portability: a voice is a command, and a command does not travel
+
+Asked when the clients stopped being hypothetical — some on macOS, some on
+a mobile app, some on Windows, some Linux, some in a browser.
+
+`audio.conf` names a **shell command**, `say -v Kyoko -r %r -f %i -o %o`,
+with `%i` a text file and `%o` a wav to write. There is no shell on iOS,
+Android or the web, and no `%o` to write to. So §3's whole table is about
+*which engine this machine runs*, and that question does not survive the
+client being elsewhere. **Who makes the sound has to be something the
+client declares.**
+
+Shipped, additive, both suites green:
+
+- **`capabilities` on `session.open`** — `{"audio": {"play": [...],
+  "tts": [...], "record": bool}}`. `lp_can_hear` reads it and falls back
+  to this installation's own voice when nothing was said. An **absent**
+  claim is not an **empty** one: saying nothing means *do as you did
+  before*, `play: []` means *I have no speaker*. The reply carries
+  `can_hear`, which is the server's conclusion — it folds in whether a
+  voice is installed here, which the client cannot know.
+- **`langpop/audio.text`** — what to say, its script, its morae and
+  `timing_sensitive`, with no voice, command, file, cache or rate
+  anywhere in it. `lp_audio_text` was already the one procedure that knew
+  this; it simply was not on the wire.
+
+Two things that fell out of it:
+
+**It was already offering a question the client could not ask.**
+`client.p` prints `prompt` for every shape but `pick`, and a listening
+question's `prompt` is `null` by design. Nobody met it, because
+`lp_hear_plan` asks only about words already mastered by eye — but the
+fix is not to teach the TUI about audio, it is to stop the server
+guessing.
+
+**Client synthesis is the best-covered option, not a fallback.**
+`SpeechSynthesisUtterance`, `AVSpeechSynthesizer`, `TextToSpeech`, the
+WinRT synthesiser, `spd-say` — all five platforms, all with Japanese, and
+not one able to run `say -o %o`.
+
+### Still open, and in this order
+
+1. **Askability is still a fact about the server's disk.**
+   `lp_hear_question` wants a wav cached here at the normal rate, so a
+   `tts` claim is carried and not yet trusted. Lifting it means giving
+   `timing_sensitive` teeth in the same breath — a geminate judged
+   against a voice nobody has heard is a measurement of nothing. The
+   policy is one line: **client TTS for exposure, server render for
+   measurement.**
+2. **A `url` delivery mode**, so web and mobile can fetch and cache what
+   the server rendered. One new moving part: a static file door.
+3. **The microphone, which is a privacy decision and not a design one.**
+   Recording is unavoidably the client's and the CTC model will never run
+   in a browser, so bytes go *up* — which turns *samples are scratch,
+   scored and deleted* into a claim about a network hop.
+
 ## 7. What not to do
 
 - **Do not assume a channel needs a model.** `hear` cost this project
@@ -736,6 +792,9 @@ The two checks that gate work rather than planning:
 - **Do not start with ASR**, and that now includes the convenient one.
   §0 and Option 0: an audio GGUF under llama.cpp is still a recogniser,
   and a recogniser is trained to normalise away the only signal we want.
+- **Do not let the server decide what the client can do.** A voice is a
+  shell command; a browser has no shell. The server's job is to say what
+  there is to say — see §6.5.
 - **Do not make the side-car mandatory.** If the models are absent, every
   audio criterion must report *cannot be checked here* and every test
   suite must stay green. The day audio becomes a hard dependency is the

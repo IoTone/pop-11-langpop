@@ -1899,11 +1899,13 @@ shim. `--port N` for TCP, nothing for stdio.
 | `langpop/audit` | which rungs of the ladder are hollow |
 | `langpop/card.render` | the item as a picture |
 | `langpop/sheet.render` | a page to print: a chart, today, or the booklet |
+| `langpop/audio.text` | **what to say**, with nothing about who says it |
 | `langpop/audio.say` | the sound file for an item, if one is cached |
 | `langpop/assign` / `report` | work to do elsewhere, and what came of it; `again` marks a reply that is a reminder of outstanding work rather than something new |
 
 Three things are deliberately on the server's side of the line, and each one
-is a property the design would lose if it moved.
+is a property the design would lose if it moved. One thing is deliberately on
+the client's, for the same kind of reason.
 
 **The answer never leaves.** `langpop/next` returns the prompt; the client
 cannot tell whether what the student typed was right until `langpop/answer`
@@ -1932,12 +1934,81 @@ or `17/20`; the server decides that the first is tier 3 and the second tier
 "I did it" would throw the number away and cap the item at 0.50 without
 saying so.
 
+**What the client can do, the client says.** `session.open` takes a
+`capabilities` object, and the reply says what this server made of it:
+
+```json
+{"student_id": "bob",
+ "capabilities": {"audio": {"play": ["wav"], "tts": ["ja"], "record": true}}}
+```
+
+```json
+{"session_id": "sess-1", "can_hear": true, ...}
+```
+
+A voice here is a **shell command** — `say -v Kyoko -f %i -o %o` in
+`~/.langpop/audio.conf` — and a phone, a browser and a Windows application
+have no shell to run it in and no `%o` to write it to. So *who can make the
+sound* stops being a fact about this machine the moment the client is
+somewhere else, and asking the server to guess is how a tutor comes to offer
+a question the client cannot ask. It was already offering one: `client.p`
+renders `pick` and prints `prompt` for every other shape, and a listening
+question's `prompt` is `null` by design — there is nothing to read, that
+being the question. Nobody has met it, because a listening question is only
+asked about a word already mastered by eye, but it was waiting. The TUI now
+declares an empty list of formats and is not offered one.
+
+An **absent** `capabilities` is not an empty one, and the difference carries
+the whole design: saying nothing means *do as you did before*, which is what
+every caller written before the field existed needs, while
+`{"audio": {"play": []}}` means *I am here and I have no speaker*. One
+`false` cannot mean both. A field this server does not understand is ignored
+rather than refused, because clients arrive later than the servers that serve
+them.
+
+`can_hear` is the server's conclusion and not an echo: it folds in whether a
+voice is installed here at all, which the client cannot know.
+
+**`audio.text` is the platform-free half of audio** — no voice, no command,
+no file, no cache, no rate. Just the text of the item as a mouth would say
+it, its script, its beats, and whether its rhythm is the lesson:
+
+```json
+{"item": "w_gakkou", "lang": "ja", "text": "がっこう",
+ "script": "hiragana", "morae": 4, "timing_sensitive": true}
+```
+
+That is a property of the graph, so it is the same answer on every machine
+there will ever be — and it is the method a client that synthesises for
+itself calls. A browser with `SpeechSynthesisUtterance`, an iOS app with
+`AVSpeechSynthesizer`, an Android app with `TextToSpeech` and a Windows app
+with the WinRT synthesiser all have a Japanese voice installed already; not
+one of them can run `say -v Kyoko -o %o`, and not one should have to be sent
+a wav to say a word it can say itself. Client-side synthesis is not the poor
+relation here — it is the only option that covers all five platforms. The
+`script` is there because the language does not settle it: every platform TTS
+is configured by something like a BCP-47 tag, and `ja` with `kanji` means
+`SPOKEN_JA` reached its last resort and the reading was missing.
+
+`timing_sensitive` is a warning with a job on this method. Those are the
+items whose rhythm *is* the lesson — きて against きって — and a client's own
+voice is not the voice the mora scorer was calibrated against. Say them by
+all means; do not measure them.
+
+**And the seam this stops at.** A `tts` claim is carried and *not yet
+trusted*: a listening question still refuses to be asked until a wav is
+cached **here**, at the normal rate, so a browser that says 日本語 perfectly
+well is recorded as able to and still not asked. Lifting that precondition
+means giving `timing_sensitive` teeth in the same breath — a geminate judged
+against a voice nobody has heard is a measurement of nothing — so the two
+belong together, and neither belongs with carrying the claim.
+
 Errors are typed, so a client can tell a mistake it made from a bug in here:
 `-32602` invalid params, `-32001` no such session, `-32002` no such student,
 `-32003` no such item, `-32004` no such assignment, `-32005` that rendering
 style does not exist yet.
 
-`client.p` holds no graph, no beliefs and no judgement — 530 lines of asking,
+`client.p` holds no graph, no beliefs and no judgement — 566 lines of asking,
 printing and one clock. That is the only honest test of an API: the reference client
 has no private door.
 

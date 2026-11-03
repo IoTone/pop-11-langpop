@@ -69,12 +69,18 @@ enddefine;
 ;;; ------------------------------------------------------------- the door
 check('ping', result('ping', false), 'pong');
 check_true('methods are listable',
-           length(result('langpop/methods', false)) == 18);
+           length(result('langpop/methods', false)) == 19);
 check_true('and the list names them, not just counts them',
            member('langpop/card.render',
                   [% explode(result('langpop/methods', false)) %]) /== false);
 check_true('recognition is on the wire, not only in the TUI',
            member('langpop/recognise',
+                  [% explode(result('langpop/methods', false)) %]) /== false);
+;;; The platform-free half of audio is on the wire under its own name,
+;;; because a client that synthesises for itself has no use for the half
+;;; that names a command and a file.
+check_true('what to say is a method of its own',
+           member('langpop/audio.text',
                   [% explode(result('langpop/methods', false)) %]) /== false);
 check('an unknown method is -32601',
       errcode('langpop/nope', false), -32601);
@@ -1043,6 +1049,65 @@ check('card: a designed but unbuilt style is -32005',
       errcode('langpop/card.render',
               jsonrpc_obj([% 'item', 'hi_a', 'style', 'stroke' %])), -32005);
 
+;;; ----------------------------------------------------------- audio.text
+;;; WHAT TO SAY, with nothing about who says it.  Every check in this
+;;; block runs BEFORE a voice is configured in this suite, and that is
+;;; the whole point: a client that synthesises for itself must be able to
+;;; ask what to say on a server that cannot say anything at all.  If any
+;;; of these ever starts needing the voice below, this method has grown
+;;; a dependency it exists to be free of.
+check('audio.text: no item is a params error',
+      errcode('langpop/audio.text', jsonrpc_obj([])), -32602);
+check('audio.text: an unknown item is an item error',
+      errcode('langpop/audio.text', jsonrpc_obj([% 'item', 'nonesuch' %])),
+      -32003);
+
+;;; A skill and a pattern are item errors here and -32005 is NOT
+;;; available to this method: there is no voice in its answer to be
+;;; missing, so `nothing to say` means the graph has nothing to say, on
+;;; this machine and on every other.
+check('audio.text: a skill has nothing to say',
+      errcode('langpop/audio.text', jsonrpc_obj([% 'item', 'mora_count' %])),
+      -32003);
+check('audio.text: a pattern with a blank has nothing to say',
+      errcode('langpop/audio.text',
+              jsonrpc_obj([% 'item', 'p_kore_wa_desu' %])), -32003);
+
+lvars txt = result('langpop/audio.text', jsonrpc_obj([% 'item', 'hi_a' %]));
+check('audio.text: the item', txt('item'), 'hi_a');
+check('audio.text: the language', txt('lang'), 'ja');
+check('audio.text: the text, with no voice installed anywhere',
+      txt('text'), 'あ');
+;;; The script, because the language does not settle it.  Every
+;;; platform TTS is configured by something like a BCP-47 tag, and a
+;;; client has to be told which to ask for.
+check('audio.text: the script it came from', txt('script'), 'hiragana');
+check('audio.text: and the beats, as the engine counts them',
+      txt('morae'), 1);
+check_true('audio.text: あ is not timing sensitive',
+           not(txt('timing_sensitive')));
+
+;;; The same item audio.say flags, flagged here too -- and on this
+;;; method it is the warning that matters, because the voice about to say
+;;; it is one the mora scorer has never heard.
+lvars gemt = result('langpop/audio.text',
+                    jsonrpc_obj([% 'item', 'w_gakkou' %]));
+check_true('audio.text: a geminate is flagged as timing sensitive',
+           gemt('timing_sensitive'));
+check('audio.text: and its beats are counted off the kana, not the kanji',
+      gemt('morae'), 4);
+
+;;; English, where there is no voice and never was one in this suite.
+;;; audio.say answers -32005 for this item; audio.text answers the
+;;; question, which is the difference the two methods exist to make.
+lvars ent = result('langpop/audio.text',
+                   jsonrpc_obj([% 'item', 't_mansion' %]));
+check('audio.text: an English item needs no English voice',
+      ent('lang'), 'en');
+check('audio.text: and reports the Latin script', ent('script'), 'latin');
+check_true('audio.text: with no mora count, which would be a lie in letters',
+           ent('morae') == json_null or ent('morae') == false);
+
 ;;; ------------------------------------------------------------ audio.say
 ;;; Stage 0.  Like card.render, no session: the sound of an item is a
 ;;; property of the graph.  Unlike card.render, the renderer may not be
@@ -1235,6 +1300,87 @@ lvars trapq = result('langpop/answer',
 check_true('a wrong pick is wrong', not(trapq('correct')));
 check_true('and expected names the option, not its index',
            trapq('expected') /= '1' and trapq('expected') /= '2');
+
+;;; ---------------------------------------------------------- capabilities
+;;; WHO CAN MAKE THE SOUND is a fact about the client, not about this
+;;; machine: the voice is a shell command and a browser has no shell to
+;;; run it in.  A voice IS configured above and `hearer` is read-mastered
+;;; on a rendered word, so the listening question is available to every
+;;; session below and the only thing that differs is what each client
+;;; said about itself.
+check_true('a session that said nothing can hear, exactly as before',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer' %]))('can_hear'));
+
+;;; THE DEFECT THIS FIELD REMOVES.  client.p handles `pick` and prints
+;;; `prompt` for every other shape; a listening question's prompt is null
+;;; by design, because there is nothing to read.  So a client with no
+;;; speaker was being offered a question that would have shown the
+;;; student nothing and marked what they typed wrong.
+lvars mute = result('langpop/session.open',
+                    jsonrpc_obj([% 'student_id', 'hearer',
+                                   'capabilities', jsonrpc_obj([%
+                                       'audio', jsonrpc_obj([%
+                                           'play', {} %]) %]) %]));
+check_true('a client with no speaker is told so on connect',
+           not(mute('can_hear')));
+lvars msid = mute('session_id');
+
+;;; Two sessions of ONE student on ONE server, and they must be told
+;;; apart -- which a global could not do.  The second assertion is what
+;;; keeps the first from passing vacuously: if the listening question
+;;; were simply unavailable here, `both` would fail.
+lvars both = result('langpop/session.open',
+                    jsonrpc_obj([% 'student_id', 'hearer' %]))('session_id');
+answer_one(msid).erase; answer_one(msid).erase; answer_one(msid).erase;
+answer_one(both).erase; answer_one(both).erase; answer_one(both).erase;
+check('the mute session is offered a fourth question by eye',
+      result('langpop/next', jsonrpc_obj([% 'session_id', msid %]))('channel'),
+      'read');
+check('and the session beside it, by ear',
+      result('langpop/next', jsonrpc_obj([% 'session_id', both %]))('channel'),
+      'hear');
+
+;;; A named format is a yes, and so is a bare `true`: a client that has
+;;; not thought about formats still has a speaker.
+check_true('a named format keeps the listening',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                      jsonrpc_obj([% 'audio', jsonrpc_obj([%
+                          'play', {% 'wav' %} %]) %]) %]))('can_hear'));
+check_true('and so does a bare true',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                      jsonrpc_obj([% 'audio', jsonrpc_obj([%
+                          'play', true %]) %]) %]))('can_hear'));
+
+;;; TTS ALONE IS NOT YET HEARING, and that is a seam rather than an
+;;; oversight.  lp_hear_question refuses an item until a wav for it is
+;;; cached HERE at the normal rate, so a browser that can say 日本語
+;;; perfectly well is recorded as able to and still not asked -- until
+;;; that precondition is lifted and `timing_sensitive` is given teeth.
+;;; When this check changes, those two have to change with it.
+check_true('a client that can only synthesise is not yet asked to listen',
+           not(result('langpop/session.open',
+                      jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                          jsonrpc_obj([% 'audio', jsonrpc_obj([%
+                              'tts', {% 'ja' %} %]) %]) %]))('can_hear')));
+
+;;; AN ABSENT CLAIM IS NOT AN EMPTY ONE, which is the whole design.  A
+;;; capabilities object with no audio in it has said nothing about audio
+;;; and gets the old behaviour; an audio object with no speaker in it has
+;;; said something.
+check_true('a capabilities object with no audio says nothing about audio',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer',
+                                 'capabilities', jsonrpc_obj([]) %]))('can_hear'));
+
+;;; Ignored, not refused: clients arrive later than the servers that
+;;; serve them, and a field invented next year must not close the door.
+check_true('a capabilities field that is not an object is ignored',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer',
+                                 'capabilities', 'yes please' %]))('can_hear'));
 
 jsonrpc_close(client); jsonrpc_close(server);
 sysobey('rm -rf ' <> tmpdir);

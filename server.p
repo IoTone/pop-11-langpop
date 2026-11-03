@@ -74,6 +74,14 @@ define lp_new_session(student) -> sid;
     ;;; grader built was not always the key the student was shown, and
     ;;; the answer sent against the offered options was marked wrong.
     ;;;
+    ;;; Slot 12 is WHAT THE CLIENT SAID IT CAN DO, read once at
+    ;;; session.open and never written back -- a capability is a fact
+    ;;; about the program on the other end of the socket, so unlike the
+    ;;; queue it cannot change halfway through a session.  It lives on
+    ;;; the session and not in a global for the same reason the queue
+    ;;; does: one server serves a browser and a terminal at once, and
+    ;;; `this client has no speaker` must not leak from one to the other.
+    ;;;
     ;;; It survived because lp_plan and lp_choose ask lp_question too, on
     ;;; their way to choosing, so the turnovers between asking and
     ;;; grading happened to come out even -- until a review was injected,
@@ -82,7 +90,8 @@ define lp_new_session(student) -> sid;
     ;;; against a different question; remembering it is the fix, and the
     ;;; clock in slot 4 is remembered for the same kind of reason.
     {% student, lp_now_ms(), false, 0, false,
-       [], 0, newproperty([], 32, 0, "perm"), false, "learn", false %}
+       [], 0, newproperty([], 32, 0, "perm"), false, "learn", false,
+       false %}
         -> lp_sessions(consword(sid));
 enddefine;
 
@@ -93,6 +102,9 @@ enddefine;
 define lp_q_in(s);
     lvars s;
     s(6) -> lp_pending; s(7) -> lp_asked_n; s(8) -> lp_laters;
+    ;;; And the client's claim, which lp_q_out does NOT write back:
+    ;;; nothing in here may edit what the client said about itself.
+    s(12) -> lp_client_caps;
 enddefine;
 
 define lp_q_out(s);
@@ -326,8 +338,53 @@ define lp_m_register(msg) -> res;
                    'returning', known and true %]) -> res;
 enddefine;
 
+;;; ---------------------------------------------------- capabilities
+;;; WHAT THE CLIENT SAYS IT CAN DO, read once at session.open:
+;;;
+;;;     "capabilities": {"audio": {"play":   ["wav"],
+;;;                                "tts":    ["ja"],
+;;;                                "record": true}}
+;;;
+;;; Only `audio` is read today, and a key this server does not
+;;; understand is IGNORED rather than refused.  That is the point of the
+;;; field: clients arrive later than the server that serves them, and a
+;;; browser build that describes a capability invented next year must
+;;; still be able to open a session with this one.
+;;;
+;;; An ABSENT `capabilities` is not an empty one -- see lp_client_caps in
+;;; langpop.p, where the difference is the whole design.  But an absent
+;;; `play` INSIDE a present `audio` is a claim of nothing: a client that
+;;; troubled to describe its audio and left the speaker out has told us
+;;; about the speaker.
+;;;
+;;; A list of formats and a bare `true` both mean yes.  The formats are
+;;; not checked against anything yet -- audio.say serves wav and only wav
+;;; -- but a client that names them is saying something a later server
+;;; will want, and refusing to parse it now would teach clients not to
+;;; send it.
+define lp_caps_of(msg) -> caps;
+    lvars msg, caps = false, c = lp_param(msg, 'capabilities'),
+          a, play, tts, l, langs = [];
+    returnunless(c and (isproperty(c) or isjson_object(c)));
+    c('audio') -> a;
+    returnunless(a and (isproperty(a) or isjson_object(a)));
+    a('play') -> play;
+    if isvector(play) then datalength(play) > 0 -> play
+    else play and true -> play
+    endif;
+    a('tts') -> tts;
+    if isvector(tts) then
+        for l in_vector tts do
+            if isstring(l) or isword(l) then
+                langs <> [% consword(l sys_>< '') %] -> langs
+            endif;
+        endfor;
+    endif;
+    {% play, langs, (a('record') and true) %} -> caps;
+enddefine;
+
 define lp_m_session_open(msg) -> res;
-    lvars msg, res, student = lp_param(msg, 'student_id'), sid;
+    lvars msg, res, student = lp_param(msg, 'student_id'), sid, caps;
     unless student then
         lp_err(LP_E_PARAMS, 'session.open: student_id needed') -> res; return
     endunless;
@@ -336,6 +393,11 @@ define lp_m_session_open(msg) -> res;
         lp_err(LP_E_STUDENT, 'no such student: register first') -> res; return
     endunless;
     lp_new_session(student) -> sid;
+    ;;; Installed before the reply is built, because the reply reports
+    ;;; lp_can_hear() and that now depends on what was just said.
+    lp_caps_of(msg) -> caps;
+    caps -> lp_client_caps;
+    caps -> lp_session(sid)(12);
     jsonrpc_obj([% 'session_id', sid,
                    'teacher', lp_teacher_name(),
                    ;;; A student with no history has not been here before,
@@ -348,7 +410,15 @@ define lp_m_session_open(msg) -> res;
                    'display_name', lp_display,
                    'language', lp_jkey(lp_lang),
                    'level', lp_jkey(lp_level),
-                   'ready_count', length(lp_plan()) %]) -> res;
+                   'ready_count', length(lp_plan()),
+                   ;;; WHAT THIS SERVER MADE OF WHAT THE CLIENT SAID, so
+                   ;;; a client learns on connect whether listening
+                   ;;; questions are coming -- rather than finding out
+                   ;;; from a question it cannot render.  It is the
+                   ;;; server's conclusion and not an echo: it folds in
+                   ;;; whether a voice is installed here at all, which
+                   ;;; the client cannot know.
+                   'can_hear', lp_can_hear() %]) -> res;
 enddefine;
 
 ;;; Every method below this line needs a session, and the session is the
@@ -1195,6 +1265,66 @@ define lp_m_audit(msg) -> res;
         endfor %]) %]) -> res;
 enddefine;
 
+;;; ----------------------------------------------------------- audio.text
+;;; WHAT TO SAY, with nothing in it about who says it.  The
+;;; platform-free half of audio.say: no voice, no command, no file, no
+;;; cache and no rate -- just the text of the item as a mouth would say
+;;; it, which is a property of the GRAPH and therefore the same answer on
+;;; every machine there will ever be.
+;;;
+;;; This is the method a client that synthesises for itself calls.  A
+;;; browser with SpeechSynthesisUtterance, an iOS app with
+;;; AVSpeechSynthesizer, an Android app with TextToSpeech and a Windows
+;;; app with the WinRT synthesiser all have a Japanese voice installed
+;;; already; not one of them can run `say -v Kyoko -o %o`, and not one of
+;;; them should have to be sent a wav to say a word it can say itself.
+;;; Client-side synthesis is not the poor relation here -- it is the only
+;;; option that covers all five platforms.
+;;;
+;;; `timing_sensitive` travels with the text, and on this method it is a
+;;; warning with a job rather than a note.  These are the items whose
+;;; rhythm IS the lesson -- きて against きって -- and a client's own
+;;; voice is not the voice the mora scorer was calibrated against.  Say
+;;; them by all means; do not measure them.
+define lp_m_audio_text(msg) -> res;
+    lvars msg, res, item = lp_param(msg, 'item'), text, why, sc;
+    unless item then
+        lp_err(LP_E_PARAMS, 'audio.text: item needed') -> res; return
+    endunless;
+    consword(item sys_>< '') -> item;
+    unless lp_kind(item) then
+        lp_err(LP_E_ITEM, 'no such item: ' <> (item sys_>< '')) -> res; return
+    endunless;
+    lp_audio_text(item) -> (text, why);
+    ;;; The same two item errors audio.say gives, and NOT -32005: there
+    ;;; is no voice in this answer to be missing, so `nothing to say`
+    ;;; here means the graph has nothing, on this machine or any other.
+    if why = 'no_spoken_form' then
+        lp_err(LP_E_ITEM, 'nothing to say: ' <> (item sys_>< '')
+                          <> ' has no spoken form') -> res; return
+    elseif why = 'has_blank' then
+        lp_err(LP_E_ITEM, 'nothing to say: ' <> (item sys_>< '')
+                          <> ' is a pattern with a blank in it') -> res; return
+    elseif why then
+        lp_err(LP_E_UNBUILT, 'audio.text: ' <> why) -> res; return
+    endif;
+    lp_audio_script(item) -> sc;
+    jsonrpc_obj([% 'item', lp_jkey(item),
+                   'lang', (lp_ilang(item) sys_>< ''),
+                   'text', text,
+                   'script', lp_jkey(sc),
+                   ;;; The mora count, for the client that will want to
+                   ;;; show beats: it must be the number the ENGINE uses,
+                   ;;; not one the client counted off the codepoints --
+                   ;;; small kana do not get a beat and もって is three.
+                   ;;; Only where it means something: a count over kanji
+                   ;;; would be a number of characters wearing the name
+                   ;;; of a number of beats.
+                   'morae', if sc == "hiragana" or sc == "katakana"
+                            then lp_morae(text) else json_null endif,
+                   'timing_sensitive', lp_audio_timing(item) %]) -> res;
+enddefine;
+
 ;;; ---------------------------------------------------------------- audio
 ;;; Stage 0 of docs/langpop-audio.md: the student hears a correct
 ;;; model of the item.  No verdict, no session, nothing recorded -- the
@@ -1296,6 +1426,7 @@ lconstant METHODS = [
     ['langpop/report'        ^lp_m_report]
     ['langpop/card.render'   ^lp_m_card_render]
     ['langpop/sheet.render'  ^lp_m_sheet_render]
+    ['langpop/audio.text'    ^lp_m_audio_text]
     ['langpop/audio.say'     ^lp_m_audio_say]
 ];
 
@@ -1307,6 +1438,14 @@ enddefine;
 define lp_rpc_handle(conn, msg);
     lvars conn, msg, method, id, p;
     returnunless(msg and (isproperty(msg) or isjson_object(msg)));
+    ;;; ONE CALLER'S CLAIM MUST NOT OUTLIVE THEIR CALL -- the same rule
+    ;;; lp_lang_asked keeps, and for a sharper reason.  A session-bearing
+    ;;; method restores the claim through lp_q_in; a stateless one
+    ;;; (card.render, audio.say, audio.text, register) restores nothing,
+    ;;; so without this line a browser's `I have no speaker` would still
+    ;;; be installed when the next caller's request arrived and the
+    ;;; terminal would stop being offered listening questions.
+    false -> lp_client_caps;
     msg('method') -> method;
     msg('id') -> id;
     if method = 'langpop/methods' then

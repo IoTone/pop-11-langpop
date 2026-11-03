@@ -2480,3 +2480,114 @@ Declaring them at B1 would mean an A2 student never meets `because`. The
 33 function words already in `a1.pl` are the precedent for putting them
 low, and A1 and A2 are both met on their counts, so adding to either
 breaks nothing.
+
+## A voice is a command, which is the thing that does not port
+
+The question was how audio survives the client being somewhere else — a
+browser, a phone, Windows, Linux — and whether the abstraction belongs on
+the client side. It does, and the code already said where the boundary
+was, give or take one place where it sat in the wrong spot.
+
+Four couplings to this machine, not one, and they fail differently:
+
+**`audio.conf` names a shell command.** `"cmd": "/usr/bin/say -v Kyoko -r
+%r -f %i -o %o"`, with `%i` the text file and `%o` the wav to write. That
+is a desktop abstraction all the way down: iOS, Android and the browser
+have no shell and no `%o`. This is the one that cannot be fixed by
+improving it, and it is the whole finding — **a voice has to be a
+capability the client declares, not a command the server reads.**
+
+**`audio.say` returns a path.** Its header defends this well — *"putting a
+wav down a JSON-RPC line would make every caller pay for it in base64"* —
+but the argument quietly assumes the caller shares the disk. Over a socket
+to a phone, bytes are not the expensive option; they are the only one.
+
+**Playback is server-side**, `PLAYERS = [afplay aplay paplay]`. Harmless:
+that is the TUI being a thin client over a local server, and the contract
+is already *here is a file, you play it*.
+
+**And the one that mattered: askability was a fact about the server's
+disk.** `lp_hear_question` refuses unless `lp_audio_path(item, "normal")`
+hits the cache, and `lp_can_hear` meant *is a voice configured in this
+process*. Put the voice on the client and the server can no longer tell
+whether a question is askable — and the criterion, which is this project's
+whole evidentiary spine, stops being measurable from the build.
+
+### The split
+
+Separate **can this be asked** from **who makes the sound**.
+
+The first is a property of the graph and it already existed as exactly one
+procedure: `lp_audio_text` returns the text, or `no_spoken_form`, or
+`has_blank`. That is the entire platform-independent answer to *is there
+something to say here*; it simply was not on the wire. It is now, as
+`langpop/audio.text`, with the script beside it — because every platform
+TTS is configured by something like a BCP-47 tag and the language does not
+settle it. `ja` with `kanji` means `SPOKEN_JA` reached its last resort and
+the reading was missing.
+
+The second is `capabilities` on `session.open`. `lp_can_hear` now reads
+what the client said about itself and falls back to this installation's own
+voice when nothing was said.
+
+**Absent is not empty, and that distinction is the design.** Saying
+nothing means *do as you did before* — which is what `./langpop`, the
+oracle and every caller written before the field existed need, so they are
+untouched. `{"audio": {"play": []}}` means *I am here and I have no
+speaker*. One `false` cannot carry both, so `lp_client_caps` is `false` for
+no claim and a vector `{play, tts, record}` for a claim.
+
+Three places had to be got right, and each is a rule the codebase already
+knew:
+
+- the claim lives **on the session**, not in a global, because one server
+  serves a browser and a terminal at once;
+- it is swapped in by `lp_q_in` beside the queue, and `lp_q_out` does
+  **not** write it back — nothing in here may edit what the client said;
+- and `lp_rpc_handle` clears it per request, which is the rule
+  `lp_lang_asked` already keeps: one caller's claim must not outlive their
+  call. Without that line a browser's *no speaker* would still be installed
+  when the next request arrived, and the terminal would quietly stop being
+  offered listening questions.
+
+### It was already offering a question the client could not ask
+
+`client.p` renders `pick` and prints `prompt` for every other shape. A
+listening question's `prompt` is `null` **by design** — there is nothing to
+read, that being the question — and its sound arrives in `audio` as a path
+the TUI never looks at. So the student would have been shown nothing, typed
+something, and been marked wrong.
+
+It has never happened, and the reason is luck of a particular kind:
+`lp_hear_plan` asks only about words already mastered by eye, and the one
+client that cannot play has no student who has got that far. A probe
+against a fresh student confirms it — ten questions, all `read`. But it was
+waiting, and the fix is not to teach `client.p` about audio: it is to stop
+the server guessing. The TUI declares an empty list of formats and is not
+offered the question.
+
+### Client synthesis is not the poor relation
+
+A browser has `SpeechSynthesisUtterance`, iOS has `AVSpeechSynthesizer`,
+Android has `TextToSpeech`, Windows has the WinRT synthesiser, Linux has
+`spd-say`. **All five ship Japanese.** Not one of them can run `say -v
+Kyoko -o %o`. So client-side TTS is the best-covered option on the targets,
+not a fallback for the unlucky.
+
+### Where this deliberately stops
+
+A `tts` claim is **carried and not yet trusted**. A listening question
+still wants a wav cached here at the normal rate, so a browser that says
+日本語 perfectly well is recorded as able to and still not asked. Lifting
+that precondition means giving `timing_sensitive` teeth in the same breath:
+the mora scorer was calibrated against one render, and a geminate judged
+against a voice nobody has heard is a measurement of nothing. **Client TTS
+for exposure, server render for measurement** — a one-line policy, and the
+field that carries it already existed, marked in `audio.say` as *said, not
+enforced*.
+
+The microphone half is a different problem and a privacy decision rather
+than a design one. Recording is unavoidably the client's, the phoneme CTC
+model will never run in a browser, so bytes have to go **up** — and that
+turns *samples are scratch, scored and deleted* into a claim about a
+network hop. Not decided here.

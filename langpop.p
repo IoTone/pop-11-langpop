@@ -272,11 +272,71 @@ enddefine;
 lconstant VERIFIABLE = [read produce];
 lconstant VERIFIABLE_HEARD = [hear];
 
+;;; ------------------------------------------------- the client's claim
+;;; WHO CAN MAKE THE SOUND stops being a fact about this machine as soon
+;;; as the client is somewhere else.  audio.conf names a SHELL COMMAND --
+;;; `say -v Kyoko -f %i -o %o` -- and a phone, a browser and a Windows
+;;; application have no shell to run it in and no %o to write it to.  So
+;;; a voice cannot go on being something the server reads off its own
+;;; disk: it has to be something the client DECLARES, which is what
+;;; session.open's `capabilities` is for.
+;;;
+;;; false means NO CLAIM WAS MADE, and that is deliberately not the same
+;;; as a claim of nothing.  The TUI, the oracle and every caller written
+;;; before this field existed say nothing at all, and must go on behaving
+;;; exactly as they did -- which means falling back to this
+;;; installation's own voice.  A client that sends
+;;; `{"audio": {"play": []}}` is saying something quite different: I am
+;;; here, I have no speaker, do not ask me to listen.  One `false`
+;;; cannot carry both meanings, so absence and emptiness are kept apart.
+;;;
+;;; {play, tts, record}: can it play sound handed to it, which languages
+;;; can it speak for itself, can it record.
+vars lp_client_caps = false;
+
+define lp_cap_play() -> yes;
+    lvars yes = (not(lp_client_caps) or lp_client_caps(1)) and true;
+enddefine;
+
+;;; The languages the CLIENT can synthesise for itself.  Carried now and
+;;; NOT YET TRUSTED for askability, which is the honest half of this
+;;; change: lp_hear_question refuses to ask a word until a wav for it is
+;;; cached at the normal rate, and that cache is on the server.  So a
+;;; browser that says 日本語 perfectly well still gets no listening
+;;; question here until that precondition is lifted -- and lifting it
+;;; also means giving `timing_sensitive` teeth, because the mora scorer
+;;; was calibrated against one render and a geminate judged against a
+;;; voice nobody has heard is a measurement of nothing.  Both belong
+;;; with the askability change; neither belongs with carrying the claim.
+define lp_cap_tts() -> langs;
+    lvars langs = if lp_client_caps then lp_client_caps(2) else [] endif;
+enddefine;
+
+;;; Recording is the microphone half, and it is unavoidably the client's:
+;;; a browser and a phone can record and this process cannot reach their
+;;; hardware.  Read by nothing yet, for the same reason as lp_cap_tts.
+define lp_cap_record() -> yes;
+    lvars yes = (not(lp_client_caps) or lp_client_caps(3)) and true;
+enddefine;
+
 ;;; audio.p is loaded on demand, so this asks "is there a voice in this
 ;;; session", and the `and` short-circuits before naming anything
 ;;; audio.p defines.
 define lp_can_hear() -> yes;
     lvars yes = (lp_audio_loaded and lp_audio_ready(lp_lang)) and true;
+    ;;; AND A CLIENT THAT SAID IT CANNOT PLAY GETS NO LISTENING
+    ;;; QUESTIONS, however well this machine can speak.  Until now the
+    ;;; server asked whether IT could hear and sent the answer to a
+    ;;; client that could not: client.p has no audio branch at all, so a
+    ;;; listening question fell through to its `else` arm and printed
+    ;;; `prompt`, which is null for a hear question BY DESIGN -- there is
+    ;;; nothing to read, that being the whole point.  The student would
+    ;;; have been shown nothing, typed something, and been marked wrong.
+    ;;; It has never happened, because lp_hear_plan asks only about words
+    ;;; already mastered by eye and the one client that cannot play has
+    ;;; no such student; but it was waiting, and the claim removes it
+    ;;; rather than relying on every future client to remember.
+    if yes and not(lp_cap_play()) then false -> yes endif;
 enddefine;
 
 define lp_verifiable(ch);

@@ -79,6 +79,23 @@ check('a skill has no spoken form', why, 'no_spoken_form');
 lp_audio_text("no_such_thing_at_all") -> (text, why);
 check('an unknown item is unknown', why, 'no_such_item');
 
+;;; WHICH SCRIPT, which the language does not settle.  A client that
+;;; synthesises for itself configures its voice by something like a
+;;; BCP-47 tag, and `ja` plus `katakana` is a different instruction from
+;;; `ja` plus `kanji`: the second means SPOKEN_JA reached its last resort
+;;; and the reading was missing.
+check('a kana is said from its own script', lp_audio_script("hi_a"), "hiragana");
+check('a word is said from its kana, not its kanji',
+      lp_audio_script("w_gakkou"), "hiragana");
+check('and English from the Latin script',
+      lp_audio_script("t_mansion"), "latin");
+check_true('an unknown item has no script either',
+           lp_audio_script("no_such_thing_at_all") == false);
+;;; Asked twice, answered the same way: the two walk the same constant in
+;;; the same order, so they cannot disagree about which form was taken.
+check_true('the script is the script the text actually came from',
+           lp_form_of("w_gakkou", lp_audio_script("w_gakkou")) /== false);
+
 ;;; A KANJI'S KUN READING carries okurigana brackets -- もっ(て) -- and the
 ;;; brackets are for the eye.  They used to reach both the voice and
 ;;; lp_morae, and the mora count is what the geminate scorer divides by:
@@ -471,6 +488,62 @@ conf_rates('cp %i %o', 'jf_alpha', 'stub-1',
            '{"slow": "0.7", "normal": "1.0"}');
 check_true('a voice makes hearing verifiable in principle',
            lp_verifiable("hear"));
+
+;;; --- AND WHOSE VOICE IT IS: the client's claim
+;;; A voice is installed now, so every check in this block is about the
+;;; claim alone.  lp_client_caps is false here and by default everywhere,
+;;; which means NO CLAIM MADE and not a claim of nothing: ./langpop
+;;; itself, the oracle and every caller written before the field existed
+;;; say nothing at all, and must keep exactly the behaviour they had.
+check_true('no claim made means this installation answers for itself',
+           lp_can_hear());
+
+{% false, [], false %} -> lp_client_caps;
+check_true('a client that said it has no speaker cannot hear',
+           not(lp_can_hear()));
+check_true('and hearing stops being verifiable for it',
+           not(lp_verifiable("hear")));
+check_true('so its listening pool is empty, as with no voice at all',
+           lp_hear_plan() == []);
+;;; The same consequence as a missing voice, and deliberately so: the
+;;; audit must go on saying needs_audio rather than reporting a listening
+;;; vocabulary of zero, which reads as a student who failed instead of a
+;;; tutor that cannot ask.
+check_true('and the audit still says cannot-check, not a score of zero',
+           not(lp_probeable("w_neko", "hear")));
+
+{% true, [], false %} -> lp_client_caps;
+check_true('a client with a speaker can hear again', lp_can_hear());
+
+;;; TTS IS CARRIED AND NOT YET TRUSTED, which is exactly where this
+;;; change stops.  A client that can synthesise Japanese itself is
+;;; recorded as able to, and still gets no listening question, because
+;;; lp_hear_question wants a wav cached HERE at the normal rate.  When
+;;; that goes, this check changes and `timing_sensitive` has to gain
+;;; teeth in the same breath.
+{% false, [ja], false %} -> lp_client_caps;
+check('the claim is carried', lp_cap_tts(), [ja]);
+check_true('and does not by itself make hearing possible',
+           not(lp_can_hear()));
+;;; And a client that declared its audio without naming a language it
+;;; can speak has claimed NO languages -- an empty list, which is a
+;;; claim, where false would have meant it never said anything.
+{% true, [], false %} -> lp_client_caps;
+check('a claim of nothing is an empty list', lp_cap_tts(), []);
+false -> lp_client_caps;
+check('and no claim at all reads the same way to a caller', lp_cap_tts(), []);
+
+;;; Reading is untouched by every one of these, which is the property
+;;; that matters most -- the same one asserted above for a missing voice.
+;;; Asked under the strongest claim against it: no speaker at all.
+{% false, [], false %} -> lp_client_caps;
+lp_question("w_neko", "read") -> (hsh, hpr, hans, hopt);
+check('a reading question is unaffected by what the client can play',
+      hsh, "type");
+
+false -> lp_client_caps;
+check_true('and no claim is the state everything below runs in',
+           lp_can_hear());
 ;;; The n5 words are imported content, so without the generated graph
 ;;; there is no unrendered word to ask about, and the pair is skipped
 ;;; rather than asked of nothing.
