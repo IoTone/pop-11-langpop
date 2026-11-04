@@ -228,6 +228,47 @@ def cmd_check(args):
     return 1 if bad else 0
 
 
+GRAPH_HEADER = """% graph/@LANG@/photos.pl -- GENERATED.  Do not edit; edit the JSON
+% beside each photograph and re-run `tools/mkphoto.py graph`.
+%
+% Photographs for the `see` channel.  Unlike graph/*/generated/*.pl these
+% ARE committed, for the reason docs/langpop-photographs.md gives: a wav
+% regenerates from its text forever, a photograph is a one-off and has to
+% be kept.  The JSON beside each one is the review record -- what was
+% checked, and with which model.
+%
+% depicts/2    is plainly TRUE of the photograph
+% misdepicts/2 is plainly FALSE of it
+%
+% Every statement here passed `mkphoto.py check`, which puts each one
+% alone to a vision model that has not seen the prompt.  A statement the
+% checker and a human disagree about is dropped, never adjudicated.
+%
+% Written by tools/mkphoto.py
+"""
+
+
+def cmd_graph(args):
+    """Emit the Prolog facts from every reviewed JSON in a directory."""
+    specs = sorted(f for f in os.listdir(args.photos) if f.endswith('.json'))
+    out = [GRAPH_HEADER.replace('@LANG@', args.lang)]
+    for f in specs:
+        spec = json.load(open(os.path.join(args.photos, f)))
+        i = spec['id']
+        out.append("item(%s, photo, %s, %s, own(photos))." %
+                   (i, args.lang, args.level))
+        out.append("photo(%s, '%s')." % (i, spec['photo']))
+        for t in spec['true']:
+            out.append("depicts(%s, '%s')." % (i, t.replace("'", "\\'")))
+        for t in spec['false']:
+            out.append("misdepicts(%s, '%s')." % (i, t.replace("'", "\\'")))
+        out.append('')
+    text = '\n'.join(out)
+    with open(args.out, 'w') as fh:
+        fh.write(text if text.endswith('\n') else text + '\n')
+    print('%s: %d photograph(s)' % (args.out, len(specs)))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = p.add_subparsers(dest='cmd', required=True)
@@ -246,9 +287,15 @@ def main():
     c.add_argument('--statements', required=True)
     c.add_argument('--photo')
 
+    g = sub.add_parser('graph', help='emit the prolog facts')
+    g.add_argument('--photos', required=True, help='directory of photo JSON')
+    g.add_argument('--lang', default='en')
+    g.add_argument('--level', default='a2')
+    g.add_argument('--out', required=True)
+
     args = p.parse_args()
     sys.exit({'draw': cmd_draw, 'describe': cmd_describe,
-              'check': cmd_check}[args.cmd](args) or 0)
+              'check': cmd_check, 'graph': cmd_graph}[args.cmd](args) or 0)
 
 
 if __name__ == '__main__':

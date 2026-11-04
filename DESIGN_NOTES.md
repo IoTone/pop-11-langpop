@@ -2902,3 +2902,70 @@ and no voice configuration — only *is there a file for this item, and
 what are its bytes*. All the generation lives in `tools/`. And a
 generated image has no corpus-attribution problem at all: cleaner
 provenance than JMdict or OpenSubtitles.
+
+## The see channel, and three things it turned over
+
+`see` is `hear` with one word changed, and building it that way was the
+whole point: item kind `photo`, channel `[see]`, `lp_can_see()` gated on
+the client's `show` claim exactly as `lp_can_hear()` is gated on `play`,
+`lp_see_question` producing `look_pick`, `langpop/image.fetch` carrying
+the bytes.
+
+Where it is *not* `hear` matters more. A listening question asks what did
+you hear, so its stimulus **is** its answer — which is why client-side
+TTS can never serve one. A picture names nothing, and four sentences
+about it are still four sentences, so the stimulus can be handed over
+freely. Same rule, opposite consequence.
+
+`VERIFIABLE_SEEN` is its own list rather than another entry in
+`VERIFIABLE_HEARD`, though the shape is identical, because the two are
+separately true: a terminal with a speaker has no canvas, and a silent
+browser is the other way round. One list could not say that. For the
+same reason `image` is a **sibling** of `audio` in `capabilities` and not
+a field inside it, and an early draft got this wrong — it returned early
+when `audio` was absent, throwing away an image claim that had arrived
+alone. There is a check for that now.
+
+### The encoder did not belong to audio
+
+`lp_read_bytes` and `lp_base64` were written in `audio.p` and have
+nothing to do with sound. The `see` channel wants both for exactly the
+reason `hear` does — a stimulus the client cannot reach by path has to
+travel down the line it is already on — so a photograph reaching into
+the audio file for its encoder would have been a lie about the
+architecture. They moved to `langpop.p` and both channels call them from
+there.
+
+### check(graph) caught the new kind, and the exemption was paid for
+
+Both photographs came back as `item_without_form` the first time the
+suite ran, which is correct: a photo has no written form. The easy fix is
+to exempt `photo` the way `skill` is exempted. The honest one is to
+exempt it *and replace what was lost* — `photo_without_file`,
+`photo_without_key` and `photo_short_of_distractors` now demand of a
+photo what `form/3` demands of everything else. An item kind that carries
+its content outside the graph has to be checked for carrying it, or the
+exemption is a hole.
+
+(Four options with exactly one true is what a Part 1 question **is**, so
+a photograph short of three checked distractors is not a thin item; it is
+a different question with a different guess rate, and the validator says
+so.)
+
+### The protocol suite cannot round-trip a photograph
+
+`test_langpop_server.p` is one process talking to itself over a
+`sys_socket_pair`: `lp_rpc_handle` writes the whole reply before anything
+reads it. A reply over the socket buffer — about 64 KB — blocks the write
+for ever, and the suite hangs **with no output at all**, which is a
+singularly unhelpful way to fail. `audio.fetch` escapes it only because a
+word is 20 KB of WAV; a 106 KB photograph is 141 KB of base64 and does
+not.
+
+That is a limit of the harness and not of the method, so the payload
+assertions call `lp_m_image_fetch` directly and the error cases still go
+over the wire where the framing is what is being tested. The real thing
+was verified between two processes on a socket: 106,141 bytes out,
+141,524 characters on one line, decoding byte-identical to the file on
+disk, `path: false`, and `can_see` answering true/false/true/true across
+no claim, no screen, a screen, and a screen with no speaker.

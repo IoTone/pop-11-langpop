@@ -186,8 +186,27 @@ violation(requires_from_above(I, Pre)) :-
 % same order, and the guards are inside it.
 violation(cycle(I)) :- item(I, _, _, _, _), lp_on_cycle(I).
 
+% `skill` is a roll-up over other items and has nothing of its own to
+% show.  `photo` is exempt for the opposite reason: it has a form, and
+% the form is a JPEG.  The exemption is not a hole, because the next
+% clause demands the file instead -- an item kind that carries its
+% content outside the graph has to be checked for carrying it.
 violation(item_without_form(I)) :-
-    item(I, Kind, _, _, _), Kind \== skill, \+ form(I, _, _).
+    item(I, Kind, _, _, _), Kind \== skill, Kind \== photo,
+    \+ form(I, _, _).
+
+violation(photo_without_file(I)) :-
+    item(I, photo, _, _, _), \+ photo(I, _).
+
+% Four options, exactly one of them true, is what a Part 1 question IS.
+% A photograph carrying fewer checked statements than that cannot be
+% asked about, and would sit in the graph looking like content.
+violation(photo_without_key(I)) :-
+    item(I, photo, _, _, _), \+ depicts(I, _).
+
+violation(photo_short_of_distractors(I)) :-
+    item(I, photo, _, _, _),
+    findall(T, misdepicts(I, T), Ts), length(Ts, N), N < 3.
 
 violation(item_without_source(I)) :- item(I, _, _, _, _), \+ provenance_ok(I).
 
@@ -227,6 +246,9 @@ index :- item(I, K, L, Lv, S), lp_item(I, K, L, Lv, S), fail.
 index :- form(I, Sc, T), lp_form(I, Sc, T), fail.
 index :- gloss(I, Lg, T), lp_gloss(I, Lg, T), fail.
 index :- confusable(A, B, W), lp_conf(A, B, W), fail.
+index :- photo(I, P), lp_photo(I, P), fail.
+index :- depicts(I, T), lp_depict(I, yes, T), fail.
+index :- misdepicts(I, T), lp_depict(I, no, T), fail.
 index :- starter_kanji(I, K), lp_skanji(I, K), fail.
 index :- ladder(Lang, N, Level), lp_ladder(Lang, N, Level), fail.
 index :- exit(Lang, Level, C, Th, Ms), lp_exit(Lang, Level, C, Th, Ms), fail.

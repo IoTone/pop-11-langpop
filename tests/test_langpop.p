@@ -2847,6 +2847,79 @@ false -> lp_sit_t0;
 check_true('with no sitting open it says so',
            issubstring('No sitting open', sit_say(lp_sit_show)) /== false);
 
+;;; ------------------------------------------------------ the see channel
+;;; A photograph is a stimulus, and the shape of the question is the
+;;; thing worth pinning down: four options, exactly one true, and the
+;;; answer is a POSITION so it never leaves.
+check('a photograph is a photo', lp_kind("ph_dog_walk"), "photo");
+check_true('and it is looked at and nothing else',
+           lp_channels("ph_dog_walk") = [see]);
+check_true('photographs were indexed at all', lp_photos_ready);
+check_true('the path resolves through find_dir, not the cwd',
+           sys_file_exists(lp_photo_file("ph_dog_walk")));
+
+;;; lp_asked counts journal entries, so the rotation is driven by
+;;; standing in for them.
+vars saved_journal = lp_journal;
+define see_q(n) -> (shape, prompt, answer, options);
+    lvars n, shape, prompt, answer, options;
+    [% repeat n times [ph_dog_walk] endrepeat %] -> lp_journal;
+    lp_question("ph_dog_walk", "see") -> (shape, prompt, answer, options);
+enddefine;
+
+vars see_sh, see_pr, see_an, see_op;
+see_q(0) -> (see_sh, see_pr, see_an, see_op);
+check('a photograph is picked, not typed', see_sh, "look_pick");
+check_true('the stimulus is the file', issubstring('.jpg', see_pr) /== false);
+check_true('four options, which is what Part 1 IS', length(see_op) == 4);
+check_true('exactly one of them is true of the picture',
+           length([% lvars o; for o in see_op do
+                       if member(o, [% lvars d;
+                           for d in lp_depicts("ph_dog_walk") do
+                               if d(1) == "yes" then d(2) endif endfor %])
+                       then o endif endfor %]) == 1);
+check_true('and the key is where the answer says it is',
+           see_op(strnumber(hd(see_an)))
+           = 'A woman is walking two dogs.');
+
+;;; THE POSITION TURNS OVER, and this is not decoration.  Without it the
+;;; answer is always 1 and a student learns the position instead of the
+;;; language -- the defect lp_pair_question argues at length, which would
+;;; have walked straight into this channel.
+vars see_seen = [], see_i;
+for see_i from 0 to 3 do
+    see_q(see_i) -> (see_sh, see_pr, see_an, see_op);
+    see_seen <> [% hd(see_an) %] -> see_seen;
+endfor;
+check_true('the key does not sit in the same place twice running',
+           length(see_seen) == 4 and see_seen(1) /= see_seen(2)
+           and see_seen(2) /= see_seen(3) and see_seen(3) /= see_seen(4));
+check_true('and over four asks it has been everywhere',
+           member('1', see_seen) and member('2', see_seen)
+           and member('3', see_seen) and member('4', see_seen));
+
+;;; A client with no screen gets no photographs, however many are on
+;;; this disk -- the `play` argument, one capability over.
+{% true, [], false, false %} -> lp_client_caps;
+check_true('a client that cannot show is not asked to look',
+           not(lp_can_see()));
+check_true('and see stops being verifiable for it',
+           not(lp_verifiable("see")));
+see_q(0) -> (see_sh, see_pr, see_an, see_op);
+check('so there is no question to ask', see_sh, "none");
+check_true('but reading is untouched by any of it',
+           lp_verifiable("read"));
+false -> lp_client_caps;
+check_true('and no claim at all still means yes', lp_can_see());
+
+;;; An absent `show` must not be read as a claim of nothing: every
+;;; caller written before the field existed sends a 3-slot vector.
+{% true, [], false %} -> lp_client_caps;
+check_true('a capability vector from before `show` existed still sees',
+           lp_cap_show());
+false -> lp_client_caps;
+saved_journal -> lp_journal;
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 

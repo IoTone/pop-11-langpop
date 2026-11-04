@@ -375,12 +375,30 @@ enddefine;
 ;;; -- but a client that names them is saying something a later server
 ;;; will want, and refusing to parse it now would teach clients not to
 ;;; send it.
+;;; `image` is a SIBLING of `audio` and not a field inside it, because
+;;; the two travel separately: a terminal with a speaker has no canvas,
+;;; and a silent browser has nothing but.  A client may send either, both
+;;; or neither, and `audio` absent with `image` present is a perfectly
+;;; coherent thing to say -- so neither block may gate the other.
 define lp_caps_of(msg) -> caps;
     lvars msg, caps = false, c = lp_param(msg, 'capabilities'),
-          a, play, tts, l, langs = [];
+          a, im, play, tts, l, langs = [], show = true;
     returnunless(c and (isproperty(c) or isjson_object(c)));
+    c('image') -> im;
+    if im and (isproperty(im) or isjson_object(im)) then
+        im('show') -> show;
+        if isvector(show) then datalength(show) > 0 -> show
+        else show and true -> show
+        endif;
+    endif;
     c('audio') -> a;
-    returnunless(a and (isproperty(a) or isjson_object(a)));
+    unless a and (isproperty(a) or isjson_object(a)) then
+        ;;; An image claim on its own is still a claim.  Returning false
+        ;;; here would have thrown it away and told the engine that
+        ;;; nothing was said at all.
+        if im then {% true, [], true, show %} -> caps endif;
+        return;
+    endunless;
     a('play') -> play;
     if isvector(play) then datalength(play) > 0 -> play
     else play and true -> play
@@ -393,7 +411,7 @@ define lp_caps_of(msg) -> caps;
             endif;
         endfor;
     endif;
-    {% play, langs, (a('record') and true) %} -> caps;
+    {% play, langs, (a('record') and true), show %} -> caps;
 enddefine;
 
 define lp_m_session_open(msg) -> res;
@@ -431,7 +449,8 @@ define lp_m_session_open(msg) -> res;
                    ;;; server's conclusion and not an echo: it folds in
                    ;;; whether a voice is installed here at all, which
                    ;;; the client cannot know.
-                   'can_hear', lp_can_hear() %]) -> res;
+                   'can_hear', lp_can_hear(),
+                   'can_see', lp_can_see() %]) -> res;
 enddefine;
 
 ;;; Every method below this line needs a session, and the session is the
@@ -1349,6 +1368,72 @@ define lp_m_audio_fetch(msg) -> res;
     false -> res('path');
 enddefine;
 
+;;; ---------------------------------------------------------- image.fetch
+;;; THE PHOTOGRAPH ITSELF, and there is no image.say beside it.
+;;;
+;;; That asymmetry with audio is the architecture, not an omission.
+;;; audio.say exists because a wav is RENDERED -- there is a command to
+;;; run, a rate to choose and a cache that may or may not hold it, so a
+;;; caller on this machine has a real reason to want the path and skip
+;;; the base64.  A photograph is none of that.  It is committed content
+;;; sitting in the graph directory: forty seconds of generation and a
+;;; human review that cannot be repeated on demand (see
+;;; docs/langpop-photographs.md).  There is nothing to say about making
+;;; one, so the only question a client can ask is "give it to me".
+;;;
+;;; The path is not offered for the same reason audio.fetch withdraws
+;;; it: it names a file on a machine this caller is not on.  A local
+;;; caller that wants the file already knows where the graph is.
+define lp_m_image_fetch(msg) -> res;
+    lvars msg, res, path, raw, b64;
+    lvars item = lp_param(msg, 'item');
+    unless item then
+        lp_err(LP_E_PARAMS, 'image.fetch: item needed') -> res; return
+    endunless;
+    consword(item sys_>< '') -> item;
+    unless lp_kind(item) then
+        lp_err(LP_E_ITEM, 'no such item: ' <> (item sys_>< '')) -> res; return
+    endunless;
+    unless lp_kind(item) == "photo" then
+        lp_err(LP_E_ITEM, 'image.fetch: not a photograph: '
+                          <> (item sys_>< '')) -> res;
+        return;
+    endunless;
+    lp_photo_file(item) -> path;
+    unless path then
+        lp_err(LP_E_UNBUILT, 'image.fetch: no file is recorded for '
+                             <> (item sys_>< '')) -> res;
+        return;
+    endunless;
+    lp_read_bytes(path) -> raw;
+    unless raw then
+        lp_err(LP_E_UNBUILT, 'image.fetch: the file is not on this disk: '
+                             <> path) -> res;
+        return;
+    endunless;
+    ;;; The same cap as audio.fetch and the same reason -- one line, held
+    ;;; whole by every reader of it.  A 640px jpeg is around 100 KB, so
+    ;;; nothing the pipeline produces comes near this; the cap is for the
+    ;;; case the pipeline did not produce, a photograph added by hand at
+    ;;; full resolution.  The very first image generated here was 2.2 MB
+    ;;; and would have failed it, which is why resizing is a step in
+    ;;; tools/mkphoto.py rather than advice in a README.
+    if datalength(raw) > AUDIO_FETCH_MAX then
+        lp_err(LP_E_TOO_BIG,
+               'image.fetch: ' <> (datalength(raw) sys_>< '')
+               <> ' bytes is over the ' <> (AUDIO_FETCH_MAX sys_>< '')
+               <> ' this method will send') -> res;
+        return;
+    endif;
+    lp_base64(raw) -> b64;
+    jsonrpc_obj([% 'item', lp_jkey(item),
+                   'encoding', 'base64',
+                   'bytes', datalength(raw),
+                   'data', b64,
+                   'media_type', 'image/jpeg',
+                   'path', false %]) -> res;
+enddefine;
+
 ;;; ----------------------------------------------------------- audio.text
 ;;; WHAT TO SAY, with nothing in it about who says it.  The
 ;;; platform-free half of audio.say: no voice, no command, no file, no
@@ -1512,6 +1597,7 @@ lconstant METHODS = [
     ['langpop/sheet.render'  ^lp_m_sheet_render]
     ['langpop/audio.text'    ^lp_m_audio_text]
     ['langpop/audio.fetch'   ^lp_m_audio_fetch]
+    ['langpop/image.fetch'   ^lp_m_image_fetch]
     ['langpop/audio.say'     ^lp_m_audio_say]
 ];
 

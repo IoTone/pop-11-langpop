@@ -588,7 +588,7 @@ endif;
 check_true('no claim made means this installation answers for itself',
            lp_can_hear());
 
-{% false, [], false %} -> lp_client_caps;
+{% false, [], false, false %} -> lp_client_caps;
 check_true('a client that said it has no speaker cannot hear',
            not(lp_can_hear()));
 check_true('and hearing stops being verifiable for it',
@@ -602,7 +602,7 @@ check_true('so its listening pool is empty, as with no voice at all',
 check_true('and the audit still says cannot-check, not a score of zero',
            not(lp_probeable("w_neko", "hear")));
 
-{% true, [], false %} -> lp_client_caps;
+{% true, [], false, false %} -> lp_client_caps;
 check_true('a client with a speaker can hear again', lp_can_hear());
 
 ;;; TTS IS CARRIED AND NOT YET TRUSTED, which is exactly where this
@@ -611,14 +611,14 @@ check_true('a client with a speaker can hear again', lp_can_hear());
 ;;; lp_hear_question wants a wav cached HERE at the normal rate.  When
 ;;; that goes, this check changes and `timing_sensitive` has to gain
 ;;; teeth in the same breath.
-{% false, [ja], false %} -> lp_client_caps;
+{% false, [ja], false, false %} -> lp_client_caps;
 check('the claim is carried', lp_cap_tts(), [ja]);
 check_true('and does not by itself make hearing possible',
            not(lp_can_hear()));
 ;;; And a client that declared its audio without naming a language it
 ;;; can speak has claimed NO languages -- an empty list, which is a
 ;;; claim, where false would have meant it never said anything.
-{% true, [], false %} -> lp_client_caps;
+{% true, [], false, false %} -> lp_client_caps;
 check('a claim of nothing is an empty list', lp_cap_tts(), []);
 false -> lp_client_caps;
 check('and no claim at all reads the same way to a caller', lp_cap_tts(), []);
@@ -626,7 +626,7 @@ check('and no claim at all reads the same way to a caller', lp_cap_tts(), []);
 ;;; Reading is untouched by every one of these, which is the property
 ;;; that matters most -- the same one asserted above for a missing voice.
 ;;; Asked under the strongest claim against it: no speaker at all.
-{% false, [], false %} -> lp_client_caps;
+{% false, [], false, false %} -> lp_client_caps;
 lp_question("w_neko", "read") -> (hsh, hpr, hans, hopt);
 check('a reading question is unaffected by what the client can play',
       hsh, "type");

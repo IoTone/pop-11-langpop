@@ -1921,6 +1921,7 @@ shim. `--port N` for TCP, nothing for stdio.
 | `langpop/audio.text` | **what to say**, with nothing about who says it |
 | `langpop/audio.say` | the sound file for an item, if one is cached |
 | `langpop/audio.fetch` | **the sound itself**, for a client with no disk in common |
+| `langpop/image.fetch` | **the photograph itself** — the `see` channel's only method |
 | `langpop/assign` / `report` | work to do elsewhere, and what came of it; `again` marks a reply that is a reminder of outstanding work rather than something new |
 
 Three things are deliberately on the server's side of the line, and each one
@@ -2038,6 +2039,54 @@ statements and this one is a statement: *there is no path for you*.
 graph's: a rendered word is 20–40 KB, the cap is 2 MB of WAV before base64
 makes it a third bigger again, and nothing in the graph comes near it. A
 client that hits it should fall back to `audio.say` rather than retry.
+
+### Photographs, and the `see` channel
+
+**`image.fetch` is the photograph**, and there is deliberately no
+`image.say` beside it:
+
+```json
+{"item": "ph_dog_walk", "encoding": "base64", "bytes": 106141,
+ "data": "/9j/4AAQ...", "media_type": "image/jpeg", "path": false}
+```
+
+The asymmetry with audio is the architecture, not an omission. `audio.say`
+exists because a WAV is *rendered* — there is a command to run, a rate to
+choose and a cache that may or may not hold it, so a caller on this machine
+has a real reason to want the path and skip the base64. A photograph is none
+of that: it is committed content in the graph directory, forty seconds of
+generation and a human review that cannot be repeated on demand. There is
+nothing to say about making one, so the only question is *give it to me*.
+
+A `see` question is TOEIC Part 1 — here is a photograph, which of these four
+statements describes it — and it comes back as `look_pick` with the image
+path as the stimulus, four statements as the options and a **position** as
+the answer. The answer never leaves, as everywhere else. What is different
+from a listening question is that the **stimulus does not contain the
+answer**: a `hear` question asks *what did you hear*, so naming the sound
+names the key, which is why client-side TTS can never serve one. A picture
+names nothing, and four sentences about it are still four sentences.
+
+Every statement in the graph has been checked against its photograph by a
+vision model that was not shown the prompt — see
+[docs/langpop-photographs.md](docs/langpop-photographs.md), where the first
+image generated drew *two* dogs for a prompt that asked for one.
+
+**`show` is a sibling of `play`, not a field inside it**, because the two
+travel separately: a terminal with a speaker has no canvas and a silent
+browser has nothing but. `session.open` answers both:
+
+```json
+{"capabilities": {"audio": {"play": []}, "image": {"show": ["jpeg"]}}}
+→ {"can_hear": false, "can_see": true, ...}
+```
+
+An absent claim is still not an empty one, and that holds per block: a
+`capabilities` object carrying only `image` has said nothing about audio and
+gets the old behaviour, while `{"image": {"show": []}}` is a client saying
+*I am here and I have no screen for this*. The TUI says exactly that —
+`tools/term-image.py` exists and could change the answer, but until the
+client actually calls it the honest claim is none.
 
 **Why the sound and not the text.** A client that can synthesise cannot be
 sent the text instead, however many platform voices it has. A listening

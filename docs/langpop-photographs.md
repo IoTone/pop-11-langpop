@@ -1,8 +1,10 @@
 # Photographs for langpop: the `see` channel
 
-**Status:** the content pipeline is built and two photographs are in the
-tree; the engine does not yet have a `see` channel. Written as the
-pipeline was measured, 2026-11-03.
+**Status:** built. The content pipeline, the `see` channel and
+`langpop/image.fetch` all ship; two photographs are in the tree. What is
+*not* built is an exit criterion, which is the one decision in here that
+is not mine to make — see §6. Written as the pipeline was measured,
+2026-11-03.
 
 Companion to `docs/langpop-audio.md`. The arguments rhyme — a photograph
 is a *stimulus*, which is what a WAV is — and where they rhyme this
@@ -167,23 +169,51 @@ bytes*. All generation lives in `tools/`.
 A corollary worth stating: generated images have **no corpus attribution
 problem at all**. Cleaner provenance than JMdict or OpenSubtitles.
 
-## 6. Where this goes next
+## 6. What shipped, and what is left
 
-- **The `see` channel in the engine.** Item kind `photo`, channel
-  `[see]`, `lp_can_see()` gated on the client's `show` claim exactly as
-  `lp_can_hear()` is gated on `play`, and `image.fetch` mirroring
-  `audio.fetch`. The question is a `pick`: the stimulus is the image,
-  the options are the statements, the answer is a position — so the
-  answer never leaves, and unlike a listening question the stimulus does
-  not contain it.
+The `see` channel is built. Item kind `photo`, channel `[see]`,
+`lp_can_see()` gated on the client's `show` claim exactly as
+`lp_can_hear()` is gated on `play`, `lp_see_question` producing
+`look_pick`, and `langpop/image.fetch` carrying the bytes. The answer is
+a position, so it never leaves; and unlike a listening question the
+stimulus does not contain it, which is what lets the picture be handed
+over at all.
+
+Three things fell out of building it that were not in the plan:
+
+- **`lp_read_bytes` and `lp_base64` left `audio.p`.** Nothing about
+  reading a file as bytes or spelling them in base64 is about *sound*,
+  and a photograph reaching into the audio file for its encoder would
+  have been a lie about the architecture. They sit under both channels
+  now, in `langpop.p`.
+- **`check(graph)` caught the new kind immediately**, with
+  `item_without_form` for both photographs — correctly, since a photo
+  has no written form. The exemption is paid for rather than taken:
+  `photo_without_file`, `photo_without_key` and
+  `photo_short_of_distractors` now demand of a photo what `form/3`
+  demands of everything else. An item kind that carries its content
+  outside the graph has to be checked for carrying it.
+- **The protocol suite cannot round-trip a photograph.** `test_langpop_server.p`
+  is one process talking to itself over a `sys_socket_pair`, so the
+  handler writes the whole reply before anything reads it; 141 KB of
+  base64 exceeds the socket buffer and the suite hangs with no output at
+  all. `audio.fetch` escapes it only because a word is 20 KB of WAV.
+  That is a limit of the harness, not the method — verified over a real
+  socket between two processes: 106,141 bytes out, byte-identical,
+  `path: false`. The payload assertions call the method directly and the
+  error cases still go over the wire.
+
+### Left
+
 - **A faithful Part 1 needs both channels.** On the real test the four
   statements are **spoken, not printed** — the paper in front of the
   candidate has only the photograph. So a faithful item is an image plus
   four WAVs with the position as the answer, which is exactly the shape
-  `lp_pair_question` already builds. The printed-statement version is a
-  legitimate easier variant, and is what a paper book's answer key looks
-  like. This would be the first item in the graph needing `see` *and*
-  `hear` together.
+  `lp_pair_question` already builds. The printed-statement version that
+  ships now is a legitimate easier variant, and is what a paper book's
+  answer key looks like. It would be the first item in the graph needing
+  `see` *and* `hear` together.
+- **More than two photographs.** Forty seconds and a review each.
 - **An exit criterion, which is not mine to invent.** Content with no
   criterion is unmeasured content; the audit would not report it at all.
   What a photograph set has to be worth belongs on the ladder beside the

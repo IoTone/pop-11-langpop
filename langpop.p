@@ -93,12 +93,15 @@ enddefine;
 ;;; lookup is identity: two strings spelled alike are different keys.
 
 vars
+    lp_photos_ready = false,                            ;;; any photo indexed
     lp_taken    = [],                                   ;;; capture buffer
     lp_kind     = newproperty([], 512, false, "perm"),
     lp_ilang    = newproperty([], 512, false, "perm"),
     lp_ilevel   = newproperty([], 512, false, "perm"),
     lp_isrc     = newproperty([], 512, false, "perm"),
     lp_forms    = newproperty([], 512, [], "perm"),     ;;; item -> [[script text] ...]
+    lp_photos   = newproperty([], 32, false, "perm"),   ;;; item -> file path
+    lp_depicts  = newproperty([], 32, [], "perm"),      ;;; item -> [[yes text] ...]
     lp_gl       = newproperty([], 512, [], "perm"),     ;;; item -> [[lang text] ...]
     lp_confs    = newproperty([], 256, [], "perm"),     ;;; item -> [[other why] ...]
     lp_skanjis  = newproperty([], 64, false, "perm"),   ;;; word -> kanji spelling
@@ -201,6 +204,7 @@ enddefine;
 ;;;   grapheme  [read]            a character is read
 ;;;   word      [read hear]       and a word is both
 ;;;   sound     [hear]            a contrast is heard or it is nothing
+;;;   photo     [see]             a picture is looked at
 ;;;   pattern   [produce]         a pattern is produced
 ;;;   skill     [read]            a roll-up over whatever it requires
 ;;; `speak` is SAYING it, and it is not `produce`.  produce is composing
@@ -220,6 +224,11 @@ define lp_channels(item) -> chs;
     ;;; order is the whole point: it is the half of a merge that can be
     ;;; asked with no voice installed, so `read` is its gate.
     elseif k == "confusion" then [read hear]
+    ;;; A photograph is looked at and nothing else.  There is no
+    ;;; reading version of "which statement describes this picture",
+    ;;; because the picture is the whole stimulus -- take it away and
+    ;;; there is no question left, only four sentences.
+    elseif k == "photo"    then [see]
     elseif k == "pattern"  then [produce]
     elseif k == "word"     then [read hear speak]
     elseif k == "grapheme" then [read speak]
@@ -272,6 +281,20 @@ enddefine;
 lconstant VERIFIABLE = [read produce];
 lconstant VERIFIABLE_HEARD = [hear];
 
+;;; `see` is kept apart from VERIFIABLE for exactly the reason `hear` is,
+;;; and the reason is the same sentence with one word changed: it is a
+;;; fact about the INSTALLATION and about the client, not about the
+;;; student.  A machine whose photographs have not been fetched, or a
+;;; client that cannot put a picture on a screen, must go on saying it
+;;; cannot ask rather than reporting a score of zero -- which would read
+;;; as a student who failed instead of a tutor that cannot ask.
+;;;
+;;; It is NOT lumped in with VERIFIABLE_HEARD, though the shape is
+;;; identical, because the two can be true separately: a terminal client
+;;; with a speaker and no pixels can hear and cannot see, and a silent
+;;; browser is the other way round.  One list could not say that.
+lconstant VERIFIABLE_SEEN = [see];
+
 ;;; ------------------------------------------------- the client's claim
 ;;; WHO CAN MAKE THE SOUND stops being a fact about this machine as soon
 ;;; as the client is somewhere else.  audio.conf names a SHELL COMMAND --
@@ -290,8 +313,15 @@ lconstant VERIFIABLE_HEARD = [hear];
 ;;; here, I have no speaker, do not ask me to listen.  One `false`
 ;;; cannot carry both meanings, so absence and emptiness are kept apart.
 ;;;
-;;; {play, tts, record}: can it play sound handed to it, which languages
-;;; can it speak for itself, can it record.
+;;; {play, tts, record, show}: can it play sound handed to it, which
+;;; languages can it speak for itself, can it record, can it display an
+;;; image handed to it.
+;;;
+;;; `show` arrived with the `see` channel and takes the same shape as
+;;; `play` for the same reason -- a photograph, like a wav, is bytes the
+;;; server hands over and the client renders -- but it is a SEPARATE
+;;; claim, because a terminal with a speaker is not a browser with a
+;;; canvas and the two capabilities have never travelled together.
 vars lp_client_caps = false;
 
 define lp_cap_play() -> yes;
@@ -319,6 +349,18 @@ define lp_cap_record() -> yes;
     lvars yes = (not(lp_client_caps) or lp_client_caps(3)) and true;
 enddefine;
 
+;;; Can the client put a picture in front of the student.  Absent is a
+;;; claim of nothing in particular and means "behave as before", which
+;;; for `see` is the same default `play` takes: assume it can, because
+;;; every caller that predates the field is a caller we must not break.
+;;; A client that says `{"image": {"show": []}}` is saying something
+;;; else -- I am here and I have no screen for this.
+define lp_cap_show() -> yes;
+    lvars yes = (not(lp_client_caps)
+                 or datalength(lp_client_caps) < 4
+                 or lp_client_caps(4)) and true;
+enddefine;
+
 ;;; audio.p is loaded on demand, so this asks "is there a voice in this
 ;;; session", and the `and` short-circuits before naming anything
 ;;; audio.p defines.
@@ -339,10 +381,104 @@ define lp_can_hear() -> yes;
     if yes and not(lp_cap_play()) then false -> yes endif;
 enddefine;
 
+;;; Whether a photograph can be put in front of this student.
+;;;
+;;; Two halves, and only the second is new.  There must be photographs in
+;;; the graph at all -- `lp_photos_ready` -- which is the `see` analogue
+;;; of "is there a voice in this session", and it is false in any
+;;; checkout whose graph/*/photos.pl is absent.  And the client must be
+;;; able to show one.
+;;;
+;;; Note what is NOT asked here: whether a particular file is on disk.
+;;; That is per item and belongs in lp_see_question, exactly as the
+;;; cached-wav precondition belongs in lp_hear_question.  A missing file
+;;; makes one question unaskable; it does not mean the tutor is blind.
+;;; photo/2 records a path relative to the repository root, like every
+;;; other path in the graph.  Resolving it through find_dir() rather
+;;; than trusting the working directory is what lets the server be
+;;; started from anywhere -- the same fix c9a72f0 made for the graph
+;;; files themselves, which this would otherwise have quietly undone.
+define lp_photo_file(item) -> path;
+    lvars item, rel = lp_photos(item);
+    ;;; A quoted atom comes back from Prolog as a WORD, not a string, and
+    ;;; <> wants two strings.
+    if rel then find_dir() <> (rel sys_>< '') else false endif -> path;
+enddefine;
+
+define lp_can_see() -> yes;
+    lvars yes = lp_photos_ready and lp_cap_show();
+enddefine;
+
 define lp_verifiable(ch);
     lvars ch;
     member(ch, VERIFIABLE)
     or (member(ch, VERIFIABLE_HEARD) and lp_can_hear())
+    or (member(ch, VERIFIABLE_SEEN) and lp_can_see())
+enddefine;
+
+;;; ------------------------------------------------- files, as bytes
+;;; Generic I/O, and deliberately not in audio.p where both of these
+;;; were first written.  A stimulus the client cannot reach by path has
+;;; to travel down the line it is already on, and that is as true of a
+;;; photograph as of a wav -- so the encoder belongs to neither channel
+;;; and sits under both.
+
+;;; Byte-exact, which discin and lp_read_file are not promised to be: org
+;;; `true` is Poplog's raw mode (REF * SYSIO), so a 0x8b in the middle of
+;;; a wav arrives as 139 and not as whatever a text device would make of
+;;; it.
+define lp_read_bytes(path) -> s;
+    lvars path, dev, buf = inits(8192), got, n = 0, i;
+    false -> s;
+    returnunless(sys_file_exists(path));
+    sysopen(path, 0, true, `A`) -> dev;
+    returnunless(dev);
+    repeat
+        sysread(dev, buf, 8192) -> got;
+        quitif(got == 0);
+        for i from 1 to got do buf(i); n + 1 -> n endfor;
+    endrepeat;
+    sysclose(dev);
+    consstring(n) -> s;
+enddefine;
+
+;;; RFC 4648, no line breaks -- the 72-column wrapping LIB * MIMENCODE
+;;; does is for mail bodies, and this goes in a JSON string where a
+;;; newline is an escape sequence somebody has to pay for twice.
+;;;
+;;; Written here rather than taken from LIB * MIMENCODE for two reasons:
+;;; that library writes to a consumer or a file and this wants a string,
+;;; and it reads its input through discin, which is the text device this
+;;; whole section exists to avoid.
+;;;
+;;; `fi_` is NOT used on the shifts.  There is no fi_>> in Pop-11 --
+;;; mimencode.p mixes `>>` with `fi_<<` for exactly that reason -- and a
+;;; non-existent operator is a compile error inside a procedure nothing
+;;; had called yet, which is a slow way to find out.  Verified against
+;;; /usr/bin/base64: identical output for the empty string, one, two and
+;;; three byte inputs, RFC 4648's own `any carnal pleasure.` vectors, and
+;;; five real wavs out of the cache totalling 77,897 characters.
+lconstant B64 =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+define lp_base64(s) -> b;
+    lvars s, len = datalength(s), i = 1, n = 0, a, bb, c;
+    until i > len do
+        s(i) -> a;
+        if i + 1 =< len then s(i + 1) else false endif -> bb;
+        if i + 2 =< len then s(i + 2) else false endif -> c;
+        B64((a >> 2) + 1);
+        B64((((a && 2:11) << 4) || (if bb then bb >> 4 else 0 endif)) + 1);
+        ;;; A missing third byte is two output characters and one pad; a
+        ;;; missing second is one and two.  Both are the tail, so the
+        ;;; loop ends either way.
+        if bb then
+            B64((((bb && 2:1111) << 2) || (if c then c >> 6 else 0 endif)) + 1)
+        else `=` endif;
+        if c then B64((c && 2:111111) + 1) else `=` endif;
+        n + 4 -> n; i + 3 -> i;
+    enduntil;
+    consstring(n) -> b;
 enddefine;
 
 define lp_bel(item, ch) -> b;
@@ -440,6 +576,10 @@ define lp_ungateable(item) -> yes;
     lvars item, ch = lp_primary(item);
     if not(lp_verifiable(ch)) then true
     elseif member(ch, VERIFIABLE_HEARD) then not(lp_drillable_on(item, ch))
+    ;;; Same clause, same reason: a photograph whose file is not on this
+    ;;; disk cannot be asked about, and a prerequisite nothing can check
+    ;;; does not hold the door shut.
+    elseif member(ch, VERIFIABLE_SEEN) then not(lp_drillable_on(item, ch))
     else false
     endif -> yes;
 enddefine;
@@ -480,6 +620,30 @@ enddefine;
 ;;; starter_kanji/2: the spelling the corpus uses for a kana-level word.
 ;;; Not a form -- see the facts' comment in graph/ja/items.pl -- so it
 ;;; gets its own table, and the (none, none) guard row is dropped here.
+;;; photo/2 and depicts/2 + misdepicts/2 from graph/*/photos.pl.  The
+;;; path is relative to the repository root, which is where every other
+;;; graph path is anchored.
+define :prolog lp_photo/2(i, p, contn);
+    lvars i, p, contn, id = prolog_deref(i);
+    prolog_deref(p) -> lp_photos(id);
+    true -> lp_photos_ready;
+    chain(contn);
+enddefine;
+
+;;; tv is `yes` for a statement true of the photograph and `no` for one
+;;; plainly false of it.  Both are kept, and both are content: a
+;;; distractor that has been checked against the picture is as much a
+;;; curated fact as the key is.
+define :prolog lp_depict/3(i, tv, t, contn);
+    lvars i, tv, t, contn, id = prolog_deref(i);
+    ;;; The statement is stored as a STRING.  A quoted atom derefs to a
+    ;;; word, and a word is interned -- fine for an item id, wrong for a
+    ;;; sentence that goes on the wire and is compared with `=`.
+    lp_depicts(id) <> [[% prolog_deref(tv), prolog_deref(t) sys_>< '' %]]
+        -> lp_depicts(id);
+    chain(contn);
+enddefine;
+
 define :prolog lp_skanji/2(i, k, contn);
     lvars i, k, contn, id = prolog_deref(i);
     unless id == "none" then prolog_deref(k) -> lp_skanjis(id) endunless;
@@ -567,7 +731,8 @@ lconstant GRAPH_FILES = ['graph/schema.pl' 'graph/resources.pl'
                          'graph/ja/ladder.pl' 'graph/ja/kana.pl'
                          'graph/ja/items.pl'
                          'graph/en/ladder.pl' 'graph/en/items.pl'
-                         'graph/en/a1.pl' 'graph/en/a2.pl'];
+                         'graph/en/a1.pl' 'graph/en/a2.pl'
+                         'graph/en/photos.pl'];
 
 ;;; The imported levels.  Each of these is a BUILD PRODUCT written by
 ;;; import.p out of upstream reference data; none is committed, and the
@@ -676,6 +841,8 @@ define lp_index();
     clearproperty(lp_kind); clearproperty(lp_ilang);
     clearproperty(lp_ilevel); clearproperty(lp_isrc);
     clearproperty(lp_forms); clearproperty(lp_gl); clearproperty(lp_confs);
+    clearproperty(lp_photos); clearproperty(lp_depicts);
+    false -> lp_photos_ready;
     clearproperty(lp_skanjis);
     clearproperty(lp_ranks);
     [] -> lp_items; [] -> lp_ladders; [] -> lp_exits; [] -> lp_rsrc;
@@ -2876,11 +3043,69 @@ define lp_hear_question(item) -> (shape, prompt, answer, options);
     path -> prompt;
 enddefine;
 
+;;; ------------------------------------------------- the `see` question
+;;; TOEIC Part 1: here is a photograph, which of these statements
+;;; describes it.  Four options, exactly one true, and the answer is a
+;;; POSITION -- so the answer never leaves, which is the rule the whole
+;;; protocol is built on.
+;;;
+;;; And unlike a listening question, the stimulus does not contain the
+;;; answer.  That is worth saying plainly, because it is the difference
+;;; that lets a photograph be handed to a client at all: a `hear`
+;;; question asks what did you hear, so naming the sound names the key,
+;;; which is why client-side TTS can never serve one.  A picture names
+;;; nothing.  Four sentences about it are still four sentences.
+;;;
+;;; Two preconditions, both checked here so no caller can forget them --
+;;; the same bargain lp_hear_question strikes:
+;;;   - the FILE must be on this disk.  Nothing is drawn on demand; a
+;;;     photograph is forty seconds of generation and a human review, so
+;;;     it is committed content and not a cache (docs/langpop-photographs.md).
+;;;   - there must be a key and at least three checked distractors.  A
+;;;     three-option Part 1 question is a different question with a
+;;;     different guess rate, not this one short of an option.
+define lp_see_question(item) -> (shape, prompt, answer, options);
+    lvars item, shape, prompt, answer, options, path, d,
+          yes = [], no = [], a, i, key, picks = [], pos, out = [];
+    ("none", '', [], []) -> (shape, prompt, answer, options);
+    returnunless(lp_can_see());
+    returnunless(lp_kind(item) == "photo");
+    lp_photo_file(item) -> path;
+    returnunless(path and sys_file_exists(path));
+    for d in lp_depicts(item) do
+        if d(1) == "yes" then yes <> [% d(2) %] -> yes
+        else no <> [% d(2) %] -> no
+        endif;
+    endfor;
+    returnunless(yes /== [] and length(no) >= 3);
+    ;;; Which true statement is the key, which three distractors stand
+    ;;; beside it, and where the key sits all turn over with the ask
+    ;;; count -- the idiom lp_pair_question argues at length.  Without
+    ;;; the last of those the answer is always 1 and the student learns
+    ;;; the position instead of the language.
+    lp_asked(item) -> a;
+    yes((a mod length(yes)) + 1) -> key;
+    for i from 0 to 2 do
+        picks <> [% no(((a + i) mod length(no)) + 1) %] -> picks;
+    endfor;
+    (a mod 4) + 1 -> pos;
+    for i from 1 to 4 do
+        if i == pos then out <> [% key %] -> out
+        else out <> [% hd(picks) %] -> out; tl(picks) -> picks
+        endif;
+    endfor;
+    ("look_pick", path, [% pos sys_>< '' %], out)
+        -> (shape, prompt, answer, options);
+enddefine;
+
 define lp_question(item, ch) -> (shape, prompt, answer, options);
     lvars item, ch, k = lp_kind(item), r, en, ja, glyph, kanji, reads;
     ("none", '', [], []) -> (shape, prompt, answer, options);
     if ch == "hear" then
         lp_hear_question(item) -> (shape, prompt, answer, options);
+        return;
+    elseif ch == "see" then
+        lp_see_question(item) -> (shape, prompt, answer, options);
         return;
     endif;
     lp_form_of(item, "romaji") -> r;

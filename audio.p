@@ -287,63 +287,13 @@ enddefine;
 ;;; a client that synthesises the stimulus has been told the answer.  See
 ;;; docs/langpop-audio.md section 6.6.  Sound, not text.
 
-;;; Byte-exact, which discin and lp_read_file are not promised to be: org
-;;; `true` is Poplog's raw mode (REF * SYSIO), so a 0x8b in the middle of
-;;; a wav arrives as 139 and not as whatever a text device would make of
-;;; it.
-define lp_read_bytes(path) -> s;
-    lvars path, dev, buf = inits(8192), got, n = 0, i;
-    false -> s;
-    returnunless(sys_file_exists(path));
-    sysopen(path, 0, true, `A`) -> dev;
-    returnunless(dev);
-    repeat
-        sysread(dev, buf, 8192) -> got;
-        quitif(got == 0);
-        for i from 1 to got do buf(i); n + 1 -> n endfor;
-    endrepeat;
-    sysclose(dev);
-    consstring(n) -> s;
-enddefine;
-
-;;; RFC 4648, no line breaks -- the 72-column wrapping LIB * MIMENCODE
-;;; does is for mail bodies, and this goes in a JSON string where a
-;;; newline is an escape sequence somebody has to pay for twice.
-;;;
-;;; Written here rather than taken from LIB * MIMENCODE for two reasons:
-;;; that library writes to a consumer or a file and this wants a string,
-;;; and it reads its input through discin, which is the text device this
-;;; whole section exists to avoid.
-;;;
-;;; `fi_` is NOT used on the shifts.  There is no fi_>> in Pop-11 --
-;;; mimencode.p mixes `>>` with `fi_<<` for exactly that reason -- and a
-;;; non-existent operator is a compile error inside a procedure nothing
-;;; had called yet, which is a slow way to find out.  Verified against
-;;; /usr/bin/base64: identical output for the empty string, one, two and
-;;; three byte inputs, RFC 4648's own `any carnal pleasure.` vectors, and
-;;; five real wavs out of the cache totalling 77,897 characters.
-lconstant B64 =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-define lp_base64(s) -> b;
-    lvars s, len = datalength(s), i = 1, n = 0, a, bb, c;
-    until i > len do
-        s(i) -> a;
-        if i + 1 =< len then s(i + 1) else false endif -> bb;
-        if i + 2 =< len then s(i + 2) else false endif -> c;
-        B64((a >> 2) + 1);
-        B64((((a && 2:11) << 4) || (if bb then bb >> 4 else 0 endif)) + 1);
-        ;;; A missing third byte is two output characters and one pad; a
-        ;;; missing second is one and two.  Both are the tail, so the
-        ;;; loop ends either way.
-        if bb then
-            B64((((bb && 2:1111) << 2) || (if c then c >> 6 else 0 endif)) + 1)
-        else `=` endif;
-        if c then B64((c && 2:111111) + 1) else `=` endif;
-        n + 4 -> n; i + 3 -> i;
-    enduntil;
-    consstring(n) -> b;
-enddefine;
+;;; The two procedures that do it -- lp_read_bytes and lp_base64 -- used
+;;; to live here, and do not any more.  Nothing about reading a file as
+;;; bytes or spelling bytes in base64 is about SOUND, and the `see`
+;;; channel wants both for exactly the same reason this one does.  A
+;;; photograph reaching into audio.p for its encoder would have been a
+;;; lie about the architecture, so they moved to langpop.p and both
+;;; channels call them from there.
 
 ;;; ---------------------------------------------------- rate and rhythm
 ;;; A SLOWED VOICE IS NOT A SLOWED LANGUAGE, and for one family of items

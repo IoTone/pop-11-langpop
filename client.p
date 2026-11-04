@@ -502,7 +502,16 @@ define client_main();
         jsonrpc_obj([% 'student_id', user,
                        'capabilities', jsonrpc_obj([%
                            'audio', jsonrpc_obj([% 'play', {},
-                                                   'record', false %])
+                                                   'record', false %]),
+                           ;;; A terminal cannot put a jpeg on the screen,
+                           ;;; so it says so, for the same reason it says
+                           ;;; it has no speaker: a question whose stimulus
+                           ;;; this client cannot render is one the student
+                           ;;; would be shown nothing for and marked wrong
+                           ;;; on.  tools/term-image.py exists and could
+                           ;;; change this answer; until the TUI actually
+                           ;;; calls it, the honest claim is none.
+                           'image', jsonrpc_obj([% 'show', {} %])
                        %]) %])) -> sess;
     returnunless(sess);
     p(sess, 'session_id') -> lp_sid;

@@ -69,7 +69,7 @@ enddefine;
 ;;; ------------------------------------------------------------- the door
 check('ping', result('ping', false), 'pong');
 check_true('methods are listable',
-           length(result('langpop/methods', false)) == 20);
+           length(result('langpop/methods', false)) == 21);
 check_true('and the list names them, not just counts them',
            member('langpop/card.render',
                   [% explode(result('langpop/methods', false)) %]) /== false);
@@ -1459,6 +1459,110 @@ check_true('a capabilities field that is not an object is ignored',
            result('langpop/session.open',
                   jsonrpc_obj([% 'student_id', 'hearer',
                                  'capabilities', 'yes please' %]))('can_hear'));
+
+;;; ---------------------------------------------------------- image.fetch
+;;; THE PHOTOGRAPH ON THE WIRE.  There is no image.say beside this, and
+;;; the asymmetry is deliberate: a wav is rendered, so a local caller has
+;;; a reason to want the path instead; a photograph is committed content
+;;; and the only question is "give it to me".
+;;; NOT THROUGH THE SOCKET, and the reason is worth recording because it
+;;; caught us: `call` above is one process talking to itself over a
+;;; sys_socket_pair, so lp_rpc_handle writes the whole reply BEFORE
+;;; anything reads it.  A reply larger than the socket buffer -- about
+;;; 64 KB -- blocks the write for ever and the suite hangs with no
+;;; output at all.  audio.fetch escapes it only because a word is 20 KB
+;;; of wav; a 106 KB photograph is 141 KB of base64 and does not.
+;;;
+;;; That is a limit of this harness, not of the method: a real client is
+;;; a second process reading while the server writes.  So the payload is
+;;; checked by calling the method directly, and the error cases -- which
+;;; are small -- still go over the wire below, where the framing is what
+;;; is being tested.
+define direct(method, params) -> res;
+    lvars method, params, res;
+    method(jsonrpc_obj([% 'params', params %])) -> res;
+enddefine;
+
+vars fet = direct(lp_m_image_fetch, jsonrpc_obj([% 'item', 'ph_dog_walk' %]));
+check('the photograph comes back base64', fet('encoding'), 'base64');
+check('and says what it is', fet('media_type'), 'image/jpeg');
+check_true('and how many bytes it was before encoding',
+           fet('bytes') > 1000);
+check_false('and offers no path to a machine the caller is not on',
+            fet('path'));
+;;; `false` and not a removal: a false member and a missing member are
+;;; different statements, and this one is a statement -- there is no path
+;;; for you.  That jsonrpc_obj actually puts false on the wire rather
+;;; than dropping it is checked once, over at audio.fetch, where the
+;;; reply is small enough to read back through the socket.
+check_true('the item is named in the reply', fet('item') = 'ph_dog_walk');
+
+;;; The bytes are the file, not a description of it.  Decoding here would
+;;; re-implement the encoder and prove nothing, so this compares against
+;;; lp_base64 of the file read off the disk -- which test_langpop_audio
+;;; has already checked against /usr/bin/base64.
+vars disk = lp_read_bytes(lp_photo_file("ph_dog_walk"));
+check_true('the data is exactly the file on disk',
+           fet('data') = lp_base64(disk));
+check_true('and the byte count is the file length too',
+           fet('bytes') == datalength(disk));
+
+check('an item that is not a photograph is -32003',
+      errcode('langpop/image.fetch', jsonrpc_obj([% 'item', 'hi_a' %])),
+      -32003);
+check('an item that does not exist is -32003 too',
+      errcode('langpop/image.fetch', jsonrpc_obj([% 'item', 'nonesuch' %])),
+      -32003);
+check('and no item at all is -32602',
+      errcode('langpop/image.fetch', jsonrpc_obj([])), -32602);
+
+;;; ------------------------------------------------- what the client sees
+;;; `show` is a SIBLING of `play`, not a field inside it, because the two
+;;; travel separately -- a terminal with a speaker has no canvas.  So
+;;; each must be settable without the other.
+check_true('with no claim at all the server assumes a screen',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer' %]))('can_see'));
+check_false('a client that says it cannot show is believed',
+            result('langpop/session.open',
+                   jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                       jsonrpc_obj([% 'image', jsonrpc_obj([%
+                           'show', {} %]) %]) %]))('can_see'));
+check_true('and one that says it can is believed too',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                      jsonrpc_obj([% 'image', jsonrpc_obj([%
+                          'show', {% 'jpeg' %} %]) %]) %]))('can_see'));
+
+;;; An image claim ARRIVING ALONE must not be thrown away because there
+;;; is no audio block beside it -- the bug that an early draft had, where
+;;; a missing `audio` returned before `image` was ever read.
+check_false('an image claim with no audio block beside it still counts',
+            result('langpop/session.open',
+                   jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                       jsonrpc_obj([% 'image', jsonrpc_obj([%
+                           'show', {} %]) %]) %]))('can_see'));
+check_true('and it leaves the audio answer alone',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                      jsonrpc_obj([% 'image', jsonrpc_obj([%
+                          'show', {} %]) %]) %]))('can_hear'));
+
+;;; The mute client and the blind one are different clients.
+check_true('a client with no speaker may still have a screen',
+           result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                      jsonrpc_obj([% 'audio', jsonrpc_obj([% 'play', {} %]),
+                                     'image', jsonrpc_obj([%
+                                         'show', {% 'jpeg' %} %]) %]) %])
+                 )('can_see'));
+check_false('and is still not asked to listen',
+            result('langpop/session.open',
+                   jsonrpc_obj([% 'student_id', 'hearer', 'capabilities',
+                       jsonrpc_obj([% 'audio', jsonrpc_obj([% 'play', {} %]),
+                                      'image', jsonrpc_obj([%
+                                          'show', {% 'jpeg' %} %]) %]) %])
+                  )('can_hear'));
 
 jsonrpc_close(client); jsonrpc_close(server);
 sysobey('rm -rf ' <> tmpdir);
