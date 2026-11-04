@@ -1,0 +1,16 @@
+{
+  "id": "ph_dog_walk",
+  "photo": "graph/en/photos/ph_dog_walk.jpg",
+  "requested": "A person walking a dog, realistic photograph",
+  "checked_with": "qwen3-vl:8b",
+  "true": [
+    "A woman is walking two dogs.",
+    "One of the dogs is on a leash."
+  ],
+  "false": [
+    "A woman is walking three dogs.",
+    "Both of the dogs are on leashes.",
+    "The dogs are sitting on the pavement.",
+    "A man is riding a bicycle."
+  ]
+}

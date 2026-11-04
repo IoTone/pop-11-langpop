@@ -1,0 +1,16 @@
+{
+  "id": "ph_office_copier",
+  "photo": "graph/en/photos/ph_office_copier.jpg",
+  "requested": "Two office workers standing beside a photocopier in a bright office, one holding a stack of papers, realistic photograph",
+  "checked_with": "qwen3-vl:8b",
+  "true": [
+    "Two women are standing near a photocopier.",
+    "Some papers are being held."
+  ],
+  "false": [
+    "A man is operating the photocopier.",
+    "The women are sitting at a desk.",
+    "The office is empty.",
+    "The women are outside the building."
+  ]
+}

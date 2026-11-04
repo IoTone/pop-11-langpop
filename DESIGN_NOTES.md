@@ -2808,3 +2808,97 @@ it exists for the case the graph does not control: a voice configured to
 say something long. It is tested with a voice that writes three megabytes
 of zeros, because this is the one reply whose size is set by a file rather
 than by the graph.
+
+## The prompt is not the answer key
+
+TOEIC Part 1 is the one part of that test langpop could not address at
+all — not for want of curation, like the passages and the conversations,
+but because it needs a photograph to exist. A local image model changes
+that: forty seconds on this laptop for a 1024×1024 PNG.
+
+The first image generated here settled the design of everything around
+it. The prompt was `"A person walking a dog, realistic photograph"`. It
+drew a person walking **two dogs**, one on a leash and one loose.
+
+Nothing is wrong with the picture. It is better than the request — two
+dogs with one leashed is a richer Part 1 photo than one dog. But Part 1's
+distractors are *precisely* about number, action and state, so an item
+keyed from the prompt would have marked the student who counted
+correctly as wrong. The second photograph repeated it: asked for two
+office workers *"one holding a stack of papers"*, it drew two women both
+apparently holding papers.
+
+So the prompt is a **request**, discarded the moment the file exists.
+After that the image is the only authority on itself — the same rule the
+project already runs on everywhere else, arriving somewhere new.
+
+### The gate found a defect in the first distractor, and it was mine
+
+`tools/mkphoto.py check` puts each statement alone to a vision model that
+has not seen the prompt and does not know which answer is wanted. The
+expected job is catching a wrong key. The unexpected job turned out to be
+the more useful one:
+
+```
+WRONG want=False got=True   A woman is walking a dog.
+        the model says: The woman is walking multiple dogs, so the
+        statement that she is walking a dog (at least one) is accurate.
+```
+
+That is correct, and the distractor was mine. A distractor that survives
+on a reading of *"at least one"* is a second right answer wearing a
+disguise.
+
+The rule that came out of it is sharper than "check the key". On the
+office photo the checker insists, twice and in different words, that both
+women hold papers, where to a human reader the second woman's hands look
+out of frame. One of the two is misreading a 640px JPEG — and **it does
+not matter which**. A statement two careful readers cannot agree on is
+unfit to be an option whichever way it resolves. *Drop the statement,
+never adjudicate it.*
+
+Which also fixes what each mode is for. `describe` is unconstrained and
+confabulates — it is the mode that produced the hands. `check` is one
+constrained TRUE/FALSE about one statement, and has not yet been wrong
+about a count, an absence or a posture. So `describe` drafts and `check`
+gates, and neither is an oracle about the world: the gate only ever tests
+whether a statement is **plain**.
+
+### Small web-palette GIFs, measured, are the worst option
+
+The natural instinct for "smallest" is a 256-colour GIF. On the dog
+photograph, at 640px:
+
+```
+JPEG q70       81,297          PNG8, 256 colours    216,469
+WebP q80       93,846          GIF, 256 colours     307,318
+JPEG q80      106,141
+```
+
+Nearly four to one against the palette formats, which is the opposite of
+what the instinct predicts. GIF and PNG8 win on *flat-colour* graphics by
+replacing a continuous-tone field with an index. A photograph **is** a
+continuous-tone field, so quantising spends bytes encoding dither noise
+JPEG never represents at all. WebP's edge is real and small, and not
+worth a third decoder in every future client.
+
+JPEG, 640px, q80, ~100 KB. Worth noting the master would not have fitted:
+2,213,706 bytes is over `AUDIO_FETCH_MAX` by 116 KB, so the very first
+image generated failed the cap — which is why resizing is a step in the
+tool rather than advice in a README.
+
+### Photographs are kept, where sound is cached
+
+This is where the analogy with audio breaks, and it simplifies the engine
+side considerably. A WAV is 25.9 KB, deterministic, and regenerable from
+its text forever, so `~/.langpop/audio/` is a cache that can be deleted
+without losing anything. A photograph is a one-off — forty seconds, a
+human review, and no way to get the same image back from the same prompt.
+It has to be kept, so it is committed content under `graph/en/photos/`
+beside the JSON recording what was checked against it.
+
+Which means `image.p`, when it exists, has no render command, no rates
+and no voice configuration — only *is there a file for this item, and
+what are its bytes*. All the generation lives in `tools/`. And a
+generated image has no corpus-attribution problem at all: cleaner
+provenance than JMdict or OpenSubtitles.

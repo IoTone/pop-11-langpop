@@ -2461,6 +2461,7 @@ string.
 | [langpop-reviews-and-periods.md](docs/langpop-reviews-and-periods.md) | the review intervals and the 28-day period, and which numbers are still arguable |
 | [langpop-production-criteria.md](docs/langpop-production-criteria.md) | should the ladder ask a student to speak, and at what threshold |
 | [langpop-audio.md](docs/langpop-audio.md) | the plan for the half of audio that measures |
+| [langpop-photographs.md](docs/langpop-photographs.md) | TOEIC Part 1 photographs: why the prompt is not the answer key, and what checks the statements |
 | [langpop-standalone-and-validation.md](docs/langpop-standalone-and-validation.md) | what running the whole thing has found |
 
 ---
