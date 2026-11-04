@@ -2920,6 +2920,35 @@ check_true('a capability vector from before `show` existed still sees',
 false -> lp_client_caps;
 saved_journal -> lp_journal;
 
+;;; --------------------------------------------- does the language have a script
+;;; `:chart hiragana` inside `--lang en` used to write a kana chart and
+;;; print its path.  The menu offered it, nothing refused it, and the
+;;; student learning English got a picture of a syllabary they are not
+;;; studying.  Asked of the graph rather than of a list of language
+;;; names, so a language that arrives with a syllabary gets the chart
+;;; back without this test changing.
+lvars syl_lang = lp_lang, syl_level = lp_level;
+
+"ja" -> lp_lang;
+check_true('japanese is written in a syllabary', lp_has_syllabary());
+
+"en" -> lp_lang;
+check_true('english is not', not(lp_has_syllabary()));
+
+;;; The aid is the same shape of claim: a big glyph needs a glyph.
+check_true('so the big-glyph aid is not offered in english',
+           not(lp_has_syllabary()));
+"ja" -> lp_lang;
+check_true('and it is in japanese', lp_has_syllabary());
+
+;;; It is about the language being LEARNT, not the one read: the English
+;;; track has a student who reads Japanese, and still has no kana chart coming.
+"en" -> lp_lang;
+check('the english student reads japanese', lp_learner_lang(), "ja");
+check_true('and still has no syllabary to chart', not(lp_has_syllabary()));
+
+syl_lang -> lp_lang; syl_level -> lp_level;
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 

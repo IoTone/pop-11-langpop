@@ -2969,3 +2969,52 @@ was verified between two processes on a socket: 106,141 bytes out,
 141,524 characters on one line, decoding byte-identical to the file on
 disk, `path: false`, and `can_see` answering true/false/true/true across
 no claim, no screen, a screen, and a screen with no speaker.
+
+## The menu that offered what the track could not do
+
+`--lang en` printed, on every session start:
+
+```
+:chart <script>  hiragana, katakana or youon, on one page
+:aids            which helps are on (slip, oops, later,
+                 glyph)
+```
+
+and `:chart hiragana` then **worked** — it wrote
+`~/.langpop/sheets/hiragana.svg` and reported the path, to a student
+studying English. `lp_help` was a flat list of `printf` calls with no
+condition on it anywhere, and the `:chart` arm of the command dispatch
+asked only whether an argument had been supplied.
+
+The fix is one derived question, `lp_has_syllabary()`: does this
+language have any item of kind `grapheme`? Not `lp_lang == "ja"`. A
+chart is a picture of a set of grapheme items, so that is the honest
+test, and it is the same move `lp_place_axes` makes when it builds the
+placement axes out of the declared exit criteria instead of a list of
+scripts. A language that later arrives with a syllabary gets its chart,
+its big-glyph aid and both menu lines back without anything here
+changing.
+
+Three things followed from it, and the third is the one worth keeping:
+
+- the two menu lines are printed only where they apply;
+- the big glyph drops out of `:aids`, because an aid you cannot use is
+  not a choice — and the glyph aid exists to make a fourteen-stroke
+  kanji legible in a terminal cell, which English does not have;
+- **`:chart` refuses, rather than merely going unadvertised.** Hiding
+  the line and leaving the command working is half a fix, and the half
+  left over is the half that writes a file. The wording follows
+  `lp_show_rate`, which has said `I have no %p voice, so there is no
+  rate to set` since the voices arrived.
+
+What is *not* a defect, and was the question that found this: the
+English track is full of katakana on purpose. Its student is a Japanese
+test-taker, which `lp_learner_lang()` states outright — learning `en`
+means reading `ja` — so twelve loanword traps are keyed on the katakana
+reading (`consent` is not コンセント), six glosses are in Japanese, and
+`probe(final_consonants, syllables(katakana))` asks how many syllables
+`slim` has precisely because スマート has four. Answering four is
+recorded as `near` rather than `wrong`, and `lp_count_near` prints the
+katakana back as the explanation. None of that is leakage from the
+Japanese ladder; it is the first language showing through, which is
+what the rung is for.

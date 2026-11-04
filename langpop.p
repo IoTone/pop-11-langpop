@@ -1096,6 +1096,32 @@ define lp_infer(item);
 enddefine;
 
 
+;;; ------------------------------------------------- does it have a script
+;;; Whether the language being learnt is written in a syllabary this
+;;; build can draw a chart of.
+;;;
+;;; ASKED OF THE GRAPH, not written as `lp_lang == "ja"`.  A chart is a
+;;; picture of a set of grapheme items, so the honest question is
+;;; whether this language HAS any -- which is the same move
+;;; lp_place_axes makes when it derives the placement axes from the
+;;; declared exit criteria rather than from a list of scripts.  A
+;;; language that later arrives with a syllabary gets its chart, the
+;;; big-glyph aid and both menu lines for free, and English stops
+;;; being offered three things it cannot do.
+;;;
+;;; This was a real defect and not a cosmetic one: `:chart hiragana`
+;;; inside `--lang en` wrote a kana chart and reported the path,
+;;; cheerfully, because nothing anywhere asked whether the student was
+;;; learning a language that has kana.
+define lp_has_syllabary() -> yes;
+    lvars i, yes = false;
+    for i in lp_items do
+        if lp_kind(i) == "grapheme" and lp_ilang(i) == lp_lang then
+            true -> yes; return;
+        endif;
+    endfor;
+enddefine;
+
 ;;; ---------------------------------------------------------- the aids
 ;;; Four things in here help a student who has not made a mistake of
 ;;; knowledge: the slip detector, ":oops", ":later", and the big glyph.
@@ -1172,6 +1198,9 @@ define lp_aids_show();
     lvars a, n = length(lp_aid_log), nm;
     printf('\n');
     for a in AIDS do
+        ;;; The big glyph is not offered to a student whose language has
+        ;;; no graphemes: an aid you cannot use is not a choice.
+        nextunless(a /== "glyph" or lp_has_syllabary());
         ;;; Padded by hand.  Poplog's printf has no field width for %p,
         ;;; and a ragged column of three is still a ragged column.
         a sys_>< '' -> nm;
@@ -5631,8 +5660,12 @@ define lp_help();
     printf('  :status          the exit criteria of this level, measured\n');
     printf('  :place           find out where you are, instead of guessing\n');
     printf('  :oops            that answer was an accident -- ask me again later\n');
-    printf('  :aids            which helps are on (slip, oops, later,\n');
-    printf('                   glyph)\n');
+    if lp_has_syllabary() then
+        printf('  :aids            which helps are on (slip, oops, later,\n');
+        printf('                   glyph)\n');
+    else
+        printf('  :aids            which helps are on (slip, oops, later)\n');
+    endif;
     printf('  :card <item>     draw it, in the terminal or in a viewer\n');
     printf('  :say <item>      hear it said, if a voice is installed\n');
     printf('  :rate slow       listen slower from now on (slow|normal|fast)\n');
@@ -5640,7 +5673,12 @@ define lp_help();
     printf('  :speak <item>    say it, and have the held beat timed\n');
     printf('  :sheet           today\'s work, as a page to print\n');
     printf('  :zine            the study plan, as a booklet to fold\n');
-    printf('  :chart <script>  hiragana, katakana or youon, on one page\n');
+    ;;; Not printed for a language with no syllabary.  A menu that
+    ;;; offers what the track cannot do is worse than a short menu: the
+    ;;; student spends their trust finding out.
+    if lp_has_syllabary() then
+        printf('  :chart <script>  hiragana, katakana or youon, on one page\n');
+    endif;
     printf('  :assign          something to do away from the keyboard\n');
     printf('  :report <n> ok   done it (compliance)\n');
     printf('  :report <n> 17/20  done it, with a result\n');
@@ -5872,7 +5910,16 @@ define lp_session();
             elseif cmd = 'sheet' then lp_show_sheet("today");
             elseif cmd = 'zine' then lp_show_sheet("zine");
             elseif cmd = 'chart' then
-                if arg = '' then
+                ;;; Refused rather than merely unadvertised.  Hiding the
+                ;;; line and leaving the command working is half a fix,
+                ;;; and the half that is left is the one that writes a
+                ;;; file.  The wording follows lp_show_rate, which has
+                ;;; said `I have no %p voice` since the voices arrived.
+                if not(lp_has_syllabary()) then
+                    printf('  %p is not written in a syllabary, so there is no\n',
+                           [% lp_lang %]);
+                    printf('  chart to draw.  :sheet gives you today\'s work.\n');
+                elseif arg = '' then
                     printf('  :chart hiragana|katakana|youon\n')
                 else lp_show_sheet(consword(arg)) endif;
             elseif cmd = 'card' then
