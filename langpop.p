@@ -842,6 +842,7 @@ define lp_index();
     clearproperty(lp_ilevel); clearproperty(lp_isrc);
     clearproperty(lp_forms); clearproperty(lp_gl); clearproperty(lp_confs);
     clearproperty(lp_photos); clearproperty(lp_depicts);
+    clearproperty(lp_glosspool);
     false -> lp_photos_ready;
     clearproperty(lp_skanjis);
     clearproperty(lp_ranks);
@@ -3127,6 +3128,170 @@ define lp_see_question(item) -> (shape, prompt, answer, options);
         -> (shape, prompt, answer, options);
 enddefine;
 
+;;; --------------------------------------------------- the other language
+;;; Which language the STUDENT can already read.  Not lp_lang, which is
+;;; what they are learning and therefore the one thing they cannot be
+;;; assumed to follow.
+;;;
+;;; card.p has had this rule since the cards were drawn -- a loanword
+;;; trap carries a Japanese gloss because the person reading it reads
+;;; Japanese -- but it was spelled inside lp_card_gloss and so could not
+;;; be used anywhere else.  It is needed anywhere else the moment a page
+;;; carries words of its own: a study booklet for a Japanese speaker
+;;; learning English, whose every heading was in English, is the same
+;;; defect as asking a beginner a grammar question in vocabulary they do
+;;; not have.
+;;;
+;;; IT LIVES HERE now, and not down with the sheets, because the
+;;; QUESTIONS need it.  An English vocabulary item carries two glosses
+;;; -- an English definition and a Japanese one -- and which of them is
+;;; the answer depends entirely on who is being asked.  That was the bug
+;;; this moved for: see lp_word_question.
+;;;
+;;; --l1 SETS IT.  Until now it was a two-way flip, which is right for
+;;; the only two languages the graph holds and wrong the moment somebody
+;;; who does not read Japanese wants to try the English ladder.  The flip
+;;; stays as the default, so nothing that worked before moves.
+vars lp_l1 = false,                     ;;; --l1, or false for the flip
+     ;;; (rung, language, l1) -> [gloss ...], the distractor pool.
+     ;;;
+     ;;; MEASURED, not precautionary.  lp_word_question first scanned
+     ;;; lp_items on every call, with lp_gloss_of -- a Prolog goal -- in
+     ;;; the loop.  The plan asks lp_drillable of every item, so one
+     ;;; session walked 1,117 English words x 7,565 items x one goal
+     ;;; each, and the test suite stopped finishing inside two minutes.
+     ;;; That is the mistake this file's own --check header names: a
+     ;;; lookup written as a goal and run once per item.  One scan per
+     ;;; rung, kept, costs 7,565 goals in total.
+     lp_glosspool = newproperty([], 16, false, "perm");
+
+define lp_learner_lang() -> l;
+    lvars l = lp_l1 or (if lp_lang == "ja" then "en" else "ja" endif);
+enddefine;
+
+;;; Every gloss at one rung in one language, built once and kept.
+;;; Order follows lp_items, which is the graph's order, so the walk below
+;;; is deterministic and the tests repeat.
+define lp_gloss_pool(level, lang, l1) -> pool;
+    lvars level, lang, l1, key, pool, i, g;
+    consword(level sys_>< '' <> '/' <> (lang sys_>< '')
+             <> '/' <> (l1 sys_>< '')) -> key;
+    lp_glosspool(key) -> pool;
+    returnif(pool);
+    [] -> pool;
+    for i in lp_items do
+        nextunless(lp_kind(i) == "word");
+        nextunless(lp_ilang(i) == lang);
+        nextunless(lp_ilevel(i) == level);
+        lp_gloss_of(i, l1) -> g;
+        ;;; AS A STRING.  lp_gloss_of hands back a WORD, because that is
+        ;;; what a Prolog quoted atom derefs to, and a word is interned
+        ;;; -- right for an item id, wrong for a sentence that goes out
+        ;;; over JSON and gets compared with `=`.  lp_depict learned
+        ;;; this the same way one tranche ago.
+        if g then pool <> [% g sys_>< '' %] -> pool endif;
+    endfor;
+    pool -> lp_glosspool(key);
+enddefine;
+
+;;; ------------------------------------------------- an english word asked
+;;; WHAT DOES THIS WORD MEAN, and the bug that was in it.
+;;;
+;;; An English item carries two glosses -- gloss(e_people, en, 'persons,
+;;; in general') and gloss(e_people, ja, '人々') -- and this branch used
+;;; to put both on the screen as the two options, with the English one
+;;; always the key:
+;;;
+;;;     people
+;;;       1) persons, in general          <- keyed correct
+;;;       2) 人々                          <- keyed wrong
+;;;
+;;; 人々 is what `people` means.  The student was asked to choose between
+;;; two correct answers and marked wrong for the Japanese one.  Worse,
+;;; the key was always the option that was not in their own script, so a
+;;; Japanese reader scored 100% over all 1,105 vocabulary words without
+;;; reading a word of English -- which is what exit(en, a1,
+;;; vocabulary(500, read), 0.80, _) was measuring.
+;;;
+;;; The shape was right for the twelve loanword traps it was written for,
+;;; because there the katakana reading IS the error under test: `outlet`
+;;; against コンセント is a real question with one right answer.  It was
+;;; then inherited by eleven hundred words where that premise does not
+;;; hold.  So the traps keep it, selected on their source, and everything
+;;; else gets the question it should always have had: the gloss in the
+;;; language the student reads, against the glosses of OTHER WORDS in
+;;; that same language.
+;;;
+;;; Distractors come from the item's own rung, not the student's level.
+;;; Pedagogically that is the right bound -- nobody should be made to
+;;; rule out vocabulary they have not met -- and it also keeps the
+;;; question stable under placement, which probes a level that is not
+;;; lp_level.
+define lp_word_question(item) -> (shape, prompt, answer, options);
+    lvars item, shape, prompt, answer, options, word, l1, key, en, ja,
+          i, g, pool = [], picks = [], a, pos, out = [], want, at;
+    ("none", '', [], []) -> (shape, prompt, answer, options);
+    lp_form_of(item, "latin") -> word;
+    returnunless(word);
+    word sys_>< '' -> word;
+
+    ;;; The trap keeps its two glosses, and keeps lp_flip with them: the
+    ;;; question is which of the two readings is the English one.
+    if lp_term_str(lp_isrc(item)) = 'own(loanword_trap)' then
+        lp_gloss_of(item, "en") -> en;
+        lp_gloss_of(item, "ja") -> ja;
+        returnunless(en and ja);
+        en sys_>< '' -> en; ja sys_>< '' -> ja;
+        lp_flip + 1 -> lp_flip;
+        if lp_flip mod 2 == 1 then
+            ("pick", word, ['1'], [^en ^ja])
+        else
+            ("pick", word, ['2'], [^ja ^en])
+        endif -> (shape, prompt, answer, options);
+        return;
+    endif;
+
+    lp_learner_lang() -> l1;
+    lp_gloss_of(item, l1) -> key;
+    ;;; No gloss in the student's language is not a reason to ask a
+    ;;; broken question: fall back to the item's own language, which is
+    ;;; a harder question and an honest one.
+    unless key then lp_gloss_of(item, lp_ilang(item)) -> key endunless;
+    returnunless(key);
+    key sys_>< '' -> key;
+
+    lp_gloss_pool(lp_ilevel(item), lp_ilang(item), l1) -> pool;
+    ;;; The item's own gloss is in the pool -- it is a word at this rung
+    ;;; like any other -- so it comes out here rather than the pool being
+    ;;; rebuilt per item, which would put the scan back.
+    [% for g in pool do unless g = key then g endunless endfor %] -> pool;
+    returnif(pool == []);
+
+    ;;; Three distractors where the rung can pay for them, fewer where it
+    ;;; cannot -- a two-option question is a worse question than a
+    ;;; four-option one, and both are better than none.  Walking forward
+    ;;; from the ask count rather than striding by a constant is what
+    ;;; keeps the three DISTINCT: a stride can land twice on the same
+    ;;; gloss and quietly make a four-option question a three.
+    min(3, length(pool)) -> want;
+    lp_asked(item) -> a;
+    (a mod length(pool)) -> at;
+    until length(picks) >= want do
+        pool((at mod length(pool)) + 1) -> g;
+        unless member(g, picks) then picks <> [^g] -> picks endunless;
+        at + 1 -> at;
+    enduntil;
+
+    (a mod (want + 1)) + 1 -> pos;
+    for i from 1 to want + 1 do
+        if i == pos then out <> [^key] -> out
+        else out <> [% hd(picks) %] -> out; tl(picks) -> picks
+        endif;
+    endfor;
+    ("pick", word, [% pos sys_>< '' %], out)
+        -> (shape, prompt, answer, options);
+enddefine;
+
 define lp_question(item, ch) -> (shape, prompt, answer, options);
     lvars item, ch, k = lp_kind(item), r, en, ja, glyph, kanji, reads;
     ("none", '', [], []) -> (shape, prompt, answer, options);
@@ -3236,16 +3401,7 @@ define lp_question(item, ch) -> (shape, prompt, answer, options);
     elseif k == "confusion" then
         lp_mix_question(item) -> (shape, prompt, answer, options);
     elseif k == "word" and lp_ilang(item) == "en" then
-        lp_gloss_of(item, "en") -> en;
-        lp_gloss_of(item, "ja") -> ja;
-        if en and ja then
-            lp_flip + 1 -> lp_flip;
-            if lp_flip mod 2 == 1 then
-                ("pick", lp_form_of(item, "latin") sys_>< '', ['1'], [^en ^ja])
-            else
-                ("pick", lp_form_of(item, "latin") sys_>< '', ['2'], [^ja ^en])
-            endif -> (shape, prompt, answer, options);
-        endif;
+        lp_word_question(item) -> (shape, prompt, answer, options);
     endif;
 enddefine;
 
@@ -5977,23 +6133,6 @@ define lp_session();
     endif;
 enddefine;
 
-;;; --------------------------------------------------- the other language
-;;; Which language the STUDENT can already read.  Not lp_lang, which is
-;;; what they are learning and therefore the one thing they cannot be
-;;; assumed to follow.
-;;;
-;;; card.p has had this rule since the cards were drawn -- a loanword
-;;; trap carries a Japanese gloss because the person reading it reads
-;;; Japanese -- but it was spelled inside lp_card_gloss and so could not
-;;; be used anywhere else.  It is needed anywhere else the moment a page
-;;; carries words of its own: a study booklet for a Japanese speaker
-;;; learning English, whose every heading was in English, is the same
-;;; defect as asking a beginner a grammar question in vocabulary they do
-;;; not have.
-define lp_learner_lang() -> l;
-    lvars l = if lp_lang == "ja" then "en" else "ja" endif;
-enddefine;
-
 ;;; ---------------------------------------------------------------- sheets
 ;;; Something to take away from the screen and put on a desk.  Loaded on
 ;;; demand exactly as card.p is, and for the same reason.
@@ -6240,6 +6379,11 @@ define lp_main();
         if a = '--lang' then
             consword(hd(tl(args))) -> lp_lang;
             true -> lp_lang_asked;
+            tl(tl(args)) -> args;
+        elseif a = '--l1' then
+            ;;; Which language the STUDENT already reads.  Default is the
+            ;;; flip, so `--lang en` goes on meaning a Japanese reader.
+            consword(hd(tl(args))) -> lp_l1;
             tl(tl(args)) -> args;
         elseif a = '--user' then consword(hd(tl(args))) -> user; tl(tl(args)) -> args;
         elseif a = '--name' then hd(tl(args)) -> display; tl(tl(args)) -> args;

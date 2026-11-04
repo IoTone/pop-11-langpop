@@ -3018,3 +3018,87 @@ recorded as `near` rather than `wrong`, and `lp_count_near` prints the
 katakana back as the explanation. None of that is leakage from the
 Japanese ladder; it is the first language showing through, which is
 what the rung is for.
+
+## The vocabulary question with two right answers
+
+`:chart hiragana` in an English session was a menu defect. Asking *why*
+the English track was full of katakana found a worse one underneath it.
+
+An English item carries two glosses, and this is correct — the same word
+has to be sayable to a Japanese reader and to an English one:
+
+```prolog
+gloss(e_people, en, 'persons, in general').
+gloss(e_people, ja, '人々').
+```
+
+`lp_question` put **both of them up as the two options**, with the
+English one always the key:
+
+```
+people
+  1) persons, in general          <- keyed correct
+  2) 人々                          <- keyed wrong
+```
+
+人々 is what `people` means. The student chose between two correct
+answers and was marked wrong for the Japanese one. And because the key
+was always the option that was not in their own script, a Japanese
+reader scored 100% over all 1,105 vocabulary words without reading a
+word of English — which is exactly what `exit(en, a1,
+vocabulary(500, read), 0.80, _)` was measuring. 1,117 English words
+carry both glosses; 12 of them are traps.
+
+**The shape was right for the twelve it was written for.** A loanword
+trap asks whether you are reading English through katakana, so `outlet`
+against `コンセント` is a real question with one right answer. The branch
+was written for the traps and then inherited by eleven hundred words
+where the premise does not hold. So the traps keep it, selected on
+`lp_isrc(item) = own(loanword_trap)`, and everything else gets the
+question it should always have had: the gloss in the language the
+student reads, against the glosses of **other words** at the same rung.
+
+Distractors come from the item's own rung rather than the student's
+level. That is the right bound pedagogically — nobody should have to
+rule out vocabulary they have not met — and it keeps the question stable
+under placement, which probes a level that is not `lp_level`.
+
+### `--l1`, and why it is a different question from `--lang`
+
+Which gloss is the answer depends on who is being asked, so
+`lp_learner_lang()` moved out of the sheets section and up next to the
+questions. It had been a two-way flip: learning `ja` means reading `en`,
+and the other way round. That is right for the only two languages the
+graph holds and wrong the moment somebody who does not read Japanese
+wants to try the English ladder. `--l1` sets it; the flip stays as the
+default, so nothing that worked before moves.
+
+What `--l1 en` does **not** do is make pre-school a generic English
+rung. All four of its criteria are chosen for a Japanese ear. The useful
+finding is that they are all answerable anyway: the contrasts and
+confusions are real English minimal pairs, a trap's key is its English
+explanation, and `probe(final_consonants, syllables(katakana))` turns
+out to ask *how many syllables does `mansion` have* — two, and a native
+speaker answers it without knowing マンション exists.
+
+### Two things it cost
+
+**A scan with a Prolog goal in it.** The first version walked `lp_items`
+per question to collect distractors, with `lp_gloss_of` — a Prolog goal
+— inside the loop. The plan asks `lp_drillable` of every item, so one
+session walked 1,117 words x 7,565 items x a goal each, and the suite
+stopped finishing inside two minutes. That is the mistake this file's
+own `--check` section names: *a lookup written as a goal, run once per
+edge or once per path*. `lp_gloss_pool` builds one list per rung and
+keeps it; 7,565 goals in total, and the suite runs in 47 seconds.
+
+**A word is not a string, again.** `lp_gloss_of` hands back a **word**,
+because that is what a Prolog quoted atom derefs to, so the options
+compared false against every string literal in the new tests. The same
+trap `lp_depict` hit one tranche earlier, and the same fix: a sentence
+that goes out over JSON and gets compared with `=` is converted at the
+question boundary. The test-side version of it is worth recording too —
+a Pop-11 string here is 8-bit, so `s(i)` yields UTF-8 **bytes** and a
+test for `> 12288` is false of 人々 and of コンセント alike. One byte over
+127 settles it, and `16r3000` is not how Pop-11 spells a radix literal
+in any case (`16:3000` is).

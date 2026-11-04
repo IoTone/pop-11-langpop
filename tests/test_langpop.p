@@ -2949,6 +2949,127 @@ check_true('and still has no syllabary to chart', not(lp_has_syllabary()));
 
 syl_lang -> lp_lang; syl_level -> lp_level;
 
+;;; ------------------------------------------- what an english word means
+;;; This branch used to put an item's OWN two glosses up as the two
+;;; options, with the English one always the key:
+;;;
+;;;     people
+;;;       1) persons, in general    <- keyed correct
+;;;       2) 人々                    <- keyed wrong
+;;;
+;;; 人々 is what `people` means.  Two correct answers, one of them marked
+;;; wrong, and the key always the option not in the student's own script
+;;; -- so a Japanese reader scored 100% over 1,105 words without reading
+;;; any English, which is what vocabulary(500, read) was measuring.
+lvars wq_lang = lp_lang, wq_lvl = lp_level, wq_l1 = lp_l1,
+      wq_j = lp_journal;
+
+define wq(item, l1, n) -> (shape, prompt, answer, options);
+    lvars item, l1, n, shape, prompt, answer, options;
+    l1 -> lp_l1;
+    [% repeat n times [^item] endrepeat %] -> lp_journal;
+    lp_question(item, lp_primary(item)) -> (shape, prompt, answer, options);
+enddefine;
+
+;;; Any byte outside ASCII.
+;;;
+;;; NOT a codepoint test, which is what this tried first.  A Pop-11
+;;; string here is 8-bit, so s(i) yields UTF-8 BYTES and never exceeds
+;;; 255 -- a test for `> 12288` is false of 人々 and of コンセント alike,
+;;; and the check passed for the wrong reason in one direction and
+;;; failed in the other.  Every English definition in the graph is plain
+;;; ASCII and every Japanese gloss is not, so one byte over 127 settles
+;;; it.  (`16r3000` is also not how Pop-11 spells a radix literal; it is
+;;; `16:3000`, and the mishap reads MISPLACED EXPRESSION ITEM.)
+define wq_has_kana(strs) -> yes;
+    lvars strs, s, i, yes = false;
+    for s in strs do
+        for i from 1 to datalength(s) do
+            if s(i) > 127 then true -> yes; return endif;
+        endfor;
+    endfor;
+enddefine;
+
+"en" -> lp_lang; "a1" -> lp_level;
+
+vars wq_sh, wq_pr, wq_an, wq_op;
+
+;;; A JAPANESE READER gets the Japanese gloss as the key, and the other
+;;; options are other words' Japanese glosses -- not this word's English
+;;; definition, which is also true of it.
+wq("e_people", "ja", 0) -> (wq_sh, wq_pr, wq_an, wq_op);
+check('an english word is picked', wq_sh, "pick");
+check('and the word itself is the prompt', wq_pr, 'people');
+check_true('four options, not two', length(wq_op) == 4);
+check_true('the key is where the answer says it is',
+           wq_op(strnumber(hd(wq_an))) = '人々');
+check_true('every option is in the language the student reads',
+           wq_has_kana(wq_op) and length([% lvars o;
+               for o in wq_op do if wq_has_kana([^o]) then o endif endfor %])
+               == 4);
+check_true('and the english definition is not among them',
+           not(member('persons, in general', wq_op)));
+
+;;; AN ENGLISH READER gets the English definition as the key, and no kana
+;;; anywhere.  This is the whole of --l1.
+wq("e_people", "en", 0) -> (wq_sh, wq_pr, wq_an, wq_op);
+check_true('with --l1 en the key is the english definition',
+           wq_op(strnumber(hd(wq_an))) = 'persons, in general');
+check_true('and not one option carries kana', not(wq_has_kana(wq_op)));
+check_true('nor is the japanese gloss smuggled in as a distractor',
+           not(member('人々', wq_op)));
+
+;;; The distractors are OTHER WORDS, so they are distinct and none of
+;;; them is the key.
+check_true('the four options are four different things',
+           length(wq_op) == 4
+           and wq_op(1) /= wq_op(2) and wq_op(1) /= wq_op(3)
+           and wq_op(1) /= wq_op(4) and wq_op(2) /= wq_op(3)
+           and wq_op(2) /= wq_op(4) and wq_op(3) /= wq_op(4));
+
+;;; And the key moves, or the student learns the position instead of the
+;;; word -- the argument lp_pair_question makes and lp_see_question
+;;; repeats.
+lvars wq_seen = [], wq_i;
+for wq_i from 0 to 3 do
+    wq("e_people", "en", wq_i) -> (wq_sh, wq_pr, wq_an, wq_op);
+    wq_seen <> [% hd(wq_an) %] -> wq_seen;
+endfor;
+check_true('the key reaches all four positions over four asks',
+           member('1', wq_seen) and member('2', wq_seen)
+           and member('3', wq_seen) and member('4', wq_seen));
+
+;;; A LOANWORD TRAP keeps the old shape, and should: there the katakana
+;;; reading is the error under test, so `outlet` against コンセント is a
+;;; real question with one right answer.
+wq("t_consent", "en", 0) -> (wq_sh, wq_pr, wq_an, wq_op);
+check('a trap is still a pick', wq_sh, "pick");
+check_true('with two options, not four', length(wq_op) == 2);
+;;; Not `the key has no kana`: the explanation itself NAMES the
+;;; katakana word -- 'consent means agreement -- a コンセント is an
+;;; outlet' -- so a script test passes for the wrong reason on one
+;;; option and fails on the other.  The two options are told apart by
+;;; what they SAY.
+check_true('and the english explanation is the key',
+           issubstring('is an outlet',
+                       wq_op(strnumber(hd(wq_an)))) /== false);
+check_true('while the bare katakana reading is the distractor',
+           wq_op(if hd(wq_an) = '1' then 2 else 1 endif) = 'コンセント');
+
+;;; The default is the flip it has always been, so nothing that worked
+;;; before this moves.
+false -> lp_l1;
+"en" -> lp_lang;
+check('a student of english reads japanese by default',
+      lp_learner_lang(), "ja");
+"ja" -> lp_lang;
+check('and a student of japanese reads english', lp_learner_lang(), "en");
+"en" -> lp_l1;
+check('--l1 overrides the flip', lp_learner_lang(), "en");
+
+wq_lang -> lp_lang; wq_lvl -> lp_level; wq_l1 -> lp_l1;
+wq_j -> lp_journal;
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 

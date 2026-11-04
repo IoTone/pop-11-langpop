@@ -126,6 +126,27 @@ hiragana, and stop when you stop. `--lang ja` is the Western learner's
 Japanese; `--lang en` is the other direction, English for a Japanese test
 taker, and a student is registered in one of them.
 
+**Who the English track assumes you are.** `--lang en` is written for a
+student who already reads Japanese: the twelve loanword traps turn on the
+katakana reading, and every gloss has a Japanese side. `--l1` says which
+language the student can already read, and it is the one thing the track
+needs in order to be usable by anybody else:
+
+```
+./langpop --lang en --l1 en     # English, explained in English
+./langpop --lang en             # the default: explained in Japanese
+```
+
+With no flag it stays the flip it has always been — a student of English
+reads Japanese, a student of Japanese reads English — so nothing that
+worked before needs the flag. What changes is which gloss is the answer
+to a vocabulary question and which glosses stand beside it. The
+pre-school rung is still a set of *Japanese*-interference contrasts, and
+every one of its criteria is answerable without any Japanese: the
+contrasts and confusions are real English minimal pairs, a loanword
+trap's key is its English explanation, and `final_consonants` asks how
+many syllables `mansion` has.
+
 **The first week** is kana, because everything above it requires them. An
 empty line asks for the next thing; `:chart hiragana` prints the table on one
 page if you would rather look at it than be asked. `:why hi_ka` says why that
@@ -224,7 +245,10 @@ audit. There is no password; this is a local tool.
 
 `--lang` is an instruction and beats the language on file; with no flag, the
 profile's language stands, and a student the tutor has never met starts in
-Japanese. The flag is honoured out loud rather than quietly:
+Japanese. `--l1` is the companion flag and names the language the student
+already reads, which is a different question: `--lang` is what they are
+learning and therefore the one thing they cannot be assumed to follow. The
+flag is honoured out loud rather than quietly:
 
 ```
 Welcome back. Let us continue where we stopped.
