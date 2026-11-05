@@ -2189,10 +2189,49 @@ define lp_load_profile(user) -> found;
 enddefine;
 
 ;;; -------------------------------------------------------- reading input
+
+;;; A MINUTE WITH NOTHING TYPED IS NOT STUDY.  The sitting clock below
+;;; is wall clock, and wall clock counts the doorbell, the phone and
+;;; lunch -- "1h26m at the keyboard, 2 question(s) answered" is not a
+;;; long sitting, it is a student who left and came back, and a clock
+;;; that says otherwise is worse than no clock.
+;;;
+;;; So every wait for a character is timed, and a wait longer than the
+;;; grace is deducted from the minute it passes the grace onwards.  The
+;;; first minute of every silence still counts, deliberately: thinking
+;;; about a question is the study, and a tutor that stops the clock the
+;;; moment a student pauses to think is measuring typing speed.
+;;;
+;;; Here, and not in the clock, because this is the only place that
+;;; knows: the engine spends its life blocked in charin, and the gap
+;;; either side of one keystroke is the only evidence anywhere in the
+;;; program about whether somebody is in the chair.  Per character
+;;; rather than per line, because a student who walks away mid-answer
+;;; walked away just the same.
+vars lp_idle_ms = 0;              ;;; ms away from the keyboard, cumulative
+lconstant LP_IDLE_GRACE = 60000;  ;;; a silence shorter than this is thinking
+
+define lp_idle_note(t0);
+    lvars t0, gap = lp_now_ms() - t0;
+    if gap > LP_IDLE_GRACE then
+        lp_idle_ms + (gap - LP_IDLE_GRACE) -> lp_idle_ms;
+    endif;
+enddefine;
+
+;;; How long an answer took, given the clock and the idle total as they
+;;; stood when the question went up.  The grace is the same minute, so a
+;;; learner who thinks for fifty seconds is still recorded as having
+;;; thought for fifty seconds -- which is what a speed criterion is for.
+define lp_answer_ms(t0, i0) -> ms;
+    lvars t0, i0, ms = max(0, (lp_now_ms() - t0) - (lp_idle_ms - i0));
+enddefine;
+
 define lp_readline() -> line;
-    lvars c, n = 0;
+    lvars c, t, n = 0;
     repeat
+        lp_now_ms() -> t;
         charin() -> c;
+        lp_idle_note(t);
         if c == termin then
             if n == 0 then termin -> line; return endif;
             quitloop;
@@ -3498,9 +3537,14 @@ enddefine;
 vars lp_sit_t0 = false,        ;;; when this sitting started, in ms
      lp_sit_said = false;      ;;; the sitting-length nudge, fired once
 
+;;; Wall clock since the sitting opened, less the time nobody was at
+;;; the keyboard.  Never below zero: the arithmetic cannot go there, but
+;;; a displayed clock that counts backwards would be the kind of thing a
+;;; student reports and nobody can reproduce.
 define lp_sit_ms() -> ms;
     lvars ms;
-    if lp_sit_t0 then lp_now_ms() - lp_sit_t0 else 0 endif -> ms;
+    if lp_sit_t0 then max(0, lp_now_ms() - lp_sit_t0 - lp_idle_ms)
+    else 0 endif -> ms;
 enddefine;
 
 ;;; m:ss while a sitting is a sitting, h mm once it stops being one.
@@ -3550,6 +3594,13 @@ define lp_sit_show();
         printf(', %p put off', [% lp_later_n %]);
     endif;
     printf('\n');
+    ;;; Said, rather than silently subtracted.  A clock that reads lower
+    ;;; than the wall clock the student can see on their own wall needs
+    ;;; to account for the difference, or it is just wrong.
+    if lp_idle_ms >= 60000 then
+        printf('    (%p of it away from the keyboard, not counted)\n',
+               [% lp_sit_clock(lp_idle_ms) %]);
+    endif;
     ;;; Seconds a question is not a score and goes nowhere; it is the
     ;;; number that tells a student the sitting went on reading the
     ;;; screen rather than answering it.  Half a minute before it says
@@ -3683,7 +3734,7 @@ define lp_drill_review(item, ch);
 enddefine;
 
 define lp_drill(item, ch) -> done;
-    lvars item, ch, shape, prompt, answer, options, o, i = 0, t0, line, typed,
+    lvars item, ch, shape, prompt, answer, options, o, i = 0, t0, i0, line, typed,
           other, kslip = false, retried = false, heard = false, shown;
     true -> done;
     lp_question(item, ch) -> (shape, prompt, answer, options);
@@ -3712,7 +3763,15 @@ define lp_drill(item, ch) -> done;
     ;;; them.  Only the typed shapes: a listening question must not show
     ;;; the glyph at all, which the shape test gets for free.
     if shape == "type" then lp_show_glyph(item) endif;
+    ;;; i0 alongside t0 for the reason the sitting clock has lp_idle_ms,
+    ;;; and this one matters more.  The sitting clock is written nowhere;
+    ;;; an answer latency IS evidence -- it decides whether a rung's
+    ;;; speed criterion is met, and lp_record writes it to the journal
+    ;;; for good.  A student who answers after a half-hour interruption
+    ;;; was not slow on the item, and recording them as slow is a false
+    ;;; measurement that no later right answer can take back.
     lp_now_ms() -> t0;
+    lp_idle_ms -> i0;
     repeat
         0 -> i;
         if heard then
@@ -3827,7 +3886,7 @@ define lp_drill(item, ch) -> done;
     ;;; half of every pre-school criterion is what tells reading from
     ;;; working it out.
     if member(typed, answer) then
-        lp_record(item, ch, 1, "right", lp_now_ms() - t0);
+        lp_record(item, ch, 1, "right", lp_answer_ms(t0, i0));
         printf('  %p%p\n',
                [% lp_line('praise'),
                   ;;; After a listening question, SHOW it: the student
@@ -3840,7 +3899,7 @@ define lp_drill(item, ch) -> done;
         ;;; saying so is worth more than a guess, both to the student and
         ;;; to the belief.  A tutor that forced a guess would be throwing
         ;;; the most informative answer away.
-        lp_record(item, ch, 1, "skip", lp_now_ms() - t0);
+        lp_record(item, ch, 1, "skip", lp_answer_ms(t0, i0));
         printf('  %p  It is %p%p.\n',
                [% lp_line('skip'), shown,
                   if heard then ' -- ' <> (lp_any_form(item) sys_>< '')
@@ -3853,7 +3912,7 @@ define lp_drill(item, ch) -> done;
         if shape == "count" then lp_count_near(item, typed) -> kslip endif;
         lp_record(item, ch, 1,
                   if other or kslip then "near" else "wrong" endif,
-                  lp_now_ms() - t0);
+                  lp_answer_ms(t0, i0));
         if other then
             printf('  %p  That is %p -- the two are confused constantly.\n',
                    [% lp_line('almost'), lp_any_form(other) %]);
@@ -6000,6 +6059,9 @@ define lp_session();
     ;;; them are not study.
     lp_now_ms() -> lp_sit_t0;
     false -> lp_sit_said;
+    ;;; The name and the recognition question were typed before this, and
+    ;;; a long pause over them is not time this sitting owes back.
+    0 -> lp_idle_ms;
     lp_help();
     repeat
         ;;; The clock is in the prompt because a student who has to ask

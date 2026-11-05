@@ -1983,6 +1983,24 @@ whether the student is still in the chair. When `:status` has been asked and
 the schedule suggested a sitting length, the client says so once on reaching
 it.
 
+**The sitting clock stops when you leave the keyboard.** A silence longer
+than a minute is not counted, from the minute onwards — so a phone call in
+the middle of a sitting costs the sitting nothing, and `:time` does not
+report an hour and a half for twenty minutes of work. The first minute of
+every silence *is* counted, deliberately: thinking about a question is the
+study, and a clock that stopped the moment you paused would be measuring
+typing speed. When anything has been deducted, `:time` says how much:
+
+```
+  20:14 at the keyboard, 38 question(s) answered
+    about 31 seconds a question
+    (1:06:22 of it away from the keyboard, not counted)
+```
+
+The same minutes are kept out of the answer's own time, which is *not* just a
+display: every exit criterion has a millisecond budget, and a student who
+answered after a half-hour interruption was not slow on the item.
+
 **The tier is decided from the evidence, not chosen.** A client reports `ok`
 or `17/20`; the server decides that the first is tier 3 and the second tier
 2. Anything else is refused rather than quietly filed as compliance, because

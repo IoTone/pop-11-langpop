@@ -3144,3 +3144,59 @@ The general lesson is the one about `:chart` from two sections up, in a
 harder form. There the menu offered something the track could not do;
 here the flag accepted something the graph did not hold. Both were
 places where the program knew the answer and nothing asked it.
+
+## The clock that counted lunch
+
+> `1h26m at the keyboard, 2 question(s) answered`
+
+Which is not a long sitting. It is somebody who opened a session, was
+interrupted, and came back — and a clock that reports it as study is
+worse than no clock, because it is the one number a student might use to
+decide they have done enough for today.
+
+Both clocks were wall clock. `lp_sit_ms` was `lp_now_ms() - lp_sit_t0`
+and the client's `lp_elapsed_ms` was the same line with its own
+`sys_microtime`; neither had any way to know whether anybody was in the
+chair. Neither does the server, which is why the client owns this clock
+at all.
+
+**Where the evidence is.** The engine spends its life blocked in
+`charin`, and the gap either side of one keystroke is the only fact
+anywhere in the program about whether the student is present. So the
+accounting goes in `lp_readline`, not in the clock: time every wait,
+and when one runs longer than the grace, add the excess to `lp_idle_ms`.
+`lp_sit_ms` subtracts it. Per character rather than per line, because
+somebody who walks away in the middle of typing an answer walked away
+just the same.
+
+**The grace is a minute, and the first minute still counts.** This is
+the part worth being deliberate about. A clock that stopped the moment a
+student paused would be measuring typing speed, and thinking about a
+question is the study — the whole pre-school ladder is built on the
+difference between a learner who recognises a glyph and one who works it
+out. So the deduction starts at the minute and runs from there: fifty
+seconds of silence is recorded as fifty seconds of work, five minutes is
+recorded as one.
+
+**Said, not silently subtracted.** `:time` now reports what it left out
+when that comes to a minute or more. A clock reading lower than the one
+on the student's own wall has to account for the difference, or it is
+simply wrong in the other direction.
+
+**The part that is not cosmetic.** The sitting clock is written nowhere
+and nobody is graded on it — the comment above it has said so since it
+was written. An *answer* latency is the opposite: `lp_record` writes it
+to the journal, every exit criterion in both ladders carries a
+millisecond budget, and `lp_measure` counts the answers that came in
+under it. A student interrupted mid-question was recorded as slow on
+that item, permanently, and no later right answer takes it back. So
+`lp_drill` keeps `i0` beside `t0` — the idle total as it stood when the
+question went up — and records `lp_answer_ms(t0, i0)`. Only silence
+*during* the question comes off, with the same minute of grace, so a
+speed criterion still measures what it was written to measure.
+
+This one was reported from use, in the form of a number that did not
+match the afternoon it described. Fifty-nine seconds of thinking and
+five minutes of absence are indistinguishable to a stopwatch and obvious
+to the person holding it, which is the whole reason the threshold exists
+rather than a test for "idle".

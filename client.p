@@ -55,10 +55,29 @@ define p(o, key) -> v;
 enddefine;
 
 ;;; ------------------------------------------------------------- the TUI
+
+;;; A MINUTE WITH NOTHING TYPED IS NOT STUDY.  Every wait for a
+;;; character is timed, and a silence longer than the grace is deducted
+;;; from the grace onwards, so the clock below counts the sitting and
+;;; not the interruption.  The first minute of each silence still
+;;; counts: thinking about a question is the study.
+;;;
+;;; This is the third thing the client owns a copy of, after yes() and
+;;; the clock itself, and for the same reason -- the server knows when
+;;; the session opened and cannot know whether anybody is in the chair.
+;;; Here the keystrokes arrive, so here is the only place that can tell.
+vars lp_idle_ms = 0;
+lconstant LP_IDLE_GRACE = 60000;
+
 define readline() -> line;
-    lvars c, n = 0;
+    lvars c, t, n = 0;
     repeat
+        sys_microtime() div 1000 -> t;
         charin() -> c;
+        if ((sys_microtime() div 1000) - t) > LP_IDLE_GRACE then
+            lp_idle_ms + ((sys_microtime() div 1000) - t) - LP_IDLE_GRACE
+                -> lp_idle_ms;
+        endif;
         if c == termin then
             if n == 0 then termin -> line; return endif;
             quitloop;
@@ -126,7 +145,8 @@ vars
 ;;; time and barely moves while a human types.
 define lp_elapsed_ms() -> ms;
     lvars ms;
-    if lp_t0 then (sys_microtime() div 1000) - lp_t0 else 0 endif -> ms;
+    if lp_t0 then max(0, (sys_microtime() div 1000) - lp_t0 - lp_idle_ms)
+    else 0 endif -> ms;
 enddefine;
 
 ;;; m:ss while a sitting is a sitting, and h m once it stops being one.
@@ -165,6 +185,12 @@ define show_time();
     unless lp_t0 then printf('  no sitting open\n'); return endunless;
     printf('\n  %p at the keyboard, %p question(s) answered\n',
            [% lp_clock(ms), lp_answered %]);
+    ;;; Said rather than silently subtracted: a clock reading lower than
+    ;;; the one on the student's wall has to account for the difference.
+    if lp_idle_ms >= 60000 then
+        printf('    (%p of it away from the keyboard, not counted)\n',
+               [% lp_clock(lp_idle_ms) %]);
+    endif;
     ;;; Seconds per question is not a score and is not sent anywhere; it
     ;;; is the number that tells a student they have spent the sitting
     ;;; reading the screen rather than answering it.  Half a minute in
@@ -520,6 +546,9 @@ define client_main();
     ;;; not study.
     sys_microtime() div 1000 -> lp_t0;
     0 -> lp_answered;
+    ;;; The minutes before the greeting were the student typing a name,
+    ;;; and a pause over that is not time this sitting owes back.
+    0 -> lp_idle_ms;
     printf('%p\n', [% p(sess, 'greeting') %]);
     printf('%p -- %p, level %p, %p ready.\n',
            [% p(sess, 'display_name'), p(sess, 'language'),

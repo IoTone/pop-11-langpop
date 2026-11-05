@@ -3098,6 +3098,59 @@ check_true('--voicetest alone is allowed', lp_args_ok(['--voicetest']));
 check_true('and with an item too',
            lp_args_ok(['--voicetest' 'w_gakkou']));
 
+;;; ------------------------------------------ the clock that counted lunch
+;;; "1h26m at the keyboard, 2 question(s) answered" -- which is not a
+;;; long sitting, it is a student who was interrupted and came back.  The
+;;; clock was wall clock, so it counted the doorbell.
+;;;
+;;; Timed by hand rather than by waiting: lp_idle_note takes the moment
+;;; the wait began, so a fabricated t0 is a fabricated silence, and the
+;;; suite does not have to sit still for a minute to find out.
+0 -> lp_idle_ms;
+lp_idle_note(lp_now_ms() - 30000);
+check('half a minute of silence is thinking, and counts', lp_idle_ms, 0);
+lp_idle_note(lp_now_ms() - 59000);
+check('and so is fifty-nine seconds', lp_idle_ms, 0);
+
+0 -> lp_idle_ms;
+lp_idle_note(lp_now_ms() - 300000);
+;;; Five minutes away, less the minute of grace.  Within a second: the
+;;; two lp_now_ms calls straddle a real clock.
+check_true('five minutes away costs four',
+           lp_idle_ms >= 239000 and lp_idle_ms <= 241000);
+lp_idle_note(lp_now_ms() - 180000);
+check_true('and a second interruption adds to the first',
+           lp_idle_ms >= 358000 and lp_idle_ms <= 362000);
+
+;;; The clock itself, with both halves fabricated.
+lp_now_ms() - 600000 -> lp_sit_t0;
+0 -> lp_idle_ms;
+check_true('ten minutes at the keyboard reads as ten',
+           lp_sit_ms() >= 599000 and lp_sit_ms() <= 601000);
+420000 -> lp_idle_ms;
+check_true('seven of them away leaves three',
+           lp_sit_ms() >= 179000 and lp_sit_ms() <= 181000);
+check('and the display agrees', lp_sit_clock(lp_sit_ms()), '3:00');
+;;; A clock counting backwards is the kind of thing a student reports
+;;; and nobody can reproduce.
+900000 -> lp_idle_ms;
+check('more idle than sitting is zero, not negative', lp_sit_ms(), 0);
+
+;;; THE SAME MINUTES MUST NOT BE RECORDED AS LATENCY.  The sitting clock
+;;; is written nowhere; an answer latency decides a rung's speed
+;;; criterion and goes to the journal for good.
+0 -> lp_idle_ms;
+check_true('an answer with no interruption is timed as it happened',
+           lp_answer_ms(lp_now_ms() - 8000, 0) >= 7500
+           and lp_answer_ms(lp_now_ms() - 8000, 0) <= 8500);
+600000 -> lp_idle_ms;
+check_true('idle accrued BEFORE the question does not touch it',
+           lp_answer_ms(lp_now_ms() - 8000, 600000) <= 8500);
+check_true('idle accrued during it comes off',
+           lp_answer_ms(lp_now_ms() - 620000, 20000) <= 41000);
+false -> lp_sit_t0;
+0 -> lp_idle_ms;
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 
