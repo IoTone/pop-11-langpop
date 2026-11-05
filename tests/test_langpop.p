@@ -717,7 +717,49 @@ conspair({% "hi_a", "read", 1, "right", 100, t + 4000000, "learn" %},
          lp_journal) -> lp_journal;         ;;; an hour later: another
 lp_period_sessions() -> (sn, smin);
 check('two sittings', sn, 2);
-check('ten minutes between them all', smin, 10);
+;;; Ten minutes of clock between the first two answers, and five of it
+;;; credited: SESSION_CAP is what one gap can be worth.  Two answers ten
+;;; minutes apart are not ten minutes of study, and this suite said they
+;;; were until somebody pointed out what that pays for.
+check('one capped gap between them all', smin, 5);
+
+;;; ------------------------------------------- the television loophole
+;;; Start, go and watch television, come back before the half hour is up
+;;; and answer one more.  The sitting never ends, and the clock between
+;;; the first answer and the last was the whole evening -- so an hour of
+;;; television bought an hour of study, as often as a student cared to
+;;; repeat it.  This is the record :status reads and the consistency
+;;; method publishes, so the inflation came back as advice: a schedule
+;;; built on sittings nobody ever sat.
+[] -> lp_journal;
+lvars tv;
+for tv from 0 to 8 do
+    conspair({% "hi_a", "read", 1, "right", 100,
+                t + (tv * 1700000), "learn" %}, lp_journal) -> lp_journal;
+endfor;
+lp_period_sessions() -> (sn, smin);
+check('an evening of it is still one sitting', sn, 1);
+;;; Nine answers, eight gaps of twenty-eight minutes: three and three
+;;; quarter hours of clock, forty minutes of credit.
+check('and it is worth five minutes an answer, not thirty', smin, 40);
+
+;;; The same nine answers actually worked through, a minute apart.
+[] -> lp_journal;
+for tv from 0 to 8 do
+    conspair({% "hi_a", "read", 1, "right", 100,
+                t + (tv * 60000), "learn" %}, lp_journal) -> lp_journal;
+endfor;
+lp_period_sessions() -> (sn, smin);
+check('a real sitting is unchanged', smin, 8);
+;;; And the thing the cap must not do is punish reading.  Four minutes
+;;; between answers is a student working out why the last one was wrong.
+[] -> lp_journal;
+for tv from 0 to 8 do
+    conspair({% "hi_a", "read", 1, "right", 100,
+                t + (tv * 240000), "learn" %}, lp_journal) -> lp_journal;
+endfor;
+lp_period_sessions() -> (sn, smin);
+check('four minutes a question is work, and counts in full', smin, 32);
 
 ;;; ------------------------------------------------------ passing a rung
 ;;; The criteria were measured and printed and nothing read the answer.

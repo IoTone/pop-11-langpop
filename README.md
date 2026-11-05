@@ -2001,6 +2001,20 @@ The same minutes are kept out of the answer's own time, which is *not* just a
 display: every exit criterion has a millisecond budget, and a student who
 answered after a half-hour interruption was not slow on the item.
 
+**What the record counts is answers, not minutes present.** The sitting clock
+is a display and is written nowhere. The study record — what `:status` reads,
+and what the `consistency` method publishes as `minutes` — is reconstructed
+from the timestamps of answers in the journal, and no single gap between two
+answers is worth more than five minutes. That bound is the point: without it,
+*start, go and watch television, come back inside half an hour, answer one
+more* bought twenty-nine minutes of study per answer, repeatable all evening.
+Five minutes still pays in full for reading why the last answer was wrong,
+drawing a card or looking up a glyph, which is what the minutes between two
+answers usually are.
+
+So time is bought by answering a question. Sitting with the prompt open earns
+nothing, and neither does typing at it.
+
 **The tier is decided from the evidence, not chosen.** A client reports `ok`
 or `17/20`; the server decides that the first is tier 3 and the second tier
 2. Anything else is refused rather than quietly filed as compliance, because

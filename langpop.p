@@ -1642,6 +1642,26 @@ enddefine;
 ;;; a short day still has sessions in it.
 lconstant SESSION_SLICE = 48;
 
+;;; AND NO SINGLE GAP INSIDE A SITTING IS WORTH MORE THAN A DAY'S
+;;; 288TH -- five minutes of a real day.  Without this, a sitting's
+;;; length was the clock time from its first answer to its last, and
+;;; "start, go and watch television, come back before the half hour is
+;;; up, answer one more" bought the student twenty-nine free minutes of
+;;; study, as often as they cared to repeat it.  This is the record that
+;;; `:status` and the consistency method read, so that is not a cosmetic
+;;; lie: an inflated history makes lp_schedule_advice ask for sittings
+;;; the student has never actually done.
+;;;
+;;; Looser than the keyboard's one-minute grace on purpose, and the
+;;; difference is what each one can see.  lp_readline watches every
+;;; keystroke, so a silent minute there is evidence of an empty chair.
+;;; Here there is nothing but the answer timestamps, and the minutes
+;;; between two answers are often real work -- reading why the last one
+;;; was wrong, a card, a sheet, a glyph looked up.  Five minutes pays
+;;; for all of that and still charges an evening of television at five
+;;; minutes an answer instead of thirty.
+lconstant SESSION_CAP = 288;
+
 ;;; Tier-1 answers this period, oldest first.
 define lp_period_answers() -> es;
     lvars e, es = [];
@@ -1671,17 +1691,22 @@ enddefine;
 ;;; time at all, which is correct: the point of the number is how long
 ;;; this student can sit with it, and somebody who answered once and
 ;;; left could not sit with it.
+;;;
+;;; Summed gap by gap rather than first-answer-to-last, so SESSION_CAP
+;;; can bound each one.  Time is bought by answering a question: a gap
+;;; is credited because there is an answer at the end of it, and the
+;;; most any single gap is worth is five minutes.
 define lp_period_sessions() -> (n, minutes);
-    lvars e, es = lp_period_answers(), n = 0, last = false, start = false,
-          total = 0, minutes;
+    lvars e, es = lp_period_answers(), n = 0, last = false,
+          total = 0, minutes, cap = lp_day_ms div SESSION_CAP;
     for e in es do
         if not(last) or e(6) - last > lp_day_ms div SESSION_SLICE then
-            if start then total + (last - start) -> total endif;
-            n + 1 -> n; e(6) -> start;
+            n + 1 -> n;                     ;;; a new sitting, worth nothing yet
+        else
+            total + min(e(6) - last, cap) -> total;
         endif;
         e(6) -> last;
     endfor;
-    if start then total + (last - start) -> total endif;
     total div 60000 -> minutes;
 enddefine;
 

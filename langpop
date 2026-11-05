@@ -87,7 +87,16 @@ case "$1" in
             last=$(printf '%s\n' "$out" | grep '\*\* SUMMARY' | tail -1)
             [ -n "$last" ] || last=$(printf '%s\n' "$out" | tail -1)
             printf '%s: %s\n' "$(basename "$t" .p)" "$last"
-            case "$last" in *'ALL PASS'*) ;; *) failed=1 ;; esac
+            case "$last" in
+                *'ALL PASS'*) ;;
+                # Name the checks that failed.  The output was being
+                # thrown away, so an intermittent failure in a suite
+                # that passes on the next run left nothing at all to go
+                # on -- which happened, once, and cost the identity of
+                # the check.
+                *) printf '%s\n' "$out" | grep '^\*\* FAIL' | sed 's/^/  /'
+                   failed=1 ;;
+            esac
         done
         exit $failed ;;
     *)

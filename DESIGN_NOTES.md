@@ -3200,3 +3200,60 @@ match the afternoon it described. Fifty-nine seconds of thinking and
 five minutes of absence are indistinguishable to a stopwatch and obvious
 to the person holding it, which is the whole reason the threshold exists
 rather than a test for "idle".
+
+## Go and watch television, come back before the half hour is up
+
+The section above stopped the clock a student *looks* at. The reply to it
+was the better question: a sitting length that can be padded is worth
+padding, and the record is where padding pays.
+
+> Some students might actually use that information to inflate their
+> study log every week. Start, go watch tv, come back.
+
+That was already possible, and not in the clock. `lp_period_sessions`
+reconstructs sittings from the timestamps of answers in the journal: a
+run of answers is one sitting, half an hour of silence ends it, and the
+sitting's length was the clock time from its first answer to its last.
+So nine answers spaced twenty-eight minutes apart were one unbroken
+sitting three and three quarter hours long, and the evening in front of
+the television was all of it. Repeatable every night, and cheaper than
+studying.
+
+This is the figure `:status` reads and the `consistency` method
+publishes. The damage is not that the number flatters — it is that
+`lp_schedule_advice` is built on it, and its whole design is to offer
+back the rhythm the student has *proved* they can keep. Fed an inflated
+history it asks for four-hour sittings, which nobody will do, and then
+the advice is worthless in both directions.
+
+**Each gap is capped, rather than each sitting.** `SESSION_CAP` is a
+day's 288th — five minutes of a real day, scaling with `lp_day_ms` as
+`SESSION_SLICE` does. The accumulation changed from first-answer-to-last
+to a sum over gaps so there was something to bound. Nine answers across
+an evening of television now come to forty minutes rather than two
+hundred and twenty-five.
+
+**Five minutes, where the keyboard's grace is one.** The two numbers
+differ because the two measurements see different things.
+`lp_readline` watches every keystroke, so a silent minute there really
+is an empty chair. `lp_period_sessions` has nothing but answer
+timestamps, and the minutes between two answers are usually work —
+reading why the last one was wrong, a card, a sheet, a glyph looked up.
+A tight cap there would quietly punish the student who thinks before
+answering, which is the one behaviour the ladder is trying to buy.
+
+**What this makes time cost.** An answer. A gap is credited because
+there is an answer at the end of it, so sitting with the prompt open
+earns nothing, and tapping a key every fifty seconds to defeat the
+keyboard grace earns nothing either — the live clock is a display
+written nowhere, and the record never asks whether anybody was typing.
+That split was already in the code, with `lp_sit_ms` carrying a comment
+saying it is written nowhere and nobody is graded on it. It took
+somebody asking what a student might do with the number to show that the
+comment was the load-bearing part.
+
+One existing test changed rather than being added to: two answers ten
+minutes apart had been asserted as ten minutes of study since the
+schedule advice was written. It is five now. The suite had encoded the
+loophole as the expected answer, which is the ordinary way a suite of
+753 checks fails to notice something.
