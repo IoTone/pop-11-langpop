@@ -6368,12 +6368,49 @@ enddefine;
 4000 -> poplinewidth;
 4096 -> poplinemax;
 
+;;; ----------------------------------------------- what the flags may say
+;;; Which languages the graph actually holds, read off the ladders.
+;;; Derived and not listed, for the reason lp_has_syllabary is derived:
+;;; a third language arrives with its ladder and this answer follows.
+define lp_langs() -> ls;
+    lvars l, ls = [];
+    for l in lp_ladders do
+        unless member(hd(l), ls) then ls <> [% hd(l) %] -> ls endunless;
+    endfor;
+enddefine;
+
+;;; The flags that take a value after them.
+;;;
+;;; EVERY ONE OF THEM read it as hd(tl(args)) with nothing in front of
+;;; it, so `./langpop --lang` -- or any of the others with the value left
+;;; off -- died with MISHAP NON-EMPTY LIST NEEDED and a Pop-11 stack
+;;; trace, which tells a teacher nothing at all.  --voicetest is not in
+;;; the list: its item is genuinely optional and it already looks before
+;;; it takes.
+lconstant NEEDS_VALUE = ['--lang' '--l1' '--user' '--name' '--data'
+                         '--day-ms' '--chart' '--audio' '--rate'];
+
+define lp_args_ok(args) -> ok;
+    lvars args, a, ok = true, rest = args;
+    until rest == [] do
+        hd(rest) -> a;
+        unless member(a, NEEDS_VALUE) then tl(rest) -> rest; nextloop endunless;
+        if tl(rest) == [] or issubstring('--', hd(tl(rest))) == 1 then
+            printf('%p wants a value after it.\n', [^a]);
+            false -> ok;
+            return;
+        endif;
+        tl(tl(rest)) -> rest;
+    enduntil;
+enddefine;
+
 define lp_main();
     lvars args = poparglist, a, user = false, display = false,
           batch = false, checkonly = false, auditonly = false,
           sheetonly = false, audioonly = false, rate = false,
           voicetest = false, vtitem = false, rest = [];
     find_dir() -> langpop_dir;
+    returnunless(lp_args_ok(args));
     until args == [] do
         hd(args) -> a;
         if a = '--lang' then
@@ -6427,6 +6464,27 @@ define lp_main();
     if lp_lang == "en" then "preschool" else "preschool" endif -> lp_level;
     lp_load();
     lp_index();
+    ;;; A LANGUAGE THE GRAPH DOES NOT HOLD, refused here and not three
+    ;;; procedures later.  `--lang jp` is the obvious guess for Japanese
+    ;;; and the wrong one, and what it used to do was print the greeting,
+    ;;; ask for a username, and then die inside lp_load_profile on
+    ;;; hd(lp_levels("jp")) -- an empty ladder, so no level to start at.
+    ;;; From the outside that reads as "it will not start", with a
+    ;;; Pop-11 stack trace for an explanation.
+    unless member(lp_lang, lp_langs()) then
+        printf('I have no %p ladder.  I teach: %p\n',
+               [% lp_lang, lp_langs() %]);
+        return;
+    endunless;
+    ;;; And the same for --l1.  A language nobody has glosses in would
+    ;;; not crash -- lp_word_question falls back to the item's own
+    ;;; language -- but a silent fallback is how a session becomes
+    ;;; unexplainable, and the flag was given for a reason.
+    if lp_l1 and not(member(lp_l1, lp_langs())) then
+        printf('I hold no glosses in %p.  I have: %p\n',
+               [% lp_l1, lp_langs() %]);
+        return;
+    endif;
     ;;; On demand everywhere else, but every mode below has to know up
     ;;; front whether it can ask a listening question: lp_verifiable
     ;;; ("hear") is consulted by the plan, the gate, --audit and --check,

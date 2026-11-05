@@ -137,6 +137,17 @@ needs in order to be usable by anybody else:
 ./langpop --lang en             # the default: explained in Japanese
 ```
 
+Both flags take one of the languages the graph holds, and say so rather
+than failing later — `--lang jp` is the obvious guess for Japanese and
+the wrong one:
+
+```
+$ ./langpop --lang jp
+I have no jp ladder.  I teach: [ja en]
+$ ./langpop --lang
+--lang wants a value after it.
+```
+
 With no flag it stays the flip it has always been — a student of English
 reads Japanese, a student of Japanese reads English — so nothing that
 worked before needs the flag. What changes is which gloss is the answer

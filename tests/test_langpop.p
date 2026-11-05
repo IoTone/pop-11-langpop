@@ -3070,6 +3070,34 @@ check('--l1 overrides the flip', lp_learner_lang(), "en");
 wq_lang -> lp_lang; wq_lvl -> lp_level; wq_l1 -> lp_l1;
 wq_j -> lp_journal;
 
+;;; ------------------------------------------------ what the flags may say
+;;; `./langpop --lang jp` printed the greeting, asked for a username, and
+;;; then died on hd(lp_levels("jp")) inside lp_load_profile -- an empty
+;;; ladder, so no level to start at.  From the outside that is "it will
+;;; not start", with a Pop-11 stack trace for an explanation.  And every
+;;; value-taking flag read hd(tl(args)) with nothing in front of it, so
+;;; leaving the value off did the same thing one procedure earlier.
+check_true('the languages are read off the ladders',
+           member("ja", lp_langs()) and member("en", lp_langs()));
+check_true('and jp is not one of them', not(member("jp", lp_langs())));
+check('two of them, and no duplicates', length(lp_langs()), 2);
+
+check_true('a flag with its value is fine',
+           lp_args_ok(['--lang' 'ja' '--user' 'x']));
+check_true('and so is a flag that takes none',
+           lp_args_ok(['--audit']));
+check_true('a value-taking flag at the end of the line is not',
+           not(lp_args_ok(['--lang'])));
+check_true('nor is one followed by another flag',
+           not(lp_args_ok(['--lang' '--user' 'x'])));
+check_true('--l1 is held to the same rule',
+           not(lp_args_ok(['--lang' 'en' '--l1'])));
+;;; --voicetest's item is genuinely optional, and it looks before it
+;;; takes -- so it must NOT be held to the rule.
+check_true('--voicetest alone is allowed', lp_args_ok(['--voicetest']));
+check_true('and with an item too',
+           lp_args_ok(['--voicetest' 'w_gakkou']));
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 

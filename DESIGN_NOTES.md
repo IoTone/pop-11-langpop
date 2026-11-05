@@ -3102,3 +3102,45 @@ a Pop-11 string here is 8-bit, so `s(i)` yields UTF-8 **bytes** and a
 test for `> 12288` is false of 人々 and of コンセント alike. One byte over
 127 settles it, and `16r3000` is not how Pop-11 spells a radix literal
 in any case (`16:3000` is).
+
+## It would not start, and said so in Pop-11
+
+`./langpop --lang jp` printed the greeting, asked for a username, and
+then stopped:
+
+```
+はじめまして。I am Aoi, and I will be your teacher.
+Username?
+;;; MISHAP - NON-EMPTY LIST NEEDED
+;;; INVOLVING:  []
+;;; DOING    :  Checkr_list hd lp_load_profile lp_register lp_main
+```
+
+`jp` is the obvious guess for Japanese and the wrong one — the graph
+says `ja` — so `lp_levels("jp")` was `[]` and `hd` of it died inside
+`lp_load_profile`, three procedures after the flag that caused it. From
+the outside that reads as *it will not start*, with a Pop-11 stack trace
+for an explanation. Reported by the one person using it, which is the
+only reason it was found: no test covered a flag value that was merely
+wrong rather than absent.
+
+Two fixes, both one place rather than thirteen:
+
+- **The language is checked straight after `lp_index()`**, against
+  `lp_langs()` — read off the ladders, not listed, so a third language
+  arrives with its ladder and the answer follows. `--l1` is held to the
+  same rule. It would not have crashed (`lp_word_question` falls back to
+  the item's own language), but a silent fallback is how a session
+  becomes unexplainable, and the flag was given for a reason.
+- **Every value-taking flag read `hd(tl(args))` with nothing in front of
+  it**, so `./langpop --lang` died the same way one procedure earlier,
+  and so did `--l1`, `--user`, `--name`, `--data`, `--day-ms`,
+  `--chart`, `--audio` and `--rate`. `lp_args_ok` walks the line once
+  before anything reads a value. `--voicetest` is deliberately not in
+  that list: its item is genuinely optional and it already looks before
+  it takes.
+
+The general lesson is the one about `:chart` from two sections up, in a
+harder form. There the menu offered something the track could not do;
+here the flag accepted something the graph did not hold. Both were
+places where the program knew the answer and nothing asked it.
