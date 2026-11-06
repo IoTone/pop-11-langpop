@@ -3307,3 +3307,65 @@ warning came out of the build: the reload block cleared the property
 2,400 lines before its declaration. It is declared with the other graph
 properties now, where the comment can also say *why* it is cleared with
 them — it is derived from lp_gl, so it empties when lp_gl does.
+
+## The audio stopped after the first mistake
+
+Reported from use, in those words, and the journal of the session is
+nine lines long:
+
+```
+s_r_l      hear  right        s_si_shi   hear  right
+s_th_un    hear  right        s_cluster  hear  right
+s_v_b      hear  right        s_ts       hear  wrong
+s_f_h      hear  right        m_rice     read  wrong
+s_ae_uh    hear  wrong
+```
+
+Eight listening questions, a first mistake, two more sounds, a second,
+then one silent written confusion -- and the session ends there. From
+the keyboard that is *the audio stopped after my first mistake*, and
+the description is exact.
+
+The diagnosis took three wrong theories, each killed by the journal.
+Not the player: `lp_audio_play` is stateless. Not the sitting or review
+machinery: reviews are days away. Not the student's own history -- the
+first journal read was the wrong user's, and its oddity (205 answers,
+not one on `hear`) turned out to be the same bug seen from the Japanese
+side, where it is masked: a Japanese learner earns word audio by
+read-mastering words, and this student had not yet mastered any.
+
+**The cause was one gate, correct for words and absurd for sounds.**
+`lp_hear_plan` required `lp_mastered_on(i, "read")` -- hearing comes
+after reading, on the same item, which is the right teaching order for
+a word. But a sound contrast's channels are `[hear speak]`: it has no
+written form, its read belief is 0.0 forever, and so no contrast could
+ever enter the listening pool. The every-fourth listening slot -- whose
+own comment says it exists so that "a student with reading work left
+would otherwise never practise listening at all" -- served nothing in
+the English track, ever. Contrasts reached the student only as unseen
+items in the main plan, once each; after two were answered wrong they
+sat at belief 0.0 with one ask against thirty silent unseen items at
+0.0 with none, and weakest-first's tie-break put them thirty questions
+away.
+
+The fix is the distinction the gate was missing: read-mastery is
+required only of an item that can be read.
+
+```pop11
+nextunless(not(member("read", lp_channels(i)))
+           or lp_mastered_on(i, "read"));
+```
+
+Resumed on a clone of the reporting session's own profile, question
+four is `Listen.  What did you hear?` again -- and because
+lp_choose_hear takes the weakest ear first, what the slot brings back
+is the contrast that was just got wrong, which is the only material an
+ear was needed for in the first place.
+
+Two notes for the file. The audio suite tested the pool with a ja word
+and a ja grapheme and never with a sound contrast -- the one kind whose
+gate channel IS hear -- so the pool's emptiest case was its least
+tested. And the first journal read being the wrong user's was not
+wasted: a measurement that surprises you about the wrong subject is
+still a measurement, and "205 answers, zero hear" was this same bug
+wearing its Japanese disguise.

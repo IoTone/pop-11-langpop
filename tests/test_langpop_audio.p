@@ -806,6 +806,35 @@ check('and is one file for both contrasts', bp2, bp1);
 check_true('a contrast with a pair is probeable', lp_probeable("s_r_l", "hear"));
 check_true('one without is not', not(lp_probeable("s_final", "hear")));
 
+;;; --- the listening slot can finally serve a contrast
+;;; lp_hear_plan required lp_mastered_on(i, "read"), and a sound's
+;;; channels are [hear speak]: its read belief is 0.0 forever, so no
+;;; contrast ever entered the pool and the every-fourth listening slot
+;;; served nothing in the English track.  A student's session: eight
+;;; contrasts by ear, a mistake, and then silence -- the two contrasts
+;;; they got wrong parked behind every unseen silent item in the plan.
+"listener" -> lp_user;
+"preschool" -> lp_level;
+check_true('a contrast is in the listening pool, unread and unreadable',
+           member("s_r_l", lp_hear_plan()) /== false);
+lp_record("s_r_l", "hear", 1, "wrong", 1000);
+check_true('getting it wrong keeps it there',
+           member("s_r_l", lp_hear_plan()) /== false);
+check('and the slot picks it: weakest ear first',
+      lp_choose_hear(), "s_r_l");
+;;; The gate still stands where it was right: a WORD is read first.
+;;; Same voice, same session -- the split is the channel list, not the
+;;; language.
+lvars wpath, wdid, wwhy;
+lp_audio_make("t_mansion", "normal") -> (wpath, wdid, wwhy);
+check('the word rendered', wwhy, false);
+check_true('a word not yet read-mastered stays out of the pool',
+           member("t_mansion", lp_hear_plan()) == false);
+MASTERY -> lp_beliefs(lp_bkey(lp_user, "t_mansion", "read"));
+check_true('read-mastered, it enters',
+           member("t_mansion", lp_hear_plan()) /== false);
+0.0 -> lp_beliefs(lp_bkey(lp_user, "t_mansion", "read"));
+
 ;;; AND THE GATE.  s_th_v requires s_th_un, and with pairs that edge is
 ;;; a real gate for the first time -- which is what `requires` means.
 ;;; The contrasts that still have no pair must stay exempt, or they lock

@@ -1816,6 +1816,16 @@ a ratio rather than *listening once the reading is done*, because otherwise
 a student with reading left would never practise listening and the criterion
 would only start moving at the very end.
 
+**A sound contrast skips the read-first rule**, because it has nothing to
+read: its channels are hear and speak, and it is heard or it is nothing. The
+pool requires read-mastery only of items that *can* be read. Before that
+distinction, no contrast ever entered the listening pool, the one-in-four
+slot served nothing in the English track, and a session's audio stopped the
+moment the plan ran out of unseen contrasts — with the two contrasts the
+student had just missed parked behind every silent unseen item. Now the slot
+brings back the weakest ear first, which is exactly the contrast that was
+just got wrong.
+
 ### Speaking it
 
 `:speak` is the one channel that wants a microphone, and it is **not**

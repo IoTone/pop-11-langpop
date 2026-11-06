@@ -5972,7 +5972,22 @@ define lp_hear_plan() -> items;
         nextunless(lp_level_index(lp_ilevel(i)) >= 0
                    and lp_level_index(lp_ilevel(i)) <= top);
         nextunless(member("hear", lp_channels(i)));
-        nextunless(lp_mastered_on(i, "read"));
+        ;;; Hearing comes after reading ON AN ITEM THAT CAN BE READ.  A
+        ;;; sound contrast cannot: its channels are [hear speak], so its
+        ;;; read belief is 0.0 forever, and this gate -- written for
+        ;;; words, where it is the right teaching order -- kept every
+        ;;; contrast out of this plan for good.  The slot above exists,
+        ;;; its own comment says, so that "a student with reading work
+        ;;; left would otherwise never practise listening at all"; in
+        ;;; the English track it served nothing, and a student's audio
+        ;;; stopped the moment the plan ran out of unseen contrasts --
+        ;;; which it did two questions after their first mistake, with
+        ;;; the two contrasts they had just got wrong parked behind
+        ;;; thirty silent unseen items.  Found from a journal: eight
+        ;;; hear answers, a wrong, a silent question, and the session
+        ;;; ends.
+        nextunless(not(member("read", lp_channels(i)))
+                   or lp_mastered_on(i, "read"));
         nextif(lp_mastered_on(i, "hear"));
         nextif(lp_deferred(i));
         nextunless(lp_drillable_on(i, "hear"));
