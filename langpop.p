@@ -103,6 +103,12 @@ vars
     lp_photos   = newproperty([], 32, false, "perm"),   ;;; item -> file path
     lp_depicts  = newproperty([], 32, [], "perm"),      ;;; item -> [[yes text] ...]
     lp_gl       = newproperty([], 512, [], "perm"),     ;;; item -> [[lang text] ...]
+    ;;; (rung, language, l1) -> [gloss ...], the distractor pool for
+    ;;; lp_word_question.  Declared up here with the properties the
+    ;;; reload block clears -- it is derived from lp_gl, so it empties
+    ;;; when lp_gl does -- and why it exists at all is explained where
+    ;;; it is filled, at lp_gloss_pool.
+    lp_glosspool = newproperty([], 16, false, "perm"),
     lp_confs    = newproperty([], 256, [], "perm"),     ;;; item -> [[other why] ...]
     lp_skanjis  = newproperty([], 64, false, "perm"),   ;;; word -> kanji spelling
     lp_beliefs  = newproperty([], 1024, 0.0, "perm"),
@@ -3216,18 +3222,7 @@ enddefine;
 ;;; the only two languages the graph holds and wrong the moment somebody
 ;;; who does not read Japanese wants to try the English ladder.  The flip
 ;;; stays as the default, so nothing that worked before moves.
-vars lp_l1 = false,                     ;;; --l1, or false for the flip
-     ;;; (rung, language, l1) -> [gloss ...], the distractor pool.
-     ;;;
-     ;;; MEASURED, not precautionary.  lp_word_question first scanned
-     ;;; lp_items on every call, with lp_gloss_of -- a Prolog goal -- in
-     ;;; the loop.  The plan asks lp_drillable of every item, so one
-     ;;; session walked 1,117 English words x 7,565 items x one goal
-     ;;; each, and the test suite stopped finishing inside two minutes.
-     ;;; That is the mistake this file's own --check header names: a
-     ;;; lookup written as a goal and run once per item.  One scan per
-     ;;; rung, kept, costs 7,565 goals in total.
-     lp_glosspool = newproperty([], 16, false, "perm");
+vars lp_l1 = false;                     ;;; --l1, or false for the flip
 
 define lp_learner_lang() -> l;
     lvars l = lp_l1 or (if lp_lang == "ja" then "en" else "ja" endif);
@@ -3236,6 +3231,15 @@ enddefine;
 ;;; Every gloss at one rung in one language, built once and kept.
 ;;; Order follows lp_items, which is the graph's order, so the walk below
 ;;; is deterministic and the tests repeat.
+;;; MEASURED, not precautionary.  lp_word_question first scanned
+;;; lp_items on every call, with lp_gloss_of -- a Prolog goal -- in the
+;;; loop.  The plan asks lp_drillable of every item, so one session
+;;; walked 1,117 English words x 7,565 items x one goal each, and the
+;;; test suite stopped finishing inside two minutes.  That is the
+;;; mistake this file's own --check header names: a lookup written as a
+;;; goal and run once per item.  One scan per rung, kept in
+;;; lp_glosspool (declared with the graph properties, which the reload
+;;; block clears together), costs 7,565 goals in total.
 define lp_gloss_pool(level, lang, l1) -> pool;
     lvars level, lang, l1, key, pool, i, g;
     consword(level sys_>< '' <> '/' <> (lang sys_>< '')

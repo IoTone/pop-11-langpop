@@ -3257,3 +3257,53 @@ minutes apart had been asserted as ten minutes of study since the
 schedule advice was written. It is five now. The suite had encoded the
 loophole as the expected answer, which is the ordinary way a suite of
 753 checks fails to notice something.
+
+## The flag that stopped at the socket
+
+`--l1` was the loose end its own tranche named: it reached `lp_main` and
+went no further, so `./langpop --lang en --l1 en` asked English-glossed
+questions while the same student over `./langpop client` still got the
+two-way flip. A fix that reaches one front end and not the other is the
+exact failure Proposal B exists to prevent — the TUI is supposed to have
+no privileges a phone app would not have, and for three weeks it had
+one: the ability to say what language it reads.
+
+`l1` is now a parameter of `session.open`, beside `language` at
+register, which keeps the pairing the engine already states in
+`lp_learner_lang`: what they are learning, and what they already read.
+Three decisions in it worth recording:
+
+- **It lives on the session, in slot 13.** One server serves a Japanese
+  reader and an English-glosses learner at once, and `lp_l1` is an
+  engine global — so `lp_q_in` installs it per request, exactly as it
+  installs the queue and the capability claim. And unconditionally:
+  false must overwrite too, or the last session's `l1` would leak into
+  every session that never asked for one. The test watches the global
+  across alternating requests, which the in-process harness makes
+  possible and a socket harness would not.
+- **Absent is not a default.** The client sends `l1` only when it was
+  given one, the discipline `language` already follows and for the same
+  reason: a client that always sent its own default would pin every
+  returning student to it. Absent means the flip, and the reply says
+  which way it went — `gloss_language` is the server's conclusion, like
+  `can_hear`, so a client learns on connect what its glosses will be
+  rather than deducing it from the first question.
+- **Refused before the session exists.** A gloss language the tutor
+  does not hold is `-32602` with the held languages named in the
+  message, because the alternative was the silent fallback the CLI
+  tranche already rejected. And `register` now checks `language` the
+  same way: `"jp"` over the wire died exactly as `--lang jp` did at the
+  command line — a mishap three procedures later, `-32603` to the
+  client, and the engine's globals left half-bound to a language it
+  does not teach. The same bug always had two doors; 80b292d locked
+  one.
+
+The client also gained the engine's `lp_args_ok` rule, carried as its
+own copy like its clock and its `yes()`: `./langpop client --lang` now
+refuses in one line instead of dying on `hd([])`.
+
+While wiring the tests in, the `DECLARING VARIABLE lp_glosspool`
+warning came out of the build: the reload block cleared the property
+2,400 lines before its declaration. It is declared with the other graph
+properties now, where the comment can also say *why* it is cleared with
+them — it is derived from lp_gl, so it empties when lp_gl does.

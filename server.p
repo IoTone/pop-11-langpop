@@ -40,6 +40,18 @@ vars
     lp_session_seq = 0,
 ;
 
+;;; The ladders this tutor holds, as one printable string -- for the
+;;; refusals below, so a client developer reads "held: ja en" instead of
+;;; guessing.  lp_langs() is the engine's own answer, read off the
+;;; ladders, so a third language arrives with its ladder and these
+;;; messages follow.
+define lp_langs_str() -> str;
+    lvars l, str = '';
+    for l in lp_langs() do
+        str sys_>< (if str = '' then '' else ' ' endif) sys_>< l -> str;
+    endfor;
+enddefine;
+
 define lp_new_session(student) -> sid;
     lvars student, sid;
     lp_session_seq + 1 -> lp_session_seq;
@@ -89,9 +101,17 @@ define lp_new_session(student) -> sid;
     ;;; whose answer is recomputed is a question that can be marked
     ;;; against a different question; remembering it is the fix, and the
     ;;; clock in slot 4 is remembered for the same kind of reason.
+    ;;;
+    ;;; Slot 13 is THE GLOSS LANGUAGE this session asked for -- `l1` at
+    ;;; session.open -- or false for the engine's default, which flips to
+    ;;; the other language.  Read once at open and never written back,
+    ;;; like slot 12, and on the session rather than in a global for the
+    ;;; reason slot 12 is: one server serves a Japanese reader and an
+    ;;; English-glosses learner at once, and one session's `--l1 en`
+    ;;; must not rewrite the other's vocabulary questions.
     {% student, lp_now_ms(), false, 0, false,
        [], 0, newproperty([], 32, 0, "perm"), false, "learn", false,
-       false %}
+       false, false %}
         -> lp_sessions(consword(sid));
 enddefine;
 
@@ -105,6 +125,10 @@ define lp_q_in(s);
     ;;; And the client's claim, which lp_q_out does NOT write back:
     ;;; nothing in here may edit what the client said about itself.
     s(12) -> lp_client_caps;
+    ;;; The gloss language the same way, and UNCONDITIONALLY: false must
+    ;;; overwrite too, or the last session's `l1` would leak into every
+    ;;; session that never asked for one.
+    s(13) -> lp_l1;
 enddefine;
 
 define lp_q_out(s);
@@ -316,6 +340,16 @@ define lp_m_register(msg) -> res;
     ;;; This is why the client sends `language` only when it was given
     ;;; one.  A client that always sent its own default would flip a
     ;;; returning English student back to Japanese on connect.
+    ;;; Checked before it is believed, for the reason lp_main checks it:
+    ;;; "jp" is the obvious guess and the wrong one, and unchecked it
+    ;;; died three procedures later on hd(lp_levels("jp")) -- a mishap
+    ;;; on the server, -32603 on the wire, and the engine's globals left
+    ;;; half-bound to a language it does not teach.
+    if lang and not(member(consword(lp_norm(lang)), lp_langs())) then
+        lp_err(LP_E_PARAMS, 'register: no ' sys_>< lang
+               sys_>< ' ladder; held: ' sys_>< lp_langs_str()) -> res;
+        return;
+    endif;
     if lang then consword(lang) -> lp_lang; true -> lp_lang_asked endif;
     lp_load_profile(lp_user) -> known;
     false -> lp_lang_asked;
@@ -415,10 +449,28 @@ define lp_caps_of(msg) -> caps;
 enddefine;
 
 define lp_m_session_open(msg) -> res;
-    lvars msg, res, student = lp_param(msg, 'student_id'), sid, caps;
+    lvars msg, res, student = lp_param(msg, 'student_id'), sid, caps,
+          l1 = lp_param(msg, 'l1');
     unless student then
         lp_err(LP_E_PARAMS, 'session.open: student_id needed') -> res; return
     endunless;
+    ;;; `l1` is the language the student reads glosses in -- what they
+    ;;; already know, where `language` at register is what they are
+    ;;; learning.  Optional, and absent is NOT a default `l1`: it is the
+    ;;; engine's two-way flip, which is why the TUI sends it only when
+    ;;; it was given one (the same discipline as `language`, and for the
+    ;;; same reason).  Checked here, before the session exists, so a bad
+    ;;; value costs the caller one error and the server nothing.
+    if l1 then
+        consword(lp_norm(l1)) -> l1;
+        unless member(l1, lp_langs()) then
+            lp_err(LP_E_PARAMS, 'session.open: no glosses in '
+                   sys_>< l1 sys_>< '; held: ' sys_>< lp_langs_str()) -> res;
+            return;
+        endunless;
+    else
+        false -> l1;
+    endif;
     consword(lp_norm(student)) -> student;
     unless lp_bind(student) then
         lp_err(LP_E_STUDENT, 'no such student: register first') -> res; return
@@ -429,6 +481,8 @@ define lp_m_session_open(msg) -> res;
     lp_caps_of(msg) -> caps;
     caps -> lp_client_caps;
     caps -> lp_session(sid)(12);
+    l1 -> lp_session(sid)(13);
+    l1 -> lp_l1;
     jsonrpc_obj([% 'session_id', sid,
                    'teacher', lp_teacher_name(),
                    ;;; A student with no history has not been here before,
@@ -450,7 +504,11 @@ define lp_m_session_open(msg) -> res;
                    ;;; whether a voice is installed here at all, which
                    ;;; the client cannot know.
                    'can_hear', lp_can_hear(),
-                   'can_see', lp_can_see() %]) -> res;
+                   'can_see', lp_can_see(),
+                   ;;; The server's conclusion, like can_hear: the
+                   ;;; language this session's glosses will be in,
+                   ;;; whether it was asked for or fell out of the flip.
+                   'gloss_language', lp_jkey(lp_learner_lang()) %]) -> res;
 enddefine;
 
 ;;; Every method below this line needs a session, and the session is the

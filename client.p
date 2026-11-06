@@ -446,7 +446,26 @@ define client_main();
     ;;; sent, the server uses the profile's, or Japanese for a student
     ;;; it has never met.
     lvars args = poparglist, a, host = 'localhost', port = 7801,
-          user = false, name = false, lang = false, reg, sess, line, cmd, arg;
+          user = false, name = false, lang = false, l1 = false,
+          reg, sess, line, cmd, arg;
+    ;;; Every flag below reads hd(tl(args)), so the engine's rule from
+    ;;; lp_args_ok applies here too: a value-taking flag with no value
+    ;;; after it is refused in one line, not three procedures later in
+    ;;; a mishap.  The client carries its own copy of the rule for the
+    ;;; reason it carries its own clock and its own yes().
+    lvars rest = args;
+    until rest == [] do
+        hd(rest) -> a;
+        unless member(a, ['--port' '--host' '--user' '--name'
+                          '--lang' '--l1']) then
+            tl(rest) -> rest; nextloop
+        endunless;
+        if tl(rest) == [] or issubstring('--', hd(tl(rest))) == 1 then
+            printf('%p wants a value after it.\n', [^a]);
+            return;
+        endif;
+        tl(tl(rest)) -> rest;
+    enduntil;
     until args == [] do
         hd(args) -> a;
         if a = '--port' then strnumber(hd(tl(args))) -> port; tl(tl(args)) -> args;
@@ -454,6 +473,12 @@ define client_main();
         elseif a = '--user' then hd(tl(args)) -> user; tl(tl(args)) -> args;
         elseif a = '--name' then hd(tl(args)) -> name; tl(tl(args)) -> args;
         elseif a = '--lang' then hd(tl(args)) -> lang; tl(tl(args)) -> args;
+        ;;; What the student already reads, where --lang is what they
+        ;;; are learning.  Sent only when it was given, like --lang and
+        ;;; for the same reason: the absent case is the server's flip,
+        ;;; and a client that always sent a default would pin every
+        ;;; session to it.
+        elseif a = '--l1' then hd(tl(args)) -> l1; tl(tl(args)) -> args;
         else tl(args) -> args;
         endif;
     enduntil;
@@ -526,6 +551,7 @@ define client_main();
     ;;; with what it really has, and nothing on the server changes.
     rpc('langpop/session.open',
         jsonrpc_obj([% 'student_id', user,
+                       if l1 then 'l1', l1 endif,
                        'capabilities', jsonrpc_obj([%
                            'audio', jsonrpc_obj([% 'play', {},
                                                    'record', false %]),

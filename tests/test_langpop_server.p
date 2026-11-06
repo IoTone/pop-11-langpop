@@ -155,6 +155,56 @@ check('an unknown student cannot open a session',
       errcode('langpop/session.open', jsonrpc_obj([% 'student_id', 'ghost' %])),
       -32002);
 
+;;; --------------------------------------------- the gloss language, l1
+;;; --l1 reached the in-process TUI and stopped at the socket: a client
+;;; of this server always got the two-way flip.  `l1` at session.open is
+;;; the companion to `language` at register -- what the student already
+;;; reads, beside what they are learning -- and it lives on the session,
+;;; because one server serves a Japanese reader and an English-glosses
+;;; learner at once.
+result('langpop/register',
+       jsonrpc_obj([% 'student_id', 'l1user', 'display_name', 'L1 User',
+                      'language', 'en' %])).erase;
+vars l1a = result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'l1user', 'l1', 'en' %]));
+check('an asked-for gloss language is the session\'s',
+      l1a('gloss_language'), 'en');
+vars l1b = result('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'l1user' %]));
+check('absent, the flip stands: an english learner reads japanese',
+      l1b('gloss_language'), 'ja');
+
+;;; Per request, not per server.  The harness is in-process, so the
+;;; engine's own global can be watched: serving the no-l1 session must
+;;; put false back, or session A's english glosses would rewrite
+;;; session B's questions.
+result('langpop/plan',
+       jsonrpc_obj([% 'session_id', l1b('session_id') %])).erase;
+check('a session that never asked gets the flip, not the neighbour\'s l1',
+      lp_l1, false);
+result('langpop/plan',
+       jsonrpc_obj([% 'session_id', l1a('session_id') %])).erase;
+check('and the one that asked gets what it asked for', lp_l1, "en");
+
+;;; And the same wrong guess that killed the command line is refused on
+;;; the wire, before a session exists.
+check('a gloss language nobody holds is a params error',
+      errcode('langpop/session.open',
+              jsonrpc_obj([% 'student_id', 'l1user', 'l1', 'jp' %])),
+      -32602);
+check('register checks the ladder the same way',
+      errcode('langpop/register',
+              jsonrpc_obj([% 'student_id', 'jpguess', 'language', 'jp' %])),
+      -32602);
+check('and the server is still standing afterwards',
+      result('ping', false), 'pong');
+;;; The refusal names what is held, so a client developer reads the
+;;; answer instead of guessing again.
+vars l1err = call('langpop/session.open',
+                  jsonrpc_obj([% 'student_id', 'l1user', 'l1', 'jp' %]))('error');
+check_true('and the error says what the tutor does hold',
+           issubstring('held:', l1err('message')) and true);
+
 ;;; -------------------------------------------------------------- the plan
 vars plan = result('langpop/plan', jsonrpc_obj([% 'session_id', sid %]));
 check('the plan is the five vowels', plan('ready_count'), 5);

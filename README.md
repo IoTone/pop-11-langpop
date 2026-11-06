@@ -2155,6 +2155,28 @@ gets the old behaviour, while `{"image": {"show": []}}` is a client saying
 `tools/term-image.py` exists and could change the answer, but until the
 client actually calls it the honest claim is none.
 
+**`l1` rides on `session.open` too** — the protocol's spelling of `--l1`,
+naming the language the student reads glosses in, beside the `language` at
+register that names the one they are learning. It is optional, sent only
+when it was asked for (absent means the engine's two-way flip, exactly as
+on the command line), it lives on the session because one server serves a
+Japanese reader and an English-glosses learner at once, and a value the
+tutor holds no glosses in is refused before a session exists:
+
+```json
+{"student_id": "dkords", "l1": "en"}  → {"gloss_language": "en", ...}
+{"student_id": "dkords"}              → {"gloss_language": "ja", ...}
+{"student_id": "dkords", "l1": "jp"}  → error -32602: no glosses in jp; held: ja en
+```
+
+`gloss_language` in the reply is the server's conclusion, like `can_hear`:
+what this session's glosses will actually be in, whether that was asked for
+or fell out of the flip. The TUI client takes `--l1` and forwards it the
+same way. `register` now checks `language` against the ladders it holds for
+the same reason `./langpop --lang jp` refuses at the door — the unchecked
+value died three procedures later inside the server, as `-32603` on the
+wire.
+
 **Why the sound and not the text.** A client that can synthesise cannot be
 sent the text instead, however many platform voices it has. A listening
 question asks *what did you hear*, so its stimulus **is** its answer, and
