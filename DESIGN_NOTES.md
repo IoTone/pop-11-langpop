@@ -3369,3 +3369,35 @@ tested. And the first journal read being the wrong user's was not
 wasted: a measurement that surprises you about the wrong subject is
 still a measurement, and "205 answers, zero hear" was this same bug
 wearing its Japanese disguise.
+
+## `--lang en --l1 en` gets me Japanese
+
+The report, verbatim, and it was two bugs that happened to look like one.
+
+On the reporter's own profile -- a student with a Japanese history --
+Mr Hill greeted them correctly and then said "A review." and asked す,
+つ and ツ. lp_review_due walked every item in the graph. The review
+schedule is the student's, not the ladder's, so a debt owed in Japanese
+was served first in an English sitting, and "first" is the whole of it:
+a review outranks anything new, so a student with a few dozen kana due
+would have met no English at all. Due and soonest now filter on the
+language being studied, and the debt stays where it was for the next
+Japanese sitting.
+
+On a brand-new profile the first question was 米 -- rice / lice, the
+written half of the /r/-/l/ merge. lp_mix_question chose its prompt as
+`ja or en`, regardless of who was asking. `--l1` had been threaded
+through lp_learner_lang into lp_word_question when it was added, and
+this branch, written earlier for a Japanese reader only, was never
+revisited. It is the first thing the English pre-school rung asks, so
+the flag looked like it did nothing. The prompt now comes from
+lp_learner_lang like every other gloss: "the grain you eat".
+
+The existing test had been passing for an unearned reason: it asked an
+English item while lp_lang was still "ja", which by the flip makes the
+student an English reader -- and the old code printed Japanese anyway.
+It now sets up the student it means: studying English, reading Japanese.
+
+Left alone, on purpose: the profile's stored language is the one last
+studied, so after one `--lang en` sitting a bare `./langpop` opens in
+English. That is "continue where we stopped", and the flag still wins.

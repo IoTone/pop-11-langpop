@@ -274,6 +274,25 @@ where there is no such rung. So each language resumes where it was left, and
 an evening of English costs nothing in Japanese. A language the student has
 never studied starts at the bottom of its own ladder.
 
+Reviews are kept per language for the same reason. A Japanese student who
+sits down with `--lang en` is not asked their Japanese reviews by Mr Hill;
+they wait, still owed, for the next Japanese sitting. And the language a
+student studied last is the one they get next time with no flag, so after
+an English evening, `./langpop --lang ja` is how to go back.
+
+`--l1 en` reaches every question, including the first one on the English
+pre-school rung, which shows a meaning and asks which spelling has it:
+
+```
+  the grain you eat               (with --l1 en)
+    1) rice
+    2) lice
+
+  米                               (the default: a Japanese reader)
+    1) rice
+    2) lice
+```
+
 This is also why `./langpop client` sends a language only when it was given
 one. The server treats a language it is handed as an instruction, so a client
 that always sent its own default would flip a returning English student back

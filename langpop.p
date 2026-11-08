@@ -1433,6 +1433,13 @@ enddefine;
 define lp_review_due() -> due;
     lvars due = [], item, ch, r, p, q, out;
     for item in lp_items do
+        ;;; ONLY THE LANGUAGE BEING STUDIED.  The schedule is per student,
+        ;;; not per ladder, so a Japanese learner who asked for --lang en
+        ;;; was greeted by Mr Hill and then asked す, つ and ツ as "a
+        ;;; review" -- the debt of the other language served first,
+        ;;; ahead of anything English.  It is still owed, and is still
+        ;;; there the next time they sit down in Japanese.
+        nextunless(lp_ilang(item) == lp_lang);
         for ch in [% lp_primary(item), "hear" %] do
             lp_review_of(item, ch) -> r;
             nextunless(r and r(2) and r(2) <= lp_now_ms());
@@ -1472,6 +1479,7 @@ enddefine;
 define lp_review_soonest() -> ms;
     lvars ms = false, item, ch, r, now = lp_now_ms();
     for item in lp_items do
+        nextunless(lp_ilang(item) == lp_lang);   ;;; as lp_review_due
         for ch in [% lp_primary(item), "hear" %] do
             lp_review_of(item, ch) -> r;
             nextunless(r and r(2));
@@ -3083,12 +3091,19 @@ define lp_mix_question(item) -> (shape, prompt, answer, options);
     if lp_asked(item) mod 2 == 0 then (mx(1), mx(2)) else (mx(2), mx(1))
     endif -> (said, other);
     lp_sense_of(item, said) -> (en, ja);
-    returnunless(ja or en);
+    ;;; THE MEANING IN THE LANGUAGE THE STUDENT READS.  This used to be
+    ;;; `ja or en` whoever was asking, so `--l1 en` changed every other
+    ;;; question and left this one -- the first thing the English
+    ;;; pre-school rung asks -- printing 米 at somebody who cannot read
+    ;;; it.  Each sense carries both; the other is the fallback.
+    lvars mean = if lp_learner_lang() == "en" then en or ja
+                 else ja or en endif;
+    returnunless(mean);
     lp_flip + 1 -> lp_flip;
     if lp_flip mod 2 == 1 then
-        ("pick", (ja or en) sys_>< '', ['1'], [% said, other %])
+        ("pick", mean sys_>< '', ['1'], [% said, other %])
     else
-        ("pick", (ja or en) sys_>< '', ['2'], [% other, said %])
+        ("pick", mean sys_>< '', ['2'], [% other, said %])
     endif -> (shape, prompt, answer, options);
 enddefine;
 

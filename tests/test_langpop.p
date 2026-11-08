@@ -540,6 +540,16 @@ check('one review owed', length(lp_review_due()), 1);
 check('and it is the right one', hd(lp_review_due())(1), "hi_a");
 check('on the channel it was learned on', hd(lp_review_due())(2), "read");
 
+;;; OWED IN JAPANESE IS NOT OWED IN ENGLISH.  The schedule is the
+;;; student's, so a Japanese learner who sat down with --lang en was
+;;; asked す, つ and ツ by Mr Hill, ahead of anything English.
+lvars rv_lang = lp_lang;
+"en" -> lp_lang;
+check('a sitting in the other language is owed nothing', lp_review_due(), []);
+check('and is not told to come back for it', lp_review_soonest(), false);
+rv_lang -> lp_lang;
+check('the debt is still there in its own', length(lp_review_due()), 1);
+
 ;;; A review answered right climbs a rung and goes quiet again.
 lp_record_phase("review", "hi_a", "read", 1, "right", 100);
 check('up a rung', t_rev("hi_a")(1), 2);
@@ -934,6 +944,10 @@ check('read first, heard second', lp_channels("m_rice"), [read hear]);
 check('so reading is what gates it', lp_primary("m_rice"), "read");
 check_true('and it is askable here', lp_drillable("m_rice"));
 
+;;; Asked of a Japanese reader studying English, which is who meets it:
+;;; whose language the prompt is in follows from that, and is the point.
+lvars mx_lang = lp_lang, mx_l1 = lp_l1;
+"en" -> lp_lang; false -> lp_l1;
 lvars (sh3, pr3, ans3, opts3) = lp_question("m_rice", "read");
 check('asked as a choice', sh3, "pick");
 check('between the two spellings', length(opts3), 2);
@@ -949,6 +963,16 @@ check('and the prompt is that word, in Japanese', pr3, aja sys_>< '');
 check('with the English kept for the card', aen sys_>< '',
       'the grain you eat');
 
+;;; AND IN ENGLISH, for a student who said they read English.  --l1 en
+;;; changed every other question and left this one printing 米 -- the
+;;; first thing the English pre-school rung asks, at somebody who cannot
+;;; read it.
+"en" -> lp_l1;
+lvars (, pr3e, ans3e, opts3e) = lp_question("m_rice", "read");
+lvars (aen2, ) = lp_sense_of("m_rice", opts3e(strnumber(hd(ans3e))));
+check('an English reader gets the English meaning', pr3e, aen2 sys_>< '');
+false -> lp_l1;
+
 ;;; EITHER SIDE, in turn.  Two questions and not one: which word means
 ;;; 米, and which means シラミ, are different questions to a learner who
 ;;; knows only one of the two words.
@@ -960,6 +984,7 @@ conspair({% "m_rice", "read", 1, "right", 100, lp_now_ms(), "learn" %},
 lvars (, p5, , ) = lp_question("m_rice", "read");
 check_true('the side turns over', p4 /= p5);
 [] -> lp_journal;
+mx_lang -> lp_lang; mx_l1 -> lp_l1;
 
 ;;; The cause is recorded and is NOT a prerequisite edge.  Gating the
 ;;; reading on hearing the contrast would put the harder task first, and
