@@ -208,6 +208,8 @@ enddefine;
 ;;; So an item is judged on a LIST of channels, gate first:
 ;;;
 ;;;   grapheme  [read]            a character is read
+;;;             [read hear]       but a hiragana is heard as well: see
+;;;                               lp_kana_heard
 ;;;   word      [read hear]       and a word is both
 ;;;   sound     [hear]            a contrast is heard or it is nothing
 ;;;   photo     [see]             a picture is looked at
@@ -223,6 +225,37 @@ enddefine;
 ;;; The primary channel is unchanged in every case -- it is hd(chs), and
 ;;; speak is appended -- because lp_primary is the GATE and adding a
 ;;; channel must not move a door.
+;;; KANA BY EAR.  The rule above -- a character is read, its READING is
+;;; heard, and that is the word's channel -- is right for a kanji, which
+;;; has several readings and is heard only inside a word.  A kana has one
+;;; sound and is the sound: か IS ka.  Hear it and type ka is the first
+;;; listening exercise there is, and without it a Japanese student heard
+;;; nothing until a whole word had been read to mastery -- 528 answers
+;;; on one profile, 126 kana known, and not one question by ear.
+;;;
+;;; HIRAGANA ONLY.  あ and ア are one sound, and hearing "a" cannot say
+;;; which script it was written in, so giving katakana the channel too
+;;; would ask the identical recording twice and call it two facts.
+;;; Katakana keeps [read speak].  And not を: Kyoko says it as お, but its
+;;; key is wo, so a student who heard it exactly right would be marked
+;;; wrong -- a question that punishes a good ear is worse than none.
+;;;
+;;; Read off lp_forms directly rather than through lp_form_of, which is
+;;; defined six hundred lines further down.
+define lp_kana_heard(item);
+    lvars item, p, hira = false, kanji = false;
+    returnunless(lp_ilang(item) == "ja" and item /== "hi_wo")(false);
+    for p in lp_forms(item) do
+        if hd(p) == "hiragana" then true -> hira
+        elseif hd(p) == "kanji" then true -> kanji
+        endif;
+    endfor;
+    ;;; An imported kanji carries a hiragana form too -- its kun reading
+    ;;; -- which is why the kanji form has to be absent, not only the
+    ;;; hiragana one present.  lp_place_axes learned that the hard way.
+    hira and not(kanji)
+enddefine;
+
 define lp_channels(item) -> chs;
     lvars item, k = lp_kind(item);
     if     k == "sound"    then [hear speak]
@@ -237,7 +270,8 @@ define lp_channels(item) -> chs;
     elseif k == "photo"    then [see]
     elseif k == "pattern"  then [produce]
     elseif k == "word"     then [read hear speak]
-    elseif k == "grapheme" then [read speak]
+    elseif k == "grapheme" then
+        if lp_kana_heard(item) then [read hear speak] else [read speak] endif
     else                        [read]
     endif -> chs;
 enddefine;
@@ -3590,7 +3624,8 @@ lconstant REQUEUE_GAP = 3, LATER_MAX = 2;
 vars lp_pending = [],                   ;;; [{item not_before channel} ...]
      lp_asked_n = 0,                    ;;; questions actually recorded
      lp_later_n = 0,                    ;;; questions put off, this session
-     lp_laters = newproperty([], 32, 0, "perm");
+     lp_laters = newproperty([], 32, 0, "perm"),
+     lp_recent = [];                    ;;; the last few items answered, newest first
 
 ;;; Placement does not offer it.  A freeze is the signal the descent runs
 ;;; on, so a student who could defer every hard question would never be
@@ -3599,7 +3634,7 @@ vars lp_pending = [],                   ;;; [{item not_before channel} ...]
 vars lp_allow_later = true;
 
 define lp_queue_reset();
-    [] -> lp_pending; 0 -> lp_asked_n; 0 -> lp_later_n;
+    [] -> lp_pending; 0 -> lp_asked_n; 0 -> lp_later_n; [] -> lp_recent;
     clearproperty(lp_laters);
 enddefine;
 
@@ -3777,9 +3812,39 @@ enddefine;
 ;;; A procedure rather than two lines inline, because langpop/answer
 ;;; records without going through the drill loop at all.
 define lp_answered(item);
-    lvars item;
+    lvars item, r, n = 1;
     lp_unqueue(item);
     lp_asked_n + 1 -> lp_asked_n;
+    ;;; Remembered for lp_just_asked, and only the last REQUEUE_GAP.
+    [% item, for r in lp_recent do
+                 quitif(n >= REQUEUE_GAP); unless r == item then r; n + 1 -> n
+                 endunless
+             endfor %] -> lp_recent;
+enddefine;
+
+;;; ------------------------------------------------- not straight back
+;;; THE SAME ITEM, AGAIN AND AGAIN.  A miss or an "I do not know" lowers
+;;; the belief, weakest-first then picks the lowest belief there is, and
+;;; that is the item just missed -- so a student who did not know it was
+;;; asked it again, at once, and again.  ち ten times running on one
+;;; profile; ほん, as a beat count, twenty-five times on another, with
+;;; four kana ready beside it, and the words -- and so the listening --
+;;; behind it never reached.  The gap `later` and :oops keep was
+;;; missing for the one case that needs it most: the student who is
+;;; stuck.
+;;;
+;;; The same gap, three answers, but kept as a memory of what was just
+;;; asked and not as a promise in lp_pending.  A promise is served
+;;; ahead of everything, and a struggling student's misses would come
+;;; round every fourth question -- the very slot the listening question
+;;; falls in.  This only steps aside: the item comes back when it is
+;;; the weakest thing that was not just asked, and at once when there
+;;; is nothing else at all, since an empty sitting is worse than a
+;;; repeat.  Any answer counts, not only a miss: a right answer that
+;;; leaves an item weakest is still no reason to ask it twice running.
+define lp_just_asked(item);
+    lvars item;
+    member(item, lp_recent)
 enddefine;
 
 define lp_later_on(item, ch);
@@ -6052,22 +6117,32 @@ enddefine;
 ;;; Weakest belief first, then least asked -- the same rule lp_choose
 ;;; uses, on the other channel.
 define lp_choose_hear() -> best;
-    lvars best = false, i, b, a, bb = false, ba = false;
-    for i in lp_hear_plan() do
+    lvars best = false, i, b, a, bb = false, ba = false, fresh,
+          pool = lp_hear_plan();
+    for fresh in [^true ^false] do
+    quitif(best);
+    for i in pool do
+        nextif(fresh and lp_just_asked(i));       ;;; as lp_choose
         lp_bel(i, "hear") -> b;
         lp_asked(i) -> a;
         if not(best) or b < bb or (b = bb and a < ba) then   ;;; `=`: see lp_choose
             i -> best; b -> bb; a -> ba;
         endif;
     endfor;
+    endfor;
 enddefine;
 
 define lp_choose(plan) -> best;
-    lvars plan, item, b, a, bb = false, ba = false;
+    lvars plan, item, b, a, bb = false, ba = false, fresh;
     false -> best;
+    ;;; Twice at most: once passing over what was just asked, and again
+    ;;; without that only when nothing else was ready (lp_just_asked).
+    for fresh in [^true ^false] do
+    quitif(best);
     for item in plan do
         nextunless(lp_drillable(item));
         nextif(lp_deferred(item));
+        nextif(fresh and lp_just_asked(item));
         lp_bel(item, lp_primary(item)) -> b;
         lp_asked(item) -> a;
         ;;; `=` AND NOT `==`.  A belief is a float, and in Pop-11 `==` on
@@ -6083,6 +6158,7 @@ define lp_choose(plan) -> best;
         if not(best) or b < bb or (b = bb and a < ba) then
             item -> best; b -> bb; a -> ba;
         endif;
+    endfor;
     endfor;
 enddefine;
 

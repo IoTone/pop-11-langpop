@@ -3431,3 +3431,53 @@ and that list is short and known; the list of what can go wrong is not.
 
 The old `.json` is left where it is. It is the user's data, and it can no
 longer be loaded, since no username maps to it.
+
+## Will the Japanese side ever use spoken audio?
+
+Asked as a question, and the measured answer was "not on your record":
+528 answers on the reporter's Japanese profile, every one on `read`,
+with Kyoko installed and 243 recordings cached. Two causes, one under the
+other.
+
+**Kana had no ear.** lp_channels gave a grapheme `[read speak]`, on the
+ladder's rule that a character is not heard -- its reading is, and that is
+the word's channel. Right for a kanji, which has many readings and is
+heard only inside a word. Wrong for a kana, which has one sound and is
+that sound. So listening could begin only once a whole word had been read
+to mastery, and the profile had 126 kana and no preschool words.
+
+lp_kana_heard gives the hear channel to hiragana only. ア and あ are one
+recording, and hearing it cannot tell you which script it was written in,
+so both would be the same question counted as two facts. Not to を either,
+which is said as お and keyed wo: a question that marks a good ear wrong
+is worse than no question. Detection is a hiragana form with no kanji
+form, because an imported kanji carries a hiragana form too (its kun
+reading) -- the trap lp_place_axes fell into before. The gate is
+unchanged (read first), and no criterion counts the new channel;
+recognise(hiragana) is measured on its primary.
+
+On the same profile, after the change: questions 4, 8 and 12 were あ, い
+and う by ear.
+
+**And the words were never reached**, because of the loop. That profile
+was asked ほん as a beat count twenty-five times running, with く け こ さ
+ready beside it. An "I don't know" lowered mora_moraic_n's belief,
+weakest-first picked the lowest belief, and that was the item just
+missed. `later` and :oops have kept a three-question gap since they
+were written; a plain miss never had one.
+
+lp_recent keeps the last three items answered, and lp_choose and
+lp_choose_hear pass over them on a first pass, then take them on a
+second if nothing else was ready. It's a memory and not a promise in
+lp_pending, on purpose. A promise is served before anything else, and a
+struggling student's misses would then return every fourth question --
+which is the slot the listening question falls in, and the bug two
+tranches ago was listening disappearing. Any answer counts, not only a
+miss: a right answer that leaves an item weakest is still no reason to
+ask it twice running. On the server it is slot 14 of the session, with
+the rest of the queue state, for the reason the queue is there.
+
+After: みんな く け こ たくさん く け こ ぜんぶ … from the same blank answers.
+
+Aoi's "Which word was that?" became "What was that?", since it is now
+asked of single kana as well.

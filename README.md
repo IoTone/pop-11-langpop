@@ -242,6 +242,12 @@ belief that the student is ready for, breaking ties by whichever has been
 asked about least. `:why` shows the derivation — what the item requires,
 where the fact came from, and where the student stands on it.
 
+Something answered in the last three questions is not asked again while
+anything else is ready, whether the answer was right, wrong or "I do not
+know". Without that rule, a student who doesn't know an item gets it back
+straight away, because a miss makes it the weakest thing there is. If
+nothing else is ready, it is asked anyway.
+
 Student records live in `~/.langpop/`, two files per student. The JSON file
 holds what they are believed to know — the beliefs, the review ladder, the
 period, the settings they chose, and the rung they have reached in *each*
@@ -1782,7 +1788,7 @@ Aoi>
   ->  again
   もう一度。
 
-  Listen.  Which word was that?
+  Listen.  What was that?
   ->  neko
   そうです。  ねこ
 ```
@@ -1790,6 +1796,23 @@ Aoi>
 `again` is free and unlimited. The written form appears **after** the
 answer, never before: a listening question has nothing to read, and the
 glyph is the other half of the item the student has just recognised by ear.
+
+**Hiragana are asked by ear too**, once the student can read them. A kana
+has one sound, so the question is the simplest there is: Aoi plays か and
+the student types `ka`. This puts listening into the very first Japanese
+sittings, not only after whole words have been learned to read. Katakana
+are not asked by ear, because ア sounds exactly like あ and the question
+would be the same one twice. を isn't either, because it sounds like お
+but its answer is `wo`, so a student who heard it correctly would be
+marked wrong. No exit criterion counts these answers; they are practice
+for the ear.
+
+```
+Aoi>
+  聞いてください。What did you hear?
+  ->  a
+  そうです。  あ
+```
 
 A sound contrast becomes a two-option question instead, because a contrast
 is not a word and there is nothing to type:

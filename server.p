@@ -109,9 +109,13 @@ define lp_new_session(student) -> sid;
     ;;; reason slot 12 is: one server serves a Japanese reader and an
     ;;; English-glosses learner at once, and one session's `--l1 en`
     ;;; must not rewrite the other's vocabulary questions.
+    ;;;
+    ;;; Slot 14 is lp_recent, the last few items answered, which keeps a
+    ;;; just-missed item from being asked again straight away.  Queue
+    ;;; state, swapped in and out with slots 6-8 and for their reason.
     {% student, lp_now_ms(), false, 0, false,
        [], 0, newproperty([], 32, 0, "perm"), false, "learn", false,
-       false, false %}
+       false, false, [] %}
         -> lp_sessions(consword(sid));
 enddefine;
 
@@ -122,6 +126,7 @@ enddefine;
 define lp_q_in(s);
     lvars s;
     s(6) -> lp_pending; s(7) -> lp_asked_n; s(8) -> lp_laters;
+    s(14) -> lp_recent;
     ;;; And the client's claim, which lp_q_out does NOT write back:
     ;;; nothing in here may edit what the client said about itself.
     s(12) -> lp_client_caps;
@@ -134,6 +139,7 @@ enddefine;
 define lp_q_out(s);
     lvars s;
     lp_pending -> s(6); lp_asked_n -> s(7); lp_laters -> s(8);
+    lp_recent -> s(14);
 enddefine;
 
 define lp_session(sid) -> s;

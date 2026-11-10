@@ -223,6 +223,22 @@ check('and session.open will not bind one',
       -32002);
 check_false('nothing was written beside the home',
             sys_file_exists(lp_home() <> '../x.json'));
+;;; ------------------------------------------------- not straight back
+;;; A miss lowers the belief and weakest-first used to hand the same item
+;;; straight back.  The memory of what was just asked lives on the
+;;; session, slot 14, with the rest of the queue.
+result('langpop/register', jsonrpc_obj([% 'student_id', 'loopwire' %])).erase;
+vars lw = result('langpop/session.open',
+                 jsonrpc_obj([% 'student_id', 'loopwire' %]))('session_id');
+vars lw1 = result('langpop/next', jsonrpc_obj([% 'session_id', lw %]))('item');
+result('langpop/answer',
+       jsonrpc_obj([% 'session_id', lw, 'item', lw1, 'answer', '',
+                      'latency_ms', 900 %])).erase;
+vars lw2 = result('langpop/next', jsonrpc_obj([% 'session_id', lw %]))('item');
+check_true('a missed item is not the next question', lw1 /= lw2);
+check_true('and the session remembers it',
+           member(consword(lw1), lp_session(lw)(14)) and true);
+
 check('a username in kana is a username',
       result('langpop/register',
              jsonrpc_obj([% 'student_id', 'ひろし' %]))('student_id'),

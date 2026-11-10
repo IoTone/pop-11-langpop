@@ -431,7 +431,8 @@ check('and something unrelated is not a confusion',
 ;;; Now an item is judged on a list, and the gate is only its head.
 "channels" -> lp_user;
 
-check('a character is read, and can be said', lp_channels("hi_a"), [read speak]);
+check('a katakana is read, and can be said', lp_channels("ka_a"), [read speak]);
+check('a hiragana is heard as well (kana by ear)', lp_channels("hi_a"), [read hear speak]);
 check('a word is read, heard AND said',
       lp_channels("w_neko"), [read hear speak]);
 check('a sound contrast is heard and said', lp_channels("s_r_l"), [hear speak]);
@@ -3233,6 +3234,57 @@ check_true('idle accrued during it comes off',
            lp_answer_ms(lp_now_ms() - 620000, 20000) <= 41000);
 false -> lp_sit_t0;
 0 -> lp_idle_ms;
+
+;;; ------------------------------------------------- not straight back
+;;; A miss lowers the belief and weakest-first picks the lowest belief
+;;; there is: the item just missed.  ち ten times running on one profile,
+;;; ほん twenty-five times on another.  Three answers' gap, as `later`.
+"loopy" -> lp_user;
+lp_queue_reset();
+lvars lp4 = [hi_a hi_i hi_u hi_e];
+lp_record("hi_i", "read", 1, "right", 100);
+lp_record("hi_u", "read", 1, "right", 100);
+lp_record("hi_e", "read", 1, "right", 100);
+lp_queue_reset();
+check('the weakest is chosen first', lp_choose(lp4), "hi_a");
+lp_record("hi_a", "read", 1, "skip", 0); lp_answered("hi_a");
+check_true('still the weakest after the miss',
+           lp_bel("hi_a", "read") < lp_bel("hi_i", "read"));
+check_false('and not asked again straight away', lp_choose(lp4) == "hi_a");
+lvars lp4n;
+lp_choose(lp4) -> lp4n; lp_answered(lp4n);
+check_false('nor the next time', lp_choose(lp4) == "hi_a");
+lp_choose(lp4) -> lp4n; lp_answered(lp4n);
+check_false('nor the time after', lp_choose(lp4) == "hi_a");
+lp_choose(lp4) -> lp4n; lp_answered(lp4n);
+check('three answers later it is back', lp_choose(lp4), "hi_a");
+;;; Stepping aside is not refusing.  Nothing else ready, and it is asked:
+;;; an empty sitting is the worse answer.
+lp_queue_reset(); lp_answered("hi_a");
+check('alone, it is asked anyway', lp_choose([hi_a]), "hi_a");
+check('the memory is three long', (lp_answered("hi_i"), lp_answered("hi_u"),
+      lp_answered("hi_e"), length(lp_recent)), 3);
+check_false('and the oldest is the one let go', lp_just_asked("hi_a"));
+lp_queue_reset();
+check('a new sitting remembers nothing', lp_recent, []);
+
+;;; ---------------------------------------------------- kana by ear
+;;; A kana has one sound and is the sound, so hear it and type ka is a
+;;; question.  Hiragana only: あ and ア are one recording.  Not を, which
+;;; is said as お and keyed wo.
+check('a hiragana is heard', lp_channels("hi_ka"), [read hear speak]);
+check('and still gated on reading', lp_primary("hi_ka"), "read");
+check('a katakana is not: the same sound twice', lp_channels("ka_ka"),
+      [read speak]);
+check('を is not, because it is said as お', lp_channels("hi_wo"),
+      [read speak]);
+check('dakuten too', lp_channels("hi_ga"), [read hear speak]);
+lvars kj, kjn = 0;
+for kj in lp_items do
+    if lp_kind(kj) == "grapheme" and lp_form_of(kj, "kanji")
+    and member("hear", lp_channels(kj)) then kjn + 1 -> kjn endif;
+endfor;
+check('and no kanji, which carries a hiragana reading', kjn, 0);
 
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;

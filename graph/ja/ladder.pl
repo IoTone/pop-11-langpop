@@ -44,13 +44,17 @@ exit(ja, preschool, skill(dakuten),        0.90, 3000).
 % JLPT level has a 聴解 section, so demanding the same vocabulary on both
 % channels is not an invention -- it is what the exam already asks.
 %
-% Nothing in langpop can check the hear channel (there is no audio), so
-% these report as unverifiable rather than as zero.  That is the honest
-% answer and it is deliberately visible: see langpop.p's VERIFIABLE and
-% docs/langpop-pronunciation.md.
+% The hear channel is checked when a voice is installed (audio.conf):
+% the word is played and the student types what they heard.  With no
+% voice these report as unverifiable rather than as zero, which is the
+% honest answer: see langpop.p's VERIFIABLE.
 %
 % kanji takes no hear channel.  A character is not heard -- its READING
-% is, and that is the word's channel, not the character's.
+% is, and that is the word's channel, not the character's.  A HIRAGANA
+% is the exception, because it has one sound and is that sound: か is
+% asked by ear once it is read (lp_kana_heard in langpop.p).  No
+% criterion here counts it -- recognise(hiragana) is measured on
+% reading -- it is practice for the ear before there are words to hear.
 
 exit(ja, preschool, vocabulary(50, read),  0.80, 4000).
 exit(ja, preschool, vocabulary(50, hear),  0.80, 4000).

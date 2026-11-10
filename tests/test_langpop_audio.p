@@ -690,11 +690,29 @@ MASTERY -> lp_beliefs(lp_bkey(lp_user, "w_neko", "hear"));
 check_true('once heard, it leaves', member("w_neko", lp_hear_plan()) == false);
 0.0 -> lp_beliefs(lp_bkey(lp_user, "w_neko", "hear"));
 
-;;; A kana is not in it at all: a grapheme is read, not heard.
-check_true('a grapheme has no hear channel',
-           member("hear", lp_channels("hi_a")) == false);
-check_true('so it is never in the pool',
+;;; KANA BY EAR.  A hiragana has one sound and is the sound, so it is
+;;; heard too -- after it is read, like a word.  A katakana is the same
+;;; recording under another script, and is not.
+check_true('a hiragana has a hear channel', member("hear", lp_channels("hi_a")));
+check_true('but is not in the pool before it is read',
            member("hi_a", lp_hear_plan()) == false);
+MASTERY -> lp_beliefs(lp_bkey(lp_user, "hi_a", "read"));
+lvars (kpath, kwhy) = lp_audio_path("hi_a", "normal");
+if kpath then
+    check_true('once read, it is', member("hi_a", lp_hear_plan()) /== false);
+    lvars (ksh, kpr, kans, ) = lp_question("hi_a", "hear");
+    check('asked as a listening question', ksh, "listen");
+    check('the prompt is the sound, not the glyph', kpr, kpath);
+    check('and the answer is what was heard', kans, ['a']);
+else
+    check_true('once read, it waits only on a render',
+               member("hi_a", lp_hear_plan()) == false);
+endif;
+MASTERY -> lp_beliefs(lp_bkey(lp_user, "ka_a", "read"));
+check_true('a katakana never enters: the same sound twice',
+           member("ka_a", lp_hear_plan()) == false);
+0.0 -> lp_beliefs(lp_bkey(lp_user, "hi_a", "read"));
+0.0 -> lp_beliefs(lp_bkey(lp_user, "ka_a", "read"));
 
 ;;; --- the audit can measure it now
 check_true('a rendered, read-mastered word is probeable on hear',
