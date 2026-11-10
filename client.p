@@ -490,12 +490,15 @@ define client_main();
         return;
     endunless;
 
-    unless user then
+    ;;; Enter is asked again here, so a slip costs nothing; anything
+    ;;; else the tutor will not file under is the server's to refuse,
+    ;;; and it says why (lp_username_why, server side).
+    until user do
         printf('Username?  '); sysflush(popdevout);
         readline() -> line;
         returnif(line == termin);
-        trim(line) -> user;
-    endunless;
+        unless trim(line) = '' then trim(line) -> user endunless;
+    enduntil;
 
     ;;; Ask whether the tutor thinks it has met this person before
     ;;; registering them.  This is the whole point of langpop/recognise

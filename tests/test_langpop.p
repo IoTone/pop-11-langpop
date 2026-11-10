@@ -733,6 +733,22 @@ check('two sittings', sn, 2);
 ;;; were until somebody pointed out what that pays for.
 check('one capped gap between them all', smin, 5);
 
+;;; --------------------------------------------- what may be a username
+;;; It becomes a file name.  Enter at `Username?` used to make a profile
+;;; called "" -- ~/.langpop/.json, hidden from ls and from the roll.
+check_true('empty is refused', lp_username_why('') and true);
+check_true('a leading dot is refused', lp_username_why('.x') and true);
+check_true('so is the way out of the home', lp_username_why('../x') and true);
+check_true('a slash is refused', lp_username_why('a/b') and true);
+check_true('a space is refused', lp_username_why('bob smith') and true);
+check_true('a backslash is refused', lp_username_why('a\\b') and true);
+check_true('too long is refused',
+           lp_username_why(consstring(#| repeat 65 times `a` endrepeat |#))
+               and true);
+check('a plain one will do', lp_username_why('dkords'), false);
+check('so will - _ . and digits', lp_username_why('d.k-ords_2'), false);
+check('and kana, which is UTF-8', lp_username_why('ひろし'), false);
+
 ;;; ------------------------------------------- the television loophole
 ;;; Start, go and watch television, come back before the half hour is up
 ;;; and answer one more.  The sitting never ends, and the clock between

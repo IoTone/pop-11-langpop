@@ -1886,6 +1886,45 @@ define lp_audio_conf_path() -> p;
     lvars p = lp_home() <> 'audio.conf';
 enddefine;
 
+;;; WHAT MAY BE A USERNAME.  The name a student types becomes a file
+;;; name -- <home>/<user>.json and <user>.journal -- and nothing used to
+;;; look at it first.  Enter at `Username?` made a profile called "",
+;;; saved as ~/.langpop/.json, which `ls` does not show and the roll
+;;; cannot greet.  And because the server takes the same name off the
+;;; network, `../x` or `a/b` would have written a file outside the
+;;; tutor's home altogether.
+;;;
+;;; An allowlist, not a list of what is wrong: ASCII letters and digits,
+;;; - _ and ., and any byte from 128 up -- which is UTF-8, so ひろし is a
+;;; username and needs no romaji.  No leading dot, which is a hidden
+;;; file and the start of `..`.  Given the name as it will be used,
+;;; already through lp_norm.  False when the name will do; otherwise a
+;;; sentence to show whoever typed it.
+lconstant USERNAME_MAX = 64;
+
+define lp_username_why(u) -> why;
+    lvars u, why = false, c, i;
+    unless isstring(u) or isword(u) then
+        'a username is a word, like dave or hiroshi' -> why; return
+    endunless;
+    u sys_>< '' -> u;
+    if u = '' then 'a username cannot be empty' -> why; return endif;
+    if datalength(u) > USERNAME_MAX then
+        'a username is at most ' sys_>< USERNAME_MAX sys_>< ' characters'
+            -> why;
+        return;
+    endif;
+    if u(1) == `.` then 'a username cannot start with a dot' -> why; return
+    endif;
+    for i from 1 to datalength(u) do
+        u(i) -> c;
+        nextif(c >= 128 or isalphacode(c) or isnumbercode(c)
+               or c == `-` or c == `_` or c == `.`);
+        'letters, digits, - _ and . only in a username' -> why;
+        return;
+    endfor;
+enddefine;
+
 define lp_profile_path(user) -> p;
     lvars user, p = lp_home() <> (user sys_>< '') <> '.json';
 enddefine;
@@ -6665,14 +6704,27 @@ define lp_main();
     ;;; to ask them.  So this is the language as it stands now -- the
     ;;; flag, or the default.
     lp_load_persona(if lp_lang == "en" then 'hill' else 'aoi' endif);
-    unless user then
+    lvars uwhy;
+    if user then
+        ;;; --user is checked like a typed one, and refused rather than
+        ;;; re-asked: a flag in a script has nobody to answer.
+        consword(lp_norm(user sys_>< '')) -> user;
+        if (lp_username_why(user) ->> uwhy) then
+            printf('--user: %p.\n', [^uwhy]);
+            return;
+        endif;
+    else
         lp_greet();
-        printf('Username?  ');
-        sysflush(popdevout);
-        lvars line = lp_readline();
-        if line == termin then return endif;
+        repeat
+            printf('Username?  ');
+            sysflush(popdevout);
+            lvars line = lp_readline();
+            if line == termin then return endif;
+            quitunless(lp_username_why(lp_norm(line)) ->> uwhy);
+            printf('  (%p.)\n', [^uwhy]);
+        endrepeat;
         consword(lp_norm(line)) -> user;
-    endunless;
+    endif;
     lvars was = lp_lang;
     lp_register(user, display, batch);
     ;;; AND AGAIN, if the profile turned out to be studying the other

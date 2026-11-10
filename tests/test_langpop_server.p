@@ -205,6 +205,29 @@ vars l1err = call('langpop/session.open',
 check_true('and the error says what the tutor does hold',
            issubstring('held:', l1err('message')) and true);
 
+;;; ------------------------------------------------- what may be a name
+;;; The id becomes <home>/<id>.json.  Unchecked, a blank one made a
+;;; hidden profile called "", and `../x` wrote outside the home -- from
+;;; the network, on this server.
+check('a blank id after trimming is refused',
+      errcode('langpop/register', jsonrpc_obj([% 'student_id', '   ' %])),
+      -32602);
+check('a path is refused at register',
+      errcode('langpop/register', jsonrpc_obj([% 'student_id', '../x' %])),
+      -32602);
+check('and at recognise, which reads the file',
+      errcode('langpop/recognise', jsonrpc_obj([% 'student_id', 'a/b' %])),
+      -32602);
+check('and session.open will not bind one',
+      errcode('langpop/session.open', jsonrpc_obj([% 'student_id', '../x' %])),
+      -32002);
+check_false('nothing was written beside the home',
+            sys_file_exists(lp_home() <> '../x.json'));
+check('a username in kana is a username',
+      result('langpop/register',
+             jsonrpc_obj([% 'student_id', 'ひろし' %]))('student_id'),
+      'ひろし');
+
 ;;; -------------------------------------------------------------- the plan
 vars plan = result('langpop/plan', jsonrpc_obj([% 'session_id', sid %]));
 check('the plan is the five vowels', plan('ready_count'), 5);

@@ -3401,3 +3401,33 @@ It now sets up the student it means: studying English, reading Japanese.
 Left alone, on purpose: the profile's stored language is the one last
 studied, so after one `--lang en` sitting a bare `./langpop` opens in
 English. That is "continue where we stopped", and the flag still wins.
+
+## The profile called nothing
+
+Found while looking for something else: `~/.langpop/.json`, a profile
+with an empty username and the display name "a", hidden from `ls` and
+from the roll. Enter at `Username?` was accepted as a name -- lp_norm
+trimmed it to '' and consword('') went straight into
+`<home>/<user>.json`.
+
+The empty name was the visible half. Nothing looked at the username
+before it became a path, so `../x` would have written `x.json` beside
+the home rather than in it -- and the server takes that same string off
+the network in `register`, `recognise` and `session.open`. The server's
+own check was `user /= ''`, which `'   '` passes and lp_norm then
+empties.
+
+lp_username_why is one allowlist for all four ways in: ASCII letters and
+digits, `- _ .`, and bytes from 128 up so a UTF-8 name like ひろし needs no
+romaji; no leading dot (hidden files, and the start of `..`); at most 64.
+It returns the sentence to show, so the TUI re-asks with the reason,
+`--user` stops with it, and the server sends it as the -32602 message.
+session.open answers a bad id as -32002, "no such student", which is
+true and says nothing about the file system to whoever is probing it.
+
+An allowlist rather than a list of bad characters because the question
+is what a file name on every platform the tutor runs on will tolerate,
+and that list is short and known; the list of what can go wrong is not.
+
+The old `.json` is left where it is. It is the user's data, and it can no
+longer be loaded, since no username maps to it.

@@ -300,6 +300,12 @@ define lp_m_recognise(msg) -> res;
     unless user and isstring(user) and user /= '' then
         lp_err(LP_E_PARAMS, 'recognise: student_id needed') -> res; return
     endunless;
+    ;;; The id becomes a file name, so it is checked before it is used
+    ;;; for anything -- see lp_username_why, and `../x`.
+    lvars uwhy = lp_username_why(lp_norm(user));
+    if uwhy then
+        lp_err(LP_E_PARAMS, 'recognise: ' sys_>< uwhy) -> res; return
+    endif;
     consword(lp_norm(user)) -> lp_user;
     ;;; Loading the typed id first is what makes the guess correct rather
     ;;; than merely plausible: it settles whether this person is already
@@ -330,6 +336,12 @@ define lp_m_register(msg) -> res;
     unless user and isstring(user) and user /= '' then
         lp_err(LP_E_PARAMS, 'register: student_id needed') -> res; return
     endunless;
+    ;;; The id becomes a file name, so it is checked before it is used
+    ;;; for anything -- see lp_username_why, and `../x`.
+    lvars uwhy = lp_username_why(lp_norm(user));
+    if uwhy then
+        lp_err(LP_E_PARAMS, 'register: ' sys_>< uwhy) -> res; return
+    endif;
     consword(lp_norm(user)) -> lp_user;
     ;;; A LANGUAGE THAT WAS ASKED FOR beats the one on file, and has to
     ;;; be set before the profile is read rather than after it, because
@@ -470,6 +482,9 @@ define lp_m_session_open(msg) -> res;
         endunless;
     else
         false -> l1;
+    endif;
+    if not(isstring(student)) or lp_username_why(lp_norm(student)) then
+        lp_err(LP_E_STUDENT, 'no such student: register first') -> res; return
     endif;
     consword(lp_norm(student)) -> student;
     unless lp_bind(student) then

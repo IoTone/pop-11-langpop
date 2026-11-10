@@ -2566,6 +2566,22 @@ A student who answers two hundred questions a day for a year writes about
 3 MB of journal, which is the only file in the project that grows without
 bound — and it grows at one line an answer, in a format a shell can read.
 
+**A username is a file name**, so the tutor checks it before using it.
+Letters, digits, `-`, `_` and `.` will do, and so will kana or any other
+non-Latin script: `ひろし` is filed as `ひろし.json`. A username can be at
+most 64 characters, and it cannot be empty, start with a dot, or contain a
+space or a slash. Pressing Enter at `Username?` just asks again:
+
+```
+Username?    (a username cannot be empty.)
+Username?    (letters, digits, - _ and . only in a username.)
+```
+
+`--user` gets the same check but stops instead of asking, because a script
+has nobody to answer. The server refuses a bad `student_id` on `register`
+and `recognise` with `-32602` and the reason, and `session.open` will not
+bind one.
+
 ---
 
 ## Limits
