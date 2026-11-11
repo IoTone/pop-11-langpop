@@ -742,6 +742,8 @@ enddefine;
 define lp_audio_lead(path) -> out;
     lvars path, out = path, dev, size, s, i = 13, id, len, fmt = false,
           dat = false, dlen = 0, rate, align, lead, tail, total, o, k;
+    ;;; One scratch file, overwritten: no `.playing.wav-` backup beside it.
+    dlocal pop_file_versions = false;
     returnunless(isendstring('.wav', path));
     sysfilesize(path) -> size;
     returnunless(size and size > 44 and size < 50000000);

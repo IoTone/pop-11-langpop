@@ -1293,6 +1293,9 @@ check('and the recording follows it untouched', wbuf(44 + 8820 * 2 + 1), 77);
 check('the FLLR chunk is dropped, not mistaken for sound',
       substring(37, 4, wbuf), 'data');
 check('the cached file is left as it was', sysfilesize(wv), 56 + 2205 * 2);
+lp_audio_lead(wv).erase;
+check_false('and overwriting it leaves no backup copy behind',
+            sys_file_exists(lp_audio_lead_path() <> '-'));
 ;;; Anything not understood is played as it is.
 lvars junk = tmpdir <> 'junk.wav', jdev;
 syscreate(junk, 1, true) -> jdev; syswrite(jdev, inits(100), 100); sysclose(jdev);

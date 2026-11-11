@@ -3516,3 +3516,12 @@ LEAD_MS div 1000` is `rate * (LEAD_MS div 1000)` in Pop-11, because
 `div` binds tighter than `*`, so the first version added zero silence
 and looked fine. The check that caught it measured the output file, not
 the return value.
+
+Followed the next day by "Audio doesn't work." The padded file was
+correct (0.68 s, sound at 0.41-0.49 s, afplay status 0); the machine's
+output was muted. Found by asking macOS (`osascript -e 'get volume
+settings'`) rather than by re-reading the code. The one real defect it
+turned up was mine: syscreate keeps a `-` backup of a file it
+overwrites unless pop_file_versions is off, so every play left
+`.playing.wav-` beside the scratch file. lp_audio_note already turned
+it off for the sidecars; lp_audio_lead now does too.
