@@ -1259,6 +1259,7 @@ check('the real scorer agrees with its own measurements', pop_status, 0);
 ;;; silence first; the cached file is left alone.  Built here by hand,
 ;;; with the FLLR chunk macOS `say` puts between fmt and data, since a
 ;;; 44-byte-header reader is the obvious way to get this wrong.
+vars t_lo = 77, t_hi = 77;                      ;;; the bytes of every sample
 define t_wav(path, nframes);
     lvars path, nframes, s, i, dev, n = 12 + 24 + 12 + 8 + nframes * 2;
     define lconstant put32(s, i, v); lvars s, i, v, k;
@@ -1273,7 +1274,7 @@ define t_wav(path, nframes);
     2 -> s(33); 16 -> s(35);                    ;;; 2 bytes a frame, 16 bits
     'FLLR' -> substring(37, 4, s); put32(s, 41, 4);
     'data' -> substring(49, 4, s); put32(s, 53, nframes * 2);
-    for i from 57 to n do 77 -> s(i) endfor;    ;;; not silence, so it shows
+    for i from 57 by 2 to n do t_lo -> s(i); t_hi -> s(i+1) endfor;
     syscreate(path, 1, true) -> dev; syswrite(dev, s, n); sysclose(dev);
 enddefine;
 
@@ -1289,10 +1290,47 @@ check('with 0.4 s in front and 0.15 s behind', wsz,
 lvars wdev = sysopen(wout, 0, true), wbuf = inits(wsz);
 sysread(wdev, wbuf, wsz).erase; sysclose(wdev);
 check('the lead is silence', wbuf(44 + 8820 * 2), 0);
-check('and the recording follows it untouched', wbuf(44 + 8820 * 2 + 1), 77);
+define t_s16(b, i) -> v; lvars b, i, v = b(i) + b(i+1) * 256;
+    if v >= 32768 then v - 65536 -> v endif;
+enddefine;
+;;; 77,77 is 19789: below the peak it is raised to, so it is raised.
+check('and the recording follows it, raised to the playing level',
+      t_s16(wbuf, 44 + 8820 * 2 + 1), 29000);
+check('the lead stays silence after the raise', wbuf(44 + 8820 * 2 - 1), 0);
 check('the FLLR chunk is dropped, not mistaken for sound',
       substring(37, 4, wbuf), 'data');
 check('the cached file is left as it was', sysfilesize(wv), 56 + 2205 * 2);
+lvars cdev = sysopen(wv, 0, true), cbuf = inits(56 + 2205 * 2);
+sysread(cdev, cbuf, datalength(cbuf)).erase; sysclose(cdev);
+check('its samples too: the raise is in the copy only', t_s16(cbuf, 57), 19789);
+;;; Kyoko's level: 0.12 of full scale is about 4000.  Raised to 29000.
+0 -> t_lo; 15 -> t_hi;                          ;;; 3840
+t_wav(wv, 100); lp_audio_lead(wv) -> wout;
+lvars ldev = sysopen(wout, 0, true), lbuf = inits(sysfilesize(wout));
+sysread(ldev, lbuf, datalength(lbuf)).erase; sysclose(ldev);
+check('a quiet clip is raised to the playing peak',
+      t_s16(lbuf, 44 + 8820 * 2 + 1), 29000);
+;;; A negative sample stays negative: -3840 is 0,241.
+0 -> t_lo; 241 -> t_hi;
+t_wav(wv, 100); lp_audio_lead(wv) -> wout;
+sysopen(wout, 0, true) -> ldev; inits(sysfilesize(wout)) -> lbuf;
+sysread(ldev, lbuf, datalength(lbuf)).erase; sysclose(ldev);
+check('and keeps its sign', t_s16(lbuf, 44 + 8820 * 2 + 1), -29000);
+;;; Never more than eight times: 1000 is raised to 8000, not 29000.
+232 -> t_lo; 3 -> t_hi;                         ;;; 1000
+t_wav(wv, 100); lp_audio_lead(wv) -> wout;
+sysopen(wout, 0, true) -> ldev; inits(sysfilesize(wout)) -> lbuf;
+sysread(ldev, lbuf, datalength(lbuf)).erase; sysclose(ldev);
+check('a near-silent clip is raised at most eight times',
+      t_s16(lbuf, 44 + 8820 * 2 + 1), 8000);
+;;; Already loud is left alone: Samantha at 0.9 of full scale.
+128 -> t_lo; 115 -> t_hi;                       ;;; 29568
+t_wav(wv, 100); lp_audio_lead(wv) -> wout;
+sysopen(wout, 0, true) -> ldev; inits(sysfilesize(wout)) -> lbuf;
+sysread(ldev, lbuf, datalength(lbuf)).erase; sysclose(ldev);
+check('a loud clip is never turned down', t_s16(lbuf, 44 + 8820 * 2 + 1), 29568);
+77 -> t_lo; 77 -> t_hi;
+t_wav(wv, 2205);
 lp_audio_lead(wv).erase;
 check_false('and overwriting it leaves no backup copy behind',
             sys_file_exists(lp_audio_lead_path() <> '-'));

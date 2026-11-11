@@ -1809,6 +1809,14 @@ silence, the kana could be over before the speaker was ready, especially
 over Bluetooth. The silence is added only to what is played; the stored
 recordings are unchanged.
 
+Quiet recordings are also turned up as they are played. The Japanese voice
+records at about a third of the English voice's level, and a kana that
+short and that quiet can be missed entirely on a laptop speaker. Each
+recording is raised until its loudest moment is near full volume. Loud
+recordings are never turned down, and no recording is raised more than
+eight times, so a nearly silent one does not become hiss. As with the
+silence, only what is played changes.
+
 `again` is free and unlimited. The written form appears **after** the
 answer, never before: a listening question has nothing to read, and the
 glyph is the other half of the item the student has just recognised by ear.

@@ -3525,3 +3525,40 @@ turned up was mine: syscreate keeps a `-` backup of a file it
 overwrites unless pop_file_versions is off, so every play left
 `.playing.wav-` beside the scratch file. lp_audio_note already turned
 it off for the sidecars; lp_audio_lead now does too.
+
+### Unmuted, and still nothing
+
+Unmuted, it was "still broken", and this time the answer came from
+listening rather than from reading code: the laptop's microphone recorded
+while each clip played (as a scratch file, measured and then deleted), and
+the room's noise floor (0.012 of full scale) was compared with what came
+back.
+
+  clip                    file peak   at the mic
+  English sentence (say)    0.55        0.23
+  hi_a (Kyoko, cached)      0.12        0.08
+  English word (Samantha)   0.64        0.17-0.24
+
+Over the whole cache, Kyoko's median peak is 0.20 of full scale and
+Samantha's is 0.67, about 10 dB apart, and a kana lasts 0.12-0.2 s. A
+short blip ten decibels down, on a laptop speaker at ordinary volume, is
+what "no audio" sounds like. Nothing was broken; the Japanese clips were
+simply too quiet.
+
+lp_audio_lead already copies the samples into the padded scratch file, so
+it now levels them as well (lp_wav_level). For 16-bit PCM the copy is
+raised until its largest sample is LEVEL_PEAK (29000, about 0.89 of full
+scale). It is only ever raised, never lowered, and by at most LEVEL_MAX
+(8) times, so a nearly silent file stays quiet rather than becoming
+amplified hiss. The cache is untouched, for the same reasons as the lead.
+
+Measured again through the microphone: twelve hiragana and four words
+went from 0.07-0.14 to 0.23-0.42, now louder than the English clips. A
+whole sitting run on a copy of the dkords profile asked three listening
+questions, and the microphone caught three bursts at 0.21-0.53.
+
+A wrong turn worth recording: two clips appeared to be raised only to 0.4.
+sox's "Maximum amplitude" is the largest positive sample; those two clips
+peak on the negative side, and their true peaks were levelled like the
+rest. Their peaks were checked by reading the samples, not by trusting
+the summary line.

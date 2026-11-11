@@ -735,6 +735,37 @@ define lp_wav_put32(s, i, n);
     for k from 0 to 3 do n mod 256 -> s(i+k); n div 256 -> n endfor;
 enddefine;
 
+;;; Level, as well as lead.  Kyoko writes at about a third of Samantha's
+;;; level (median peak 0.20 of full scale against 0.67, over every
+;;; cached clip), and a kana is under 0.2 s of it: on a laptop speaker at
+;;; ordinary volume that is a click or nothing.  So 16-bit samples are
+;;; raised until the loudest is LEVEL_PEAK of full scale.  Only ever
+;;; raised, never lowered, and by at most LEVEL_MAX times, so a near-
+;;; silent file is not turned into loud hiss.  Same scratch copy, same
+;;; reason: the cache stays what the voice made.
+lconstant LEVEL_PEAK = 29000, LEVEL_MAX = 8;
+
+define lp_wav_s16(s, i) -> v;
+    lvars s, i, v = s(i) + s(i+1) * 256;
+    if v >= 32768 then v - 65536 -> v endif;
+enddefine;
+
+define lp_wav_level(o, start, len);
+    lvars o, start, len, i, v, peak = 0, last = start + len - 2;
+    for i from start by 2 to last do
+        abs(lp_wav_s16(o, i)) -> v;
+        if v > peak then v -> peak endif;
+    endfor;
+    returnunless(peak > 0 and peak < LEVEL_PEAK);
+    lvars num = LEVEL_PEAK, den = peak;
+    if num > den * LEVEL_MAX then den * LEVEL_MAX -> num endif;
+    for i from start by 2 to last do
+        (lp_wav_s16(o, i) * num) div den -> v;
+        if v < 0 then v + 65536 -> v endif;
+        v mod 256 -> o(i); v div 256 -> o(i+1);
+    endfor;
+enddefine;
+
 define lp_audio_lead_path() -> p;
     lvars p = lp_audio_dir() <> '.playing.wav';
 enddefine;
@@ -782,6 +813,9 @@ define lp_audio_lead(path) -> out;
     'data' -> substring(d, 4, o);
     lp_wav_put32(o, d + 4, total);
     substring(dat + 8, dlen, s) -> substring(d + 8 + lead, dlen, o);
+    if s(fmt + 22) + s(fmt + 23) * 256 == 16 then
+        lp_wav_level(o, d + 8 + lead, dlen);
+    endif;
     lp_audio_lead_path() -> out;
     syscreate(out, 1, true) -> dev;
     unless dev then path -> out; return endunless;
