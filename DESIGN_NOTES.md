@@ -3481,3 +3481,38 @@ After: みんな く け こ たくさん く け こ ぜんぶ … from the sam
 
 Aoi's "Which word was that?" became "What was that?", since it is now
 asked of single kana as well.
+
+## The kana that was over before the speaker woke
+
+"The audio can get cut when you get one of these: 聞いてください。What did
+you hear? I didn't hear the audio. We need a way to replay."
+
+The replay existed -- `again`, free and unlimited since the listening
+question was written -- and was said once, in the help printed at the
+top of a sitting. A feature a student cannot find when they need it is,
+for that student, missing. Every listening question now names it on the
+line it is asked on.
+
+The cut was the more interesting half. Measured on the cache: 69
+hiragana, median 0.19 s long, the sound starting 6-90 ms into the file.
+An audio output that has been idle for a few seconds sleeps, and wakes
+on the first samples it is given, which takes a few hundred ms and
+longest over Bluetooth. When those first samples are the whole kana,
+the student hears the tail or nothing. "Sometimes" was the clue: only
+after a pause. Words survived because they are longer, which is why the
+report arrived the day kana were put on the ear.
+
+lp_audio_lead plays the recording with 400 ms of silence in front and
+150 ms behind, written to one scratch file (audio/.playing.wav) that is
+overwritten each time. Not in the cache: a cached file is described by
+its sidecar and is the scorer's reference, and padding it would make
+both untrue. The chunks are walked rather than a 44-byte header assumed,
+because macOS `say` writes an FLLR padding chunk between fmt and data,
+and anything that isn't PCM WAV is played unchanged -- a missing lead
+is a nuisance, a broken file is silence.
+
+One bug on the way, of the kind this file has seen before: `rate *
+LEAD_MS div 1000` is `rate * (LEAD_MS div 1000)` in Pop-11, because
+`div` binds tighter than `*`, so the first version added zero silence
+and looked fine. The check that caught it measured the output file, not
+the return value.

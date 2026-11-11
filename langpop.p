@@ -3925,7 +3925,12 @@ define lp_drill(item, ch) -> done;
         if heard then
             ;;; Nothing to read.  The sound is the whole prompt, so the
             ;;; glyph must not appear anywhere until the answer is in.
-            printf('\n  %p\n', [% lp_line('listen') %]);
+            ;;; The replay named every time, beside the question.  It was
+            ;;; said once, in the help at the top of the sitting, and a
+            ;;; student whose speaker swallowed the sound had no way to
+            ;;; know a replay existed -- they reported it as missing.
+            printf('\n  %p   (again = hear it again)\n',
+                   [% lp_line('listen') %]);
             ;;; AND NOTHING IS RECORDED IF IT DID NOT PLAY.  Asking "what
             ;;; did you hear?" of a student who heard nothing, and then
             ;;; filing the answer, would be recording a failure of this

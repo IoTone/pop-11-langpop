@@ -1793,6 +1793,22 @@ Aoi>
   そうです。  ねこ
 ```
 
+Every listening question says how to replay it, beside the question:
+
+```
+  聞いてください。What did you hear?   (again = hear it again)
+```
+
+If you didn't hear anything, type `again`. The sound plays again and
+nothing is marked.
+
+Every recording is played with 0.4 seconds of silence in front of it. A
+kana lasts about a fifth of a second, and a speaker or headset that has
+been idle for a few seconds takes some time to wake up. Without the
+silence, the kana could be over before the speaker was ready, especially
+over Bluetooth. The silence is added only to what is played; the stored
+recordings are unchanged.
+
 `again` is free and unlimited. The written form appears **after** the
 answer, never before: a listening question has nothing to read, and the
 glyph is the other half of the item the student has just recognised by ear.

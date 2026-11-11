@@ -703,9 +703,93 @@ enddefine;
 ;;;
 ;;; which tells the student nothing and the tutor nothing either.  The
 ;;; status is what the tutor needs, and it says so in its own words.
+;;; ------------------------------------------------- silence in front
+;;; THE KANA THAT WAS OVER BEFORE THE SPEAKER WOKE.  "The audio can get
+;;; cut", at 聞いてください -- and only sometimes, which is the clue.  A
+;;; hiragana recording is short: 69 of them, median 0.19 seconds, the
+;;; sound starting 6 to 90 ms into the file.  An audio output that has
+;;; been idle for a few seconds goes to sleep and takes a few hundred ms
+;;; to come back -- longest over Bluetooth -- and it wakes on the first
+;;; samples it is handed.  When those samples ARE the kana, the student
+;;; hears the tail of it or nothing.  Words survived because they are
+;;; longer, which is why this appeared the day kana went on the ear.
+;;;
+;;; So what is played is the recording with LEAD_MS of silence before it
+;;; and a little after: the device wakes during silence.  Done at play
+;;; time, into one scratch file overwritten each time, and NOT in the
+;;; cache -- the cached file is evidence (its sidecar says what made it)
+;;; and the speech scorer's reference, and neither should be padded.
+;;;
+;;; Chunk by chunk, not a 44-byte header: macOS `say` writes an FLLR
+;;; padding chunk between fmt and data.  Anything not understood is
+;;; played as it is -- a missing lead is a nuisance, a broken file is
+;;; silence.
+lconstant LEAD_MS = 400, TAIL_MS = 150;
+
+define lp_wav_u32(s, i) -> n;
+    lvars s, i, n = s(i) + s(i+1) * 256 + s(i+2) * 65536 + s(i+3) * 16777216;
+enddefine;
+
+define lp_wav_put32(s, i, n);
+    lvars s, i, n, k;
+    for k from 0 to 3 do n mod 256 -> s(i+k); n div 256 -> n endfor;
+enddefine;
+
+define lp_audio_lead_path() -> p;
+    lvars p = lp_audio_dir() <> '.playing.wav';
+enddefine;
+
+define lp_audio_lead(path) -> out;
+    lvars path, out = path, dev, size, s, i = 13, id, len, fmt = false,
+          dat = false, dlen = 0, rate, align, lead, tail, total, o, k;
+    returnunless(isendstring('.wav', path));
+    sysfilesize(path) -> size;
+    returnunless(size and size > 44 and size < 50000000);
+    sysopen(path, 0, true) -> dev;
+    returnunless(dev);
+    inits(size) -> s;
+    sysread(dev, s, size) -> k; sysclose(dev);
+    returnunless(k == size);
+    returnunless(substring(1, 4, s) = 'RIFF' and substring(9, 4, s) = 'WAVE');
+    ;;; Walk the chunks: id, little-endian length, body padded to even.
+    while i + 7 <= size do
+        substring(i, 4, s) -> id; lp_wav_u32(s, i + 4) -> len;
+        if id = 'fmt ' then i -> fmt
+        elseif id = 'data' then
+            i -> dat; min(len, size - i - 7) -> dlen; quitloop;
+        endif;
+        i + 8 + len + (len mod 2) -> i;
+    endwhile;
+    returnunless(fmt and dat);
+    ;;; PCM only (format 1): silence is zero bytes there and nowhere else.
+    returnunless(s(fmt + 8) + s(fmt + 9) * 256 == 1);
+    lp_wav_u32(s, fmt + 12) -> rate;
+    s(fmt + 20) + s(fmt + 21) * 256 -> align;          ;;; bytes per frame
+    returnunless(rate > 0 and align > 0);
+    ((rate * LEAD_MS) div 1000) * align -> lead;    ;;; `div` binds tighter than `*`
+    ((rate * TAIL_MS) div 1000) * align -> tail;
+    lead + dlen + tail -> total;
+    ;;; RIFF header, the fmt chunk as it was, one data chunk.
+    lvars flen = lp_wav_u32(s, fmt + 4);
+    inits(12 + 8 + flen + 8 + total) -> o;             ;;; zero-filled
+    'RIFF' -> substring(1, 4, o);
+    lp_wav_put32(o, 5, datalength(o) - 8);
+    'WAVE' -> substring(9, 4, o);
+    substring(fmt, 8 + flen, s) -> substring(13, 8 + flen, o);
+    lvars d = 13 + 8 + flen;
+    'data' -> substring(d, 4, o);
+    lp_wav_put32(o, d + 4, total);
+    substring(dat + 8, dlen, s) -> substring(d + 8 + lead, dlen, o);
+    lp_audio_lead_path() -> out;
+    syscreate(out, 1, true) -> dev;
+    unless dev then path -> out; return endunless;
+    syswrite(dev, o, datalength(o)); sysclose(dev);
+enddefine;
+
 define lp_audio_play(path) -> ok;
     lvars path, ok = false, player;
     returnunless(path and sys_file_exists(path));
+    lp_audio_lead(path) -> path;
     for player in PLAYERS do
         if sys_file_exists(player) then
             sysobey(player <> ' \'' <> path <> '\' 2>/dev/null');

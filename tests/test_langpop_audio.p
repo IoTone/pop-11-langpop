@@ -1252,5 +1252,53 @@ check('no scorer means no checks, not a pass', va, 0);
 sysobey('python3 -I ' <> HERE <> '../tools/score-morae.py --selftest');
 check('the real scorer agrees with its own measurements', pop_status, 0);
 
+;;; ------------------------------------------------- silence in front
+;;; A hiragana lasts a fifth of a second and starts at once, and an idle
+;;; speaker wakes on the first samples it is handed -- so the kana could
+;;; be over before anything was heard.  What is PLAYED gets LEAD_MS of
+;;; silence first; the cached file is left alone.  Built here by hand,
+;;; with the FLLR chunk macOS `say` puts between fmt and data, since a
+;;; 44-byte-header reader is the obvious way to get this wrong.
+define t_wav(path, nframes);
+    lvars path, nframes, s, i, dev, n = 12 + 24 + 12 + 8 + nframes * 2;
+    define lconstant put32(s, i, v); lvars s, i, v, k;
+        for k from 0 to 3 do v mod 256 -> s(i+k); v div 256 -> v endfor;
+    enddefine;
+    inits(n) -> s;
+    'RIFF' -> substring(1, 4, s); put32(s, 5, n - 8);
+    'WAVE' -> substring(9, 4, s);
+    'fmt ' -> substring(13, 4, s); put32(s, 17, 16);
+    1 -> s(21); 1 -> s(23);                     ;;; PCM, mono
+    put32(s, 25, 22050); put32(s, 29, 44100);
+    2 -> s(33); 16 -> s(35);                    ;;; 2 bytes a frame, 16 bits
+    'FLLR' -> substring(37, 4, s); put32(s, 41, 4);
+    'data' -> substring(49, 4, s); put32(s, 53, nframes * 2);
+    for i from 57 to n do 77 -> s(i) endfor;    ;;; not silence, so it shows
+    syscreate(path, 1, true) -> dev; syswrite(dev, s, n); sysclose(dev);
+enddefine;
+
+sysobey('mkdir -p ' <> lp_audio_dir());
+lvars wv = tmpdir <> 'short.wav', wout, wsz;
+t_wav(wv, 2205);                                ;;; a tenth of a second
+lp_audio_lead(wv) -> wout;
+check('what is played is a scratch copy', wout, lp_audio_lead_path());
+sysfilesize(wout) -> wsz;
+;;; 44-byte header, then 0.4 s + 0.1 s + 0.15 s of 16-bit mono at 22050.
+check('with 0.4 s in front and 0.15 s behind', wsz,
+      44 + (8820 + 2205 + 3307) * 2);
+lvars wdev = sysopen(wout, 0, true), wbuf = inits(wsz);
+sysread(wdev, wbuf, wsz).erase; sysclose(wdev);
+check('the lead is silence', wbuf(44 + 8820 * 2), 0);
+check('and the recording follows it untouched', wbuf(44 + 8820 * 2 + 1), 77);
+check('the FLLR chunk is dropped, not mistaken for sound',
+      substring(37, 4, wbuf), 'data');
+check('the cached file is left as it was', sysfilesize(wv), 56 + 2205 * 2);
+;;; Anything not understood is played as it is.
+lvars junk = tmpdir <> 'junk.wav', jdev;
+syscreate(junk, 1, true) -> jdev; syswrite(jdev, inits(100), 100); sysclose(jdev);
+check('a file that is not RIFF is played unchanged', lp_audio_lead(junk), junk);
+check('and so is one that is not a wav', lp_audio_lead(tmpdir <> 'x.mp3'),
+      tmpdir <> 'x.mp3');
+
 sysobey('rm -rf ' <> tmpdir);
 test_summary();
