@@ -3692,3 +3692,33 @@ both, so it was replaced with くき / くうき (280 / 470 ms). A driven
 sitting on a copy of dkords asked きって/きて, くうき/くき and みんな/みな
 inside 24 questions, with 15 of 15 plays caught at the microphone.
 
+## :progress
+
+The student asked for days studied, minutes, and whether they are getting
+better or worse. `:status` already had "7 of the last 11 days", but as a
+sentence. `:progress` draws the last 28 days, one character per day:
+studied (█ or ·), minutes, questions, accuracy and speed. The last two
+rows end with a week-on-week arrow.
+
+It is computed only from the journal, by the rules :status already uses,
+so the two cannot disagree. Only tier-1 answers in this language count.
+SESSION_SLICE ends a sitting and SESSION_CAP bounds a gap. Days are
+counted back from now, not from midnight (lp_period_worked's rule).
+lp_progress_days returns the per-day vectors, so the arithmetic is tested
+on a made-up journal rather than through the screen.
+
+Choices:
+
+- Accuracy is scaled from 0.5 to 1.0, because below half is rare and
+  eight steps over 0-100% would draw every real day the same height.
+- Speed is turned over (taller is faster) so that up means better in every
+  row.
+- The trend says nothing unless both weeks have 20 or more answers.
+- It uses the lower median, because with two right answers the typical
+  time is one of them, not an invented average.
+
+The bug found while building it: `{0 0 0 false []}` inside a vector
+literal makes `false` the WORD false. That is the same trap lp_aids notes.
+The "no answer that day" marker was therefore never false, and lp_spark
+died subtracting a number from a word.
+

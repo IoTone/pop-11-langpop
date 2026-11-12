@@ -258,6 +258,36 @@ whether it was learning or review. It is plain text on purpose, because it
 is the audit, and `grep`, `cut` and `sort` are the right tools for an
 audit. There is no password; this is a local tool.
 
+### How it is going: `:progress`
+
+`:status` says what is left of the rung. `:progress` says how the last four
+weeks have gone, one mark a day with today on the right:
+
+```
+Aoi> :progress
+  Dave Kordsmeier, the last 28 days   (one mark a day, today on the right)
+
+  studied    ··········█······█··██·█████   9 of 28 days
+  minutes    ··········▇······█··▅▁·▁▄▇▃▅   79 in all, about 9 a day you studied
+  questions  ··········▃······█··▁▁·▄▃█▆▅   675 answered
+  right      ··········▇······█··▁█·██▇█▇   94%  ↑ up 2 points on the week before
+  speed      ··········█······█··▇▂·█▇█▇▆   1.6 s typical right answer  ↓ 0.2 s slower than the week before
+```
+
+- `·` is a day with no study.
+- Each bar is scaled to its own row. `right` runs from half right (lowest)
+  to all right (tallest).
+- `speed` is the typical (median) time of a right answer, and is drawn
+  turned over: a taller bar is a faster day, from six seconds at the bottom
+  to one second at the top.
+- The arrows compare the last 7 days with the 7 before them. ↑ is better,
+  meaning more right or faster. Within two points, or 0.15 s, it says
+  "about the same". A trend needs at least 20 answers in each week.
+- The minutes are counted the way `:status` counts them. A sitting ends
+  after half an hour of quiet, and no single gap counts for more than five
+  minutes.
+- Only first-hand answers in the language being studied are counted.
+
 ### Which language a session is in
 
 `--lang` is an instruction and beats the language on file; with no flag, the
@@ -2471,6 +2501,7 @@ arrows into nothing.
 | `:plan` | what is ready now |
 | `:why <item>` | the derivation: prerequisites, source, belief |
 | `:status` | this level's exit criteria, measured, and which aids are off |
+| `:progress` | the last four weeks as sparklines: days studied, minutes, questions, accuracy, speed, and the trend |
 | `:place` | find out where they are, rather than ask |
 | `later` | *at a question:* put it off until later this session |
 | `:oops` | that answer was an accident — take it back and ask again later |

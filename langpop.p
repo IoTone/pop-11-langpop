@@ -5068,6 +5068,171 @@ define lp_announce_advance();
     printf('\n  That is %p finished.  We go on to %p.\n', [% was, moved %]);
 enddefine;
 
+;;; ------------------------------------------------------------ :progress
+;;; HOW THE LAST FOUR WEEKS HAVE GONE, as pictures.  :status answers
+;;; "what is left of this rung"; this answers "am I studying, and am I
+;;; getting better", which is the question a student asks first and the
+;;; one a column of percentages answers worst.  One character per day,
+;;; today on the right, so a gap in the week is a gap you can see.
+;;;
+;;; Built from the journal and nothing else, by the same rules :status
+;;; uses: tier-1 answers only, this language only, a sitting ends after
+;;; SESSION_SLICE of quiet, and no gap inside one is worth more than
+;;; SESSION_CAP.  So the minutes here are the minutes there.  Days are
+;;; counted in whole days back from now, not from midnight -- the rule
+;;; lp_period_worked gives.
+lconstant PROGRESS_DAYS = 28, TREND_DAYS = 7, TREND_MIN = 20;
+lconstant SPARKS = {'▁' '▂' '▃' '▄' '▅' '▆' '▇' '█'};
+
+;;; One vector per day, oldest first:
+;;;   {answers right minutes median_right_latency_ms latencies_of_rights}
+define lp_progress_days(ndays) -> days;
+    lvars ndays, days = {% repeat ndays times {% 0, 0, 0, false, [] %} endrepeat %},
+          now = lp_now_ms(), e, d, last = false, lastd = false,
+          cap = lp_day_ms div SESSION_CAP, slice = lp_day_ms div SESSION_SLICE,
+          es = [], r;
+    for e in lp_journal do                       ;;; newest first
+        nextunless(e(3) == 1);
+        nextunless(lp_kind(e(1)) and lp_ilang(e(1)) == lp_lang);
+        quitif(e(6) < now - ndays * lp_day_ms);
+        conspair(e, es) -> es;                   ;;; so es is oldest first
+    endfor;
+    for e in es do
+        ;;; 1 is the oldest day, ndays is the one that ends now.
+        ndays - ((now - e(6)) div lp_day_ms) -> d;
+        nextunless(d >= 1 and d <= ndays);
+        days(d) -> r;
+        r(1) + 1 -> r(1);
+        if e(4) == "right" then
+            r(2) + 1 -> r(2);
+            conspair(e(5), r(5)) -> r(5);
+        endif;
+        if last and lastd == d and e(6) - last <= slice then
+            r(3) + min(e(6) - last, cap) -> r(3);
+        endif;
+        e(6) -> last; d -> lastd;
+    endfor;
+    for r in_vector days do
+        r(3) div 60000 -> r(3);
+        unless r(5) == [] then
+            lvars l = syssort(r(5), nonop <);
+            l((length(l) + 1) div 2) -> r(4);
+        endunless;
+    endfor;
+enddefine;
+
+;;; A sparkline: one block per value, scaled between lo and hi, `·` where
+;;; there is nothing (false).  `invert` makes small values tall, for
+;;; answer times, where shorter is better.
+define lp_spark(vals, lo, hi, invert) -> s;
+    lvars vals, lo, hi, invert, s = '', v, k, f;
+    for v in vals do
+        if v == false then s <> '·' -> s; nextloop endif;
+        if hi <= lo then 1.0 else (v - lo) / (hi - lo) endif -> f;
+        max(0.0, min(1.0, f)) -> f;
+        if invert then 1.0 - f -> f endif;
+        min(8, 1 + intof(f * 8)) -> k;
+        s <> SPARKS(k) -> s;
+    endfor;
+enddefine;
+
+;;; Accuracy and median right-answer time over days a..b (inclusive), and
+;;; how many answers that was.
+define lp_progress_window(days, a, b) -> (acc, med, n);
+    lvars days, a, b, acc = false, med = false, n = 0, right = 0, lats = [], i;
+    for i from max(1, a) to b do
+        n + days(i)(1) -> n; right + days(i)(2) -> right;
+        days(i)(5) <> lats -> lats;
+    endfor;
+    if n > 0 then right / n -> acc endif;
+    unless lats == [] then
+        lvars l = syssort(lats, nonop <);
+        l((length(l) + 1) div 2) -> med;
+    endunless;
+enddefine;
+
+;;; "↑ up 4 points on the week before", or false when there is too little
+;;; in either week to say.  Better is up: more right, or faster.
+define lp_trend_acc(now, before) -> s;
+    lvars now, before, s, d = round((now - before) * 100);
+    if d >= 2 then sprintf('↑ up %p points on the week before', [^d])
+    elseif d <= -2 then sprintf('↓ down %p points on the week before', [% -d %])
+    else '→ about the same as the week before'
+    endif -> s;
+enddefine;
+
+define lp_trend_ms(now, before) -> s;
+    lvars now, before, s, d = before - now;      ;;; positive is faster
+    if d >= 150 then sprintf('↑ %p s faster than the week before', [% lp_secs(d) %])
+    elseif d <= -150 then sprintf('↓ %p s slower than the week before', [% lp_secs(-d) %])
+    else '→ about the same speed as the week before'
+    endif -> s;
+enddefine;
+
+;;; 1530 -> '1.5'
+define lp_secs(ms) -> s;
+    lvars ms, s, t = round(ms / 100);
+    (t div 10) sys_>< '.' sys_>< (t mod 10) -> s;
+enddefine;
+
+define lp_progress();
+    lvars days = lp_progress_days(PROGRESS_DAYS), r, studied = 0,
+          mins = 0, qs = 0, maxm = 1, maxq = 1, i,
+          acc, med, n, acc0, med0, n0, accw, medw, nw;
+    for r in_vector days do
+        if r(1) > 0 then studied + 1 -> studied endif;
+        mins + r(3) -> mins; qs + r(1) -> qs;
+        max(maxm, r(3)) -> maxm; max(maxq, r(1)) -> maxq;
+    endfor;
+    printf('\n  %p, the last %p days   (one mark a day, today on the right)\n\n',
+           [% lp_display or lp_user, PROGRESS_DAYS %]);
+    if qs == 0 then
+        printf('  Nothing answered in %p yet in these %p days.\n',
+               [% lp_lang, PROGRESS_DAYS %]);
+        return;
+    endif;
+    printf('  studied    %p   %p of %p days\n',
+           [% lp_spark([% for r in_vector days do
+                            if r(1) > 0 then 1 else false endif endfor %],
+                       0, 1, false),
+              studied, PROGRESS_DAYS %]);
+    lvars each = round(mins / max(1, studied));
+    printf('  minutes    %p   %p in all, %p a day you studied\n',
+           [% lp_spark([% for r in_vector days do
+                            if r(1) > 0 then r(3) else false endif endfor %],
+                       0, maxm, false),
+              mins, if each == 0 then 'under a minute'
+                    else 'about ' sys_>< each endif %]);
+    printf('  questions  %p   %p answered\n',
+           [% lp_spark([% for r in_vector days do
+                            if r(1) > 0 then r(1) else false endif endfor %],
+                       0, maxq, false), qs %]);
+    lp_progress_window(days, 1, PROGRESS_DAYS) -> (acc, med, n);
+    lp_progress_window(days, PROGRESS_DAYS - TREND_DAYS + 1, PROGRESS_DAYS)
+        -> (accw, medw, nw);
+    lp_progress_window(days, PROGRESS_DAYS - 2 * TREND_DAYS + 1,
+                       PROGRESS_DAYS - TREND_DAYS) -> (acc0, med0, n0);
+    ;;; Right from half to all: below half a day is the bottom block, so
+    ;;; the scale spends its eight steps where a student's days differ.
+    printf('  right      %p   %p%%  %p\n',
+           [% lp_spark([% for r in_vector days do
+                            if r(1) > 0 then r(2) / r(1) else false endif endfor %],
+                       0.5, 1.0, false),
+              round(acc * 100),
+              if nw >= TREND_MIN and n0 >= TREND_MIN then lp_trend_acc(accw, acc0)
+              else '(a trend needs two weeks with some study in each)' endif %]);
+    ;;; Taller is faster: one second is the top, six the bottom.
+    if med then
+        printf('  speed      %p   %p s typical right answer  %p\n',
+               [% lp_spark([% for r in_vector days do r(4) endfor %],
+                           1000, 6000, true),
+                  lp_secs(med),
+                  if medw and med0 and nw >= TREND_MIN and n0 >= TREND_MIN
+                  then lp_trend_ms(medw, med0) else '' endif %]);
+    endif;
+    printf('\n  :status says what is left of %p.\n', [% lp_level %]);
+enddefine;
+
 define lp_status();
     lvars r;
     printf('\n  %p, %p -- level %p, period %p\n',
@@ -6173,6 +6338,7 @@ define lp_help();
     printf('  :plan            what is ready now, and why that order\n');
     printf('  :why <item>      the derivation: prerequisites, source, belief\n');
     printf('  :status          the exit criteria of this level, measured\n');
+    printf('  :progress        the last four weeks, a mark a day, and the trend\n');
     printf('  :place           find out where you are, instead of guessing\n');
     printf('  :oops            that answer was an accident -- ask me again later\n');
     if lp_has_syllabary() then
@@ -6425,6 +6591,7 @@ define lp_session();
                 if arg = '' then printf('  :why <item id>\n')
                 else lp_why(consword(arg)) endif;
             elseif cmd = 'status' then lp_status();
+            elseif cmd = 'progress' or cmd = 'stats' then lp_progress();
             elseif cmd = 'place' then lp_place_run();
             elseif cmd = 'oops' then
                 if not(lp_aid("oops")) then

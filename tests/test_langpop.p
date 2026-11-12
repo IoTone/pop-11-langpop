@@ -3354,6 +3354,43 @@ check_true('its instruction says one of two words is coming',
            issubstring('ONE of these two words',
                        lp_task_line("l_sokuon", "hear", "listen_pick", '/x')));
 
+;;; :PROGRESS, from a journal made up to say known things.  Today: three
+;;; answers a minute apart, two right.  Three days ago: one wrong.  The
+;;; rest of the four weeks: nothing.
+lvars pj_lang = lp_lang, pj_j = lp_journal, pnow = lp_now_ms();
+"ja" -> lp_lang;
+[% {hi_a read 1 right 1000 ^(pnow - 60000) learn},
+   {hi_i read 1 right 3000 ^(pnow - 120000) learn},
+   {hi_u read 1 wrong 2000 ^(pnow - 180000) learn},
+   {hi_e read 1 wrong 2000 ^(pnow - 3 * lp_day_ms - 1000) learn},
+   ;;; Not counted: a tier-2 answer, and an English item.
+   {hi_o read 2 right 1000 ^(pnow - 1000) learn},
+   {s_r_l hear 1 right 1000 ^(pnow - 2000) learn} %] -> lp_journal;
+lvars pdays = lp_progress_days(28);
+check('four weeks is 28 days', datalength(pdays), 28);
+check('today has the three tier-1 Japanese answers', pdays(28)(1), 3);
+check('two of them right', pdays(28)(2), 2);
+check('and two minutes between the first and the last', pdays(28)(3), 2);
+check('the typical right answer is the median of the rights (the lower of two)',
+      pdays(28)(4), 1000);
+check('three days ago has the one wrong answer', pdays(25)(1), 1);
+check('with no right answer, so no typical time', pdays(25)(4), false);
+check('a day with nothing in it is empty', pdays(1)(1), 0);
+lvars pa, pm, pn;
+lp_progress_window(pdays, 22, 28) -> (pa, pm, pn);
+check('this week: four answers', pn, 4);
+check('half of them right', pa, 1/2);
+check('a sparkline marks an empty day with a dot',
+      lp_spark([% false, 0, 1 %], 0, 1, false), '·▁█');
+check('and turned over, small is tall', lp_spark([% 1000, 6000 %], 1000, 6000, true), '█▁');
+check_true('better accuracy is up', isstartstring('↑', lp_trend_acc(0.9, 0.8)));
+check_true('worse is down', isstartstring('↓', lp_trend_acc(0.7, 0.8)));
+check_true('a point either way is about the same', isstartstring('→', lp_trend_acc(0.81, 0.8)));
+check_true('faster is up', isstartstring('↑', lp_trend_ms(1500, 2000)));
+check_true('slower is down', isstartstring('↓', lp_trend_ms(2500, 2000)));
+check('a time is said in seconds', lp_secs(1530), '1.5');
+pj_lang -> lp_lang; pj_j -> lp_journal;
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 
