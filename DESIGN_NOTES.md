@@ -3600,3 +3600,44 @@ Found on the way and not yet fixed: the TUI writes the journal only at
 every answer in it. The student's 15:51 sitting left no trace in the
 journal, which may be exactly that.
 
+## The instruction that read as the stimulus
+
+The real report behind "only one syllable" was this. The listening
+question opened with 「聞いてください。What did you hear?」. A student who
+reads Japanese took the Japanese as the thing they would hear, listened
+for *kiite kudasai*, and got a single kana (う, which they heard as "yu").
+The English half did not say what was coming either. Reading questions had
+no instruction at all: a bare め and an arrow. The tutor switches between
+reading, listening, meaning, counting and pictures every few questions,
+and none of those switches was stated.
+
+lp_task_line(item, ch, shape, prompt) now gives every question one fixed
+line: the mode in capitals, what is shown or played, and what to type. It
+is chosen from the shape, with kind and form deciding the wording:
+
+- listen: a kana, or a word;
+- listen_pick: one of a contrast pair, or a meaning;
+- pick: a mix question, or a word's meaning;
+- type: kana to romaji, or a reading in kana or romaji.
+
+It is not a persona line, because an instruction must not vary for
+flavour. lp_drill prints it once per question, above the stimulus. The
+server sends it as `task` and client.p prints it, so every client gives
+the same instruction.
+
+The language follows lp_learner_lang. For a Japanese reader (the English
+track) the Japanese sentence comes first and the same sentence in English
+follows. That pairing is what was wrong before: the two halves of one line
+said different things.
+
+The persona `listen` lines were rewritten too. Aoi's 「もう一度 -- what did
+you hear?」 and Mr Hill's "Once more. What did you hear?" were said on the
+FIRST play. They are now 「聞いてください。(Please listen.)」, "Listen.",
+"Listen carefully." and "Here it is.", which can't be mistaken for the
+stimulus or the replay.
+
+Also fixed: the client suite's `:time` check set lp_t0 exactly ten minutes
+back and expected "10:0". A second ticking over in between made it "9:59".
+That was the intermittent client failure seen once before, and the check
+now accepts both.
+

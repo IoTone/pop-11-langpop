@@ -37,9 +37,9 @@
     "Count the beats, not the letters:"
   ],
   "listen": [
-    "聞いてください。What did you hear?",
-    "Listen.  What was that?",
-    "もう一度 -- what did you hear?"
+    "聞いてください。(Please listen.)",
+    "Listen.",
+    "Listen carefully."
   ],
   "again": [
     "もう一度。",

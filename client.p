@@ -238,6 +238,7 @@ define ask_one();
     endunless;
     p(q, 'shape') -> shape;
     p(q, 'options') -> opts;
+    if p(q, 'task') then printf('\n  %p\n', [% p(q, 'task') %]) endif;
     if shape = 'pick' then
         printf('\n  %p\n', [% p(q, 'prompt') %]);
         for o in_vector (opts or {}) do

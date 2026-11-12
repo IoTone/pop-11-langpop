@@ -95,8 +95,10 @@ check_true('the sitting is reported', issubstring('10:0', t) /== false);
 check_true('with the questions in it', issubstring('40 question', t) /== false);
 check_true('and a pace, which is 600 seconds over 40',
            issubstring('about 15 seconds', t) /== false);
+;;; 10:0x, or 9:59 when a second ticked over between setting lp_t0 and
+;;; reading the clock -- the intermittent failure this check used to have.
 check_true('and how much of the suggested sitting is left',
-           issubstring('20 minutes; 10:0', t) /== false);
+           issubstring('20 minutes; 10:0', t) or issubstring('20 minutes; 9:59', t));
 
 ;;; A pace over the first few seconds is not a pace, and "about 1
 ;;; seconds a question" reads like a broken clock rather than a fast

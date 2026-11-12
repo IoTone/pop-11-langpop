@@ -258,6 +258,8 @@ vars q = result('langpop/next', jsonrpc_obj([% 'session_id', sid %]));
 vars qitem = q('item');
 check_true('next offers an item', isstring(qitem) and qitem /= '');
 check('and says how to answer it', q('shape'), 'type');
+check_true('and an instruction saying which mode it is',
+           issubstring('READING.', q('task')));
 check_true('and shows the glyph', isstring(q('prompt')) and q('prompt') /= '');
 ;;; Not "does it have a field called answer", but "is the answer anywhere
 ;;; in this reply at all" -- including inside the prompt, which is where a
@@ -560,6 +562,12 @@ vars psid = result('langpop/session.open',
 vars pq = result('langpop/next', jsonrpc_obj([% 'session_id', psid %]));
 check('an English question is a choice', pq('shape'), 'pick');
 check('between two options', length(datalist(pq('options'))), 2);
+;;; This student reads Japanese, so the instruction is in Japanese with
+;;; the same sentence in English under it.
+check_true('the instruction is in the student\'s own language',
+           issubstring('意味', pq('task')));
+check_true('and the same sentence in English',
+           issubstring('MEANING.', pq('task')));
 ;;; The key, as the session remembers it -- which is the thing under
 ;;; test: the grading has to use this and not build another.
 vars pitem = consword(pq('item') sys_>< ''),
@@ -1425,6 +1433,8 @@ answer_one(hsess).erase;
 lvars hq4 = result('langpop/next', jsonrpc_obj([% 'session_id', hsess %]));
 check('the fourth question is by ear', hq4('channel'), 'hear');
 check('and its shape says so', hq4('shape'), 'listen');
+check_true('and its instruction says a word is coming, not a sentence',
+           issubstring('LISTENING.  You will hear one word', hq4('task')));
 check('the item is the word that was read-mastered', hq4('item'), 'w_neko');
 
 ;;; A listening question has NOTHING TO READ.  prompt is null and the

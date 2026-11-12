@@ -3311,6 +3311,30 @@ for kj in lp_items do
 endfor;
 check('and no kanji, which carries a hiragana reading', kjn, 0);
 
+;;; THE MODE IS SAID BEFORE EVERY QUESTION.  "聞いてください。What did
+;;; you hear?" above a listening kana was read as the thing to listen
+;;; for.  The instruction now names the mode and what to type.
+lvars tk = lp_task_line("hi_u", "hear", "listen", '/x/hi_u.wav');
+check_true('a listening kana says LISTENING', issubstring('LISTENING.', tk));
+check_true('and that one kana is coming', issubstring('one kana', tk));
+check_true('and to answer in romaji', issubstring('romaji', tk));
+check_false('and not, to an English reader, in Japanese',
+            issubstring('聞き取り', tk));
+lp_task_line("hi_a", "read", "type", lp_form_of("hi_a", "hiragana") sys_>< '') -> tk;
+check_true('a kana to read says READING', issubstring('READING.', tk));
+check_true('and asks how it is said', issubstring('this kana said', tk));
+check_true('a count says COUNTING',
+           issubstring('COUNTING.', lp_task_line("w_neko", "read", "count", 'ねこ')));
+check_true('a word heard is a word, not a kana',
+           issubstring('one word', lp_task_line("w_neko", "hear", "listen", '/x')));
+lvars tl1 = lp_l1; "ja" -> lp_l1;
+lp_task_line("hi_u", "hear", "listen", '/x') -> tk;
+check_true('a Japanese reader gets it in Japanese', issubstring('聞き取り', tk));
+check_true('with the same sentence in English', issubstring('LISTENING.', tk));
+tl1 -> lp_l1;
+check('a question with no shape has no instruction',
+      lp_task_line("hi_a", "read", "none", ''), false);
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 

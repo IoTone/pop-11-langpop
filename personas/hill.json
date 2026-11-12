@@ -37,9 +37,9 @@
     "Count the beats, not the letters:"
   ],
   "listen": [
-    "Listen.  What did you hear?",
-    "Have a listen -- which word is that?",
-    "Once more.  What did you hear?"
+    "Listen.",
+    "Listen carefully.",
+    "Here it is."
   ],
   "again": [
     "Again.",

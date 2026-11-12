@@ -3897,6 +3897,86 @@ define lp_drill_review(item, ch);
     lp_drill(item, ch).erase;
 enddefine;
 
+;;; ------------------------------------------------- what kind of question
+;;; THE MODE, SAID BEFORE THE QUESTION.  "聞いてください。What did you
+;;; hear?" was printed above a listening question, and a student who
+;;; reads Japanese took the Japanese for the stimulus: they listened for
+;;; someone saying kiitekudasai and heard a single kana.  The English half
+;;; did not say what was coming either.  Reading questions were worse --
+;;; a bare め and an arrow, with nothing to say whether to type its sound,
+;;; its meaning, or something else.  A sitting moves between reading,
+;;; listening, meaning, counting and pictures every few questions, and
+;;; every one of those switches has to be stated.
+;;;
+;;; So every question opens with one fixed line: the mode in capitals,
+;;; what will be shown or played, and what to type.  It is fixed and not
+;;; a persona line, because it is an instruction and must not vary for
+;;; colour.  It is in the language the student reads.  A student whose
+;;; own language is Japanese gets a Japanese line and the same sentence in
+;;; English beneath it, so the two can never say different things.
+define lp_task_pair(en, ja) -> s;
+    lvars en, ja, s;
+    if lp_learner_lang() == "ja" then ja <> '\n  ' <> en else en endif -> s;
+enddefine;
+
+define lp_task_line(item, ch, shape, prompt) -> s;
+    lvars item, ch, shape, prompt, s = false, k = lp_kind(item),
+          ja = lp_ilang(item) == "ja";
+    if shape == "listen" then
+        if k == "grapheme" then
+            lp_task_pair('LISTENING.  You will hear one kana.  Type it in romaji (a, ka, shi ...).',
+                         '聞き取り：かなを一つ言います。ローマ字で書いてください。')
+        else
+            lp_task_pair('LISTENING.  You will hear one word.  Type it in romaji or kana.',
+                         '聞き取り：単語を一つ言います。ローマ字かかなで書いてください。')
+        endif -> s;
+    elseif shape == "listen_pick" then
+        if k == "sound" or k == "confusion" then
+            lp_task_pair('LISTENING.  You will hear ONE of these two words.  Type the number of the one you heard.',
+                         '聞き取り：下の二つの単語のうち、一つを言います。聞こえた方の番号を書いてください。')
+        else
+            lp_task_pair('LISTENING.  You will hear one word.  Type the number of what it means.',
+                         '聞き取り：単語を一つ言います。その意味の番号を書いてください。')
+        endif -> s;
+    elseif shape == "look_pick" then
+        lp_task_pair('PICTURE.  Look at the picture.  Type the number of the sentence that describes it.',
+                     '写真：写真を見てください。写真に合う文の番号を書いてください。') -> s;
+    elseif shape == "count" then
+        if lp_probe_kind(item) == "syllables" then
+            lp_task_pair('COUNTING.  Count the syllables in this word, and type the number.',
+                         '音節：この単語の音節を数えて、数字を書いてください。')
+        else
+            lp_task_pair('COUNTING.  Count the beats in this word, and type the number.',
+                         '拍：この単語の拍を数えて、数字を書いてください。')
+        endif -> s;
+    elseif shape == "pick" then
+        if lp_mix_of(item) then
+            lp_task_pair('MEANING.  Which word means this?  Type its number.',
+                         '意味：この意味の単語はどれですか。番号を書いてください。')
+        else
+            lp_task_pair('MEANING.  What does this word mean?  Type the number.',
+                         '意味：この単語の意味はどれですか。番号を書いてください。')
+        endif -> s;
+    elseif shape == "type" then
+        if ja and (prompt = lp_form_of(item, "hiragana") sys_>< ''
+                   or prompt = lp_form_of(item, "katakana") sys_>< '') then
+            if k == "grapheme" then
+                lp_task_pair('READING.  How is this kana said?  Type it in romaji.',
+                             '読み：このかなの読み方をローマ字で書いてください。')
+            else
+                lp_task_pair('READING.  How is this word said?  Type it in romaji.',
+                             '読み：この単語の読み方をローマ字で書いてください。')
+            endif -> s;
+        elseif ja then
+            lp_task_pair('READING.  How is this read?  Type it in kana or romaji.',
+                         '読み：読み方をかなかローマ字で書いてください。') -> s;
+        else
+            lp_task_pair('READING.  Type what this says.',
+                         '読み：書いてあることを入力してください。') -> s;
+        endif;
+    endif;
+enddefine;
+
 define lp_drill(item, ch) -> done;
     lvars item, ch, shape, prompt, answer, options, o, i = 0, t0, i0, line, typed,
           other, kslip = false, retried = false, heard = false, shown;
@@ -3936,6 +4016,11 @@ define lp_drill(item, ch) -> done;
     ;;; measurement that no later right answer can take back.
     lp_now_ms() -> t0;
     lp_idle_ms -> i0;
+    lvars task = lp_task_line(item, ch, shape, prompt);
+    ;;; The question sits directly under its instruction, so the
+    ;;; blank line goes above the instruction instead.
+    lvars lead = '\n';
+    if task then printf('\n  %p\n', [^task]); '' -> lead endif;
     repeat
         0 -> i;
         if heard then
@@ -3945,7 +4030,7 @@ define lp_drill(item, ch) -> done;
             ;;; said once, in the help at the top of the sitting, and a
             ;;; student whose speaker swallowed the sound had no way to
             ;;; know a replay existed -- they reported it as missing.
-            printf('\n  %p   (again = hear it again)\n',
+            printf('  %p   (again = hear it again)\n',
                    [% lp_line('listen') %]);
             ;;; AND NOTHING IS RECORDED IF IT DID NOT PLAY.  Asking "what
             ;;; did you hear?" of a student who heard nothing, and then
@@ -3967,7 +4052,7 @@ define lp_drill(item, ch) -> done;
             endif;
             printf('  -> ');
         elseif shape == "type" then
-            printf('\n  %p    -> ', [^prompt]);
+            printf(lead <> '  %p    -> ', [^prompt]);
         elseif shape == "count" then
             ;;; The word, then the question, because the question is the
             ;;; same every time and the word is not -- a student reading
@@ -3977,12 +4062,12 @@ define lp_drill(item, ch) -> done;
             ;;; Japanese speaker how many BEATS `mansion` has is asking
             ;;; them for the katakana count, which is the one answer the
             ;;; question exists to catch.
-            printf('\n  %p\n', [^prompt]);
+            printf(lead <> '  %p\n', [^prompt]);
             printf('  %p  -> ',
                    [% lp_line(if lp_probe_kind(item) == "syllables"
                               then 'syllables' else 'beats' endif) %]);
         else
-            printf('\n  %p\n', [^prompt]);
+            printf(lead <> '  %p\n', [^prompt]);
             for o in options do i + 1 -> i; printf('    %p) %p\n', [% i, o %]) endfor;
             printf('  -> ');
         endif;

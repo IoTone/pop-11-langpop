@@ -629,6 +629,10 @@ define lp_m_next(msg) -> res;
                    'channel', lp_jkey(ch),
                    'options', lp_vec([% lvars o; for o in options do lp_jkey(o) endfor %]),
                    'kind', lp_jkey(lp_kind(item)),
+                   ;;; The mode and what to type, as the TUI prints it
+                   ;;; above the question: every client shows the same
+                   ;;; instruction rather than inventing its own.
+                   'task', lp_task_line(item, ch, shape, prompt) or json_null,
                    'requeued', requeued and true,
                    ;;; Said out loud, because a client should be able to
                    ;;; tell a student that this one is a review of

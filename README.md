@@ -1784,20 +1784,47 @@ needs no new evidence tier — the only machine in it is the one that spoke.
 
 ```
 Aoi>
-  聞いてください。What did you hear?
+  LISTENING.  You will hear one word.  Type it in romaji or kana.
+  聞いてください。(Please listen.)   (again = hear it again)
   ->  again
   もう一度。
-
-  Listen.  What was that?
+  Listen.   (again = hear it again)
   ->  neko
   そうです。  ねこ
 ```
 
-Every listening question says how to replay it, beside the question:
+**Every question starts by naming its mode.** A sitting switches between
+reading, listening, meaning, counting and pictures every few questions, so
+one fixed line in capitals says which it is, what will be shown or played,
+and what to type:
 
 ```
-  聞いてください。What did you hear?   (again = hear it again)
+  READING.  How is this kana said?  Type it in romaji.
+  LISTENING.  You will hear one kana.  Type it in romaji (a, ka, shi ...).
+  LISTENING.  You will hear ONE of these two words.  Type the number of the one you heard.
+  MEANING.  Which word means this?  Type its number.
+  COUNTING.  Count the beats in this word, and type the number.
+  PICTURE.  Look at the picture.  Type the number of the sentence that describes it.
 ```
+
+This line is an instruction, so it is always worded the same; the teacher's
+own lines vary and never stand in for it. It used to be missing. A student
+who reads Japanese saw 「聞いてください。What did you hear?」 above a
+listening question and listened for someone saying *kiite kudasai*, when
+what was coming was a single kana. A student whose own language is
+Japanese (the English track) gets the line in Japanese with the same
+sentence in English beneath it, so the two cannot say different things:
+
+```
+Mr Hill>
+  聞き取り：下の二つの単語のうち、一つを言います。聞こえた方の番号を書いてください。
+  LISTENING.  You will hear ONE of these two words.  Type the number of the one you heard.
+  Listen.   (again = hear it again)
+    1) breeze
+    2) breathe
+```
+
+Every listening question says how to replay it, beside the question.
 
 If you didn't hear anything, type `again`. The sound plays again and
 nothing is marked.
@@ -1833,7 +1860,8 @@ for the ear.
 
 ```
 Aoi>
-  聞いてください。What did you hear?
+  LISTENING.  You will hear one kana.  Type it in romaji (a, ka, shi ...).
+  Listen.   (again = hear it again)
   ->  a
   そうです。  あ
 ```
@@ -1843,7 +1871,9 @@ is not a word and there is nothing to type:
 
 ```
 Mr Hill>
-  Listen.  What did you hear?
+  聞き取り：下の二つの単語のうち、一つを言います。聞こえた方の番号を書いてください。
+  LISTENING.  You will hear ONE of these two words.  Type the number of the one you heard.
+  Listen.   (again = hear it again)
     1) boat
     2) vote
   ->  1
