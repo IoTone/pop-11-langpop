@@ -634,6 +634,17 @@ check('a reading question is unaffected by what the client can play',
 false -> lp_client_caps;
 check_true('and no claim is the state everything below runs in',
            lp_can_hear());
+
+;;; THE STUDENT'S SWITCH, :audio off.  The machine can speak and the
+;;; student has said not to: no listening question is possible, exactly
+;;; as for a client with no speaker, and reading carries on untouched.
+false -> lp_sound;
+check_true(':audio off means no listening questions', not(lp_can_hear()));
+check_true('so the listening pool is empty', lp_hear_plan() == []);
+lp_question("w_neko", "read") -> (hsh, hpr, hans, hopt);
+check('and reading is unaffected by it', hsh, "type");
+true -> lp_sound;
+check_true(':audio on gives them back', lp_can_hear());
 ;;; The n5 words are imported content, so without the generated graph
 ;;; there is no unrendered word to ask about, and the pair is skipped
 ;;; rather than asked of nothing.

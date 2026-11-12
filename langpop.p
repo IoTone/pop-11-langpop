@@ -404,8 +404,19 @@ enddefine;
 ;;; audio.p is loaded on demand, so this asks "is there a voice in this
 ;;; session", and the `and` short-circuits before naming anything
 ;;; audio.p defines.
+
+;;; THE STUDENT'S OWN SWITCH, `:audio off`.  A library, a train, a
+;;; sleeping household: the machine can speak and the student does not
+;;; want it to.  Off means no sound at all -- no listening questions are
+;;; chosen, and :say declines -- and it sticks, in the profile, because
+;;; the reason for it usually outlasts the sitting.  Read here, so the
+;;; one place that decides whether a listening question is possible
+;;; decides this too.
+vars lp_sound = true;
+
 define lp_can_hear() -> yes;
     lvars yes = (lp_audio_loaded and lp_audio_ready(lp_lang)) and true;
+    if yes and not(lp_sound) then false -> yes endif;
     ;;; AND A CLIENT THAT SAID IT CANNOT PLAY GETS NO LISTENING
     ;;; QUESTIONS, however well this machine can speak.  Until now the
     ;;; server asked whether IT could hear and sent the answer to a
@@ -2160,6 +2171,9 @@ define lp_save();
     ;;; loaded audio.p still has to save the choice it was started with.
     if lp_audio_loaded then lp_rate -> lp_rate_want endif;
     if lp_rate_want then lp_rate_want sys_>< '' -> o('rate') endif;
+    ;;; Written only when off: an absent field is the default, so a
+    ;;; profile from before the switch existed reads as sound on.
+    unless lp_sound then 'off' -> o('audio') endunless;
     lp_ensure_home();
     lp_write_file(lp_profile_path(lp_user), json_generate(o));
 enddefine;
@@ -2187,6 +2201,7 @@ define lp_load_profile(user) -> found;
     clearproperty(lp_reviews);
     lp_aids_reset(); lp_queue_reset();
     clearproperty(lp_levels_at);
+    true -> lp_sound;
     returnunless(s);
     json_parse(s) -> o;
     true -> found;
@@ -2283,6 +2298,7 @@ define lp_load_profile(user) -> found;
     if o('rate') and not(lp_rate_asked) then
         consword(o('rate') sys_>< '') -> lp_rate_want;
     endif;
+    if o('audio') = 'off' then false -> lp_sound endif;
     if o('aids_off') then
         for i from 1 to length(o('aids_off')) do
             false -> lp_aids(consword(o('aids_off')(i) sys_>< ''));
@@ -5949,6 +5965,10 @@ enddefine;
 ;;; for the sound and is waiting on purpose.
 define lp_show_say(i, rate);
     lvars i, rate, path, made, why;
+    unless lp_sound then
+        printf('  Sound is off.  :audio on, and I will say it.\n');
+        return;
+    endunless;
     lp_load_audio();
     unless lp_kind(i) then
         printf('  I have no item called %p.\n', [^i]); return;
@@ -5997,6 +6017,31 @@ enddefine;
 
 ;;; The rate the student listens at, which sticks: a beginner who has
 ;;; asked for slow should not have to ask again tomorrow.
+define lp_show_audio(arg);
+    lvars arg;
+    if arg = 'on' then
+        true -> lp_sound;
+        lp_load_audio();
+        if lp_audio_ready(lp_lang) then
+            printf('  Sound on.  About one question in four is asked by ear,\n');
+            printf('  and :say <item> says any item aloud.\n');
+        else
+            printf('  Sound on -- but I have no %p voice here, so there is\n',
+                   [% lp_lang %]);
+            printf('  nothing to hear yet.  The shape is in the header of audio.p.\n');
+        endif;
+    elseif arg = 'off' then
+        false -> lp_sound;
+        printf('  Sound off.  No listening questions until :audio on --\n');
+        printf('  whatever needs your ear waits for it.\n');
+    elseif arg = '' then
+        printf('  Sound is %p.  (:audio on, :audio off)\n',
+               [% if lp_sound then 'on' else 'off' endif %]);
+    else
+        printf('  :audio on, or :audio off\n');
+    endif;
+enddefine;
+
 define lp_show_rate(arg);
     lvars arg, r;
     lp_load_audio();
@@ -6037,6 +6082,7 @@ define lp_help();
     printf('  :card <item>     draw it, in the terminal or in a viewer\n');
     printf('  :say <item>      hear it said, if a voice is installed\n');
     printf('  :rate slow       listen slower from now on (slow|normal|fast)\n');
+    printf('  :audio off       no sound at all, until :audio on\n');
     printf('  :mic             check the microphone level, and the room\n');
     printf('  :speak <item>    say it, and have the held beat timed\n');
     printf('  :sheet           today\'s work, as a page to print\n');
@@ -6334,6 +6380,7 @@ define lp_session();
                                  else consword(outcome) endif)
                 endif;
             elseif cmd = 'rate' then lp_show_rate(arg);
+            elseif cmd = 'audio' or cmd = 'sound' then lp_show_audio(arg);
             elseif cmd = 'assign' then lp_assign().erase;
             elseif cmd = 'report' then
                 lp_split2(arg) -> (a2, outcome);

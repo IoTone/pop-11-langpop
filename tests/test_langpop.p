@@ -2373,6 +2373,31 @@ check('where the stored rate is the one that stands', lp_rate_want, "fast");
 "slow" -> lp_rate_want;
 lp_save();
 
+;;; :audio off is a setting of the same kind and sticks the same way: the
+;;; library or the sleeping household is still there tomorrow.
+check_true('sound starts on', lp_sound);
+false -> lp_sound;
+lp_save();
+check_true('the off switch is written down',
+           issubstring('"audio":"off"', lp_read_file(lp_profile_path("switcher"))));
+true -> lp_sound;
+check_true('the profile loads with sound off', lp_load_profile("switcher"));
+check_false('and sound is still off', lp_sound);
+lp_show_audio('on');
+check_true(':audio on turns it back on', lp_sound);
+lp_save();
+check_false('and on is not written at all -- absent is the default',
+           issubstring('"audio"', lp_read_file(lp_profile_path("switcher"))));
+false -> lp_sound;
+check_true('loading a profile that says nothing', lp_load_profile("switcher"));
+check_true('means sound on, not the last student\'s switch', lp_sound);
+lp_show_audio('off');
+check_false(':audio off turns it off', lp_sound);
+lp_show_audio('loud');
+check_false('and a word it does not know changes nothing', lp_sound);
+true -> lp_sound;
+lp_save();
+
 ;;; And a profile that never named one does not invent a rate, so the
 ;;; engine's own default stands.
 lvars withrate = lp_read_file(lp_profile_path("switcher"));

@@ -3562,3 +3562,41 @@ sox's "Maximum amplitude" is the largest positive sample; those two clips
 peak on the negative side, and their true peaks were levelled like the
 rest. Their peaks were checked by reading the samples, not by trusting
 the summary line.
+
+## Only one syllable, and a switch for silence
+
+The report after the level fix was "it was saying the first syllable and
+then nothing". It was taken first as clipping, and measured as such,
+through the microphone:
+
+- 18 listening plays, with and without `again`, in Japanese and English;
+- piped stdin and a real pty;
+- one play after three minutes of silence;
+- all 243 cached Japanese clips through lp_audio_lead (none came out
+  short);
+- words rendered fresh by `:say`;
+- Kyoko speaking live against her own file played back.
+
+Every one was whole. The file the student's sitting had played was 30480
+bytes, which is one padded kana.
+
+The tutor was doing what it was built to do. A Japanese listening question
+is a single hiragana, so one syllable plays and the sitting goes quiet,
+because reading questions make no sound. The student's real question was
+"should I always be hearing audio?", and nothing in the sitting said when
+to expect sound. The README now does.
+
+The switch is `:audio on|off` (`:sound` is an alias). `lp_sound` is read
+inside lp_can_hear, so the one place that decides whether a listening
+question is possible decides this too: the hear pool is empty and
+lp_choose never offers one. `:say` declines while it is off. The switch is
+written to the profile only when it is off (`"audio":"off"`), so a profile
+from before the switch reads as sound on. It is reset with the other
+per-student state in lp_load_profile, because the server is long-lived and
+one student's silence must not carry over to the next.
+
+Found on the way and not yet fixed: the TUI writes the journal only at
+`:quit` or end of input. A sitting closed with the window or Ctrl-C loses
+every answer in it. The student's 15:51 sitting left no trace in the
+journal, which may be exactly that.
+

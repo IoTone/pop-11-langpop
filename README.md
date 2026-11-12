@@ -1892,6 +1892,30 @@ student had just missed parked behind every silent unseen item. Now the slot
 brings back the weakest ear first, which is exactly the contrast that was
 just got wrong.
 
+### When there is sound, and turning it off
+
+A sitting is mostly silent. Sound plays in two places only:
+
+- **A listening question.** About one question in four is asked by ear. In
+  Japanese that is a single hiragana kana (あ, ゆ, が …), so what plays is
+  one short syllable and then nothing more. That is the whole question.
+- **`:say <item>`**, whenever the student asks for it.
+
+Reading questions are not read aloud.
+
+```
+Aoi> :audio off
+  Sound off.  No listening questions until :audio on --
+  whatever needs your ear waits for it.
+```
+
+`:audio off` is for a library, a train or a sleeping house. While it is off,
+no listening question is chosen and `:say` declines. Reading carries on as
+before. Anything that needs the student's ear waits, unasked, rather than
+being marked wrong. The switch is kept in the profile, like `:rate`, so it
+is still off tomorrow. `:audio on` turns it back on, and `:audio` says which
+it is.
+
 ### Speaking it
 
 `:speak` is the one channel that wants a microphone, and it is **not**
@@ -2381,6 +2405,7 @@ arrows into nothing.
 | `:zine` | the study plan, as a booklet to fold |
 | `:say <item>` | hear it said, if a voice is installed; `:say <item> slow` |
 | `:rate slow` | listen slower from now on, and it sticks (`slow`/`normal`/`fast`) |
+| `:audio off` | no sound at all, and it sticks; `:audio on` to hear again, `:audio` to ask |
 | `again` | *at a listening question:* play it once more, free and unlimited |
 | `:mic` | check the microphone level, and whether the room is quiet enough |
 | `:speak <item>` | say it, and have the held beat timed (needs a microphone) |
