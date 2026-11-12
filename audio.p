@@ -864,7 +864,7 @@ define lp_audio_level(level, rate) -> (made, cached, skipped);
         endif;
     endfor;
     for w in words do
-        lp_audio_make_of(lp_pair_word_name(w), w, "en", rate, false)
+        lp_audio_make_of(lp_pair_word_name(w), w, lp_pair_lang(w), rate, false)
             -> (path, did, why);
         if why then
             skipped <> [[% consword(lp_pair_word_name(w)), consword(why) %]]

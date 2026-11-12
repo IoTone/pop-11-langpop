@@ -3665,3 +3665,30 @@ profile played four listening questions, each with a replay, as eight
 separate bursts at the microphone. The old Kyoko recordings stay in the
 cache under their own names. Nothing reaches them any more.
 
+## Length by ear
+
+Asked whether the JLPT counts beats by reading or by ear: on paper only.
+The 漢字読み and 表記 distractors differ from the right answer by a beat,
+and no listening question asks about length. But the listening paper
+depends on hearing it, because a missed long vowel or っ is a different
+word.
+
+So each of the three mora features is now also a `sound` item, using the
+English contrast machinery unchanged (pair/3, listen_pick through
+lp_pair_question): l_sokuon, l_long and l_moraic_n. Each has four
+hiragana-only pairs and requires its counting skill. On the Japanese track
+they are [hear] only, because :speak times a held beat in one shown word
+and a pair has no single word to show.
+
+lp_pair_audio used to pass "en" literally, which was true while every
+contrast was English. A pair word now takes the language of its contrast
+(lp_pair_langs, filled as the pairs load). The lookup is keyed by word:
+keyed by string, it never matched, because a property compares keys by
+identity.
+
+Every pair was measured as rendered. The longer word is 90-220 ms longer
+in all but おばさん / おばあさん, which Kyoko (Enhanced) says in 660 ms
+both, so it was replaced with くき / くうき (280 / 470 ms). A driven
+sitting on a copy of dkords asked きって/きて, くうき/くき and みんな/みな
+inside 24 questions, with 15 of 15 plays caught at the microphone.
+

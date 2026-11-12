@@ -1886,6 +1886,32 @@ Aoi>
   そうです。  あ
 ```
 
+**Length is asked by ear too.** Counting beats (COUNTING, いっしょ → 3) is a
+reading exercise, much like the JLPT's written questions, where a wrong
+reading is often the right one with a beat added or taken away. Hearing
+the beat is a separate skill, and the listening paper depends on it:
+きて and きって are different words. So each length feature is also a
+sound contrast, unlocked once its counting skill is known:
+
+| contrast | pairs |
+| --- | --- |
+| `l_sokuon` small っ | きて/きって, おと/おっと, さか/さっか, かた/かった |
+| `l_long` long vowel | おじさん/おじいさん, ゆき/ゆうき, とり/とおり, くき/くうき |
+| `l_moraic_n` ん | みな/みんな, こな/こんな, たに/たんに, きねん/きんえん |
+
+```
+Aoi>
+  LISTENING.  You will hear ONE of these two words.  Type the number of the one you heard.
+  Listen.   (again = hear it again)
+    1) きって
+    2) きて
+```
+
+These are practice for the ear; no exit criterion counts them yet.
+おばさん/おばあさん, the textbook pair, is left out because the current voice
+says both in the same 660 ms. Run `./langpop --lang ja --audio preschool`
+after adding a pair, so its words get recordings.
+
 A sound contrast becomes a two-option question instead, because a contrast
 is not a word and there is nothing to type:
 

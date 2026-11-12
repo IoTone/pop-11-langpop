@@ -324,6 +324,54 @@ requires(youon,           hi_ya).
 % one thing that cannot demonstrate the contrast the skill is named for.
 requires(dakuten, V) :- voiced(V, _, _).
 
+% --- Length, by ear ------------------------------------------------------
+% The three mora skills above are counted on paper: the student is shown
+% いっしょ and types 3.  That is the JLPT's written half (a 漢字読み
+% distractor is the right reading with a beat added or taken away).  The
+% half it does not train is the ear.  On the listening paper nobody asks
+% about length, but きて and きって, or おばさん and おばあさん, are
+% different words, and a listener who cannot hear the extra beat
+% misunderstands what was said.
+%
+% So each length feature is also a sound contrast, asked the way the
+% English track asks /r/ against /l/: one word of a pair is played, both
+% are shown, and the student types the number of the one they heard.
+% Every word is a real, common word written in hiragana only, so the
+% options are readable as soon as the mora skill is.  Practice for the
+% ear: no exit criterion counts them yet.
+item(l_sokuon,   sound, ja, preschool, own(kana)).
+item(l_long,     sound, ja, preschool, own(kana)).
+item(l_moraic_n, sound, ja, preschool, own(kana)).
+
+form(l_sokuon,   ipa, 'small っ: a held beat of silence').
+form(l_long,     ipa, 'a long vowel: one more beat').
+form(l_moraic_n, ipa, 'ん: a beat of its own').
+
+gloss(l_sokuon,   en, 'hearing small っ: きて and きって').
+gloss(l_long,     en, 'hearing a long vowel: ゆき and ゆうき').
+gloss(l_moraic_n, en, 'hearing ん: みな and みんな').
+
+requires(l_sokuon,   mora_sokuon).
+requires(l_long,     mora_long_vowel).
+requires(l_moraic_n, mora_moraic_n).
+
+pair(l_sokuon,   'きて',     'きって').      % come / stamp
+pair(l_sokuon,   'おと',     'おっと').      % sound / husband
+pair(l_sokuon,   'さか',     'さっか').      % slope / author
+pair(l_sokuon,   'かた',     'かった').      % shoulder / bought
+% おばさん / おばあさん is the textbook pair and is left out on purpose:
+% Kyoko (Enhanced) says both in 660 ms, so as recorded the pair has no
+% difference to hear, and a student who heard it right would be marked
+% wrong.  Put it back with a voice that holds the vowel.
+pair(l_long,     'くき',     'くうき').      % stem / air
+pair(l_long,     'おじさん', 'おじいさん').  % uncle / grandfather
+pair(l_long,     'ゆき',     'ゆうき').      % snow / courage
+pair(l_long,     'とり',     'とおり').      % bird / street
+pair(l_moraic_n, 'みな',     'みんな').      % all / everyone
+pair(l_moraic_n, 'こな',     'こんな').      % powder / this kind of
+pair(l_moraic_n, 'たに',     'たんに').      % valley / simply
+pair(l_moraic_n, 'きねん',   'きんえん').    % anniversary / no smoking
+
 % --- The characters that are not syllables -------------------------------
 % kana/5 holds the 138 kana that stand for a mora ON THEIR OWN.  It does
 % not hold っ, ゃ, ゅ, ょ, the small vowels or ー, and recognise(hiragana)

@@ -258,7 +258,11 @@ enddefine;
 
 define lp_channels(item) -> chs;
     lvars item, k = lp_kind(item);
-    if     k == "sound"    then [hear speak]
+    ;;; A Japanese length contrast is heard and not said: the speech
+    ;;; scorer times a held beat on a word the student is shown, which
+    ;;; is :speak, and a pair has no single word to show.
+    if     k == "sound" and lp_ilang(item) == "ja" then [hear]
+    elseif k == "sound"    then [hear speak]
     ;;; A written confusion reads first and is heard second, and the
     ;;; order is the whole point: it is the half of a merge that can be
     ;;; asked with no voice installed, so `read` is its gate.
@@ -3014,6 +3018,8 @@ enddefine;
 ;;; comment on the facts in graph/en/items.pl for why they are not called
 ;;; minimal pairs.
 vars lp_pairs = newproperty([], 16, [], "perm"), lp_pairs_ready = false;
+;;; word -> the language of its contrast; see lp_pair_lang.
+vars lp_pair_langs = newproperty([], 64, false, "perm");
 
 define lp_pairs_of(contrast) -> ps;
     lvars contrast, ps, pr, c;
@@ -3025,6 +3031,11 @@ define lp_pairs_of(contrast) -> ps;
             lp_pairs(c) <> [[% prolog_full_deref(prolog_arg(2, pr)),
                                prolog_full_deref(prolog_arg(3, pr)) %]]
                 -> lp_pairs(c);
+            ;;; Keyed by WORD: a property compares keys by identity, and
+            ;;; two equal strings are two keys.
+            lp_ilang(c) or "en"
+                ->> lp_pair_langs(consword(prolog_full_deref(prolog_arg(2, pr)) sys_>< ''))
+                ->  lp_pair_langs(consword(prolog_full_deref(prolog_arg(3, pr)) sys_>< ''));
         endfor;
     endunless;
     lp_pairs(contrast) -> ps;
@@ -3047,14 +3058,20 @@ define lp_pair_word_name(word) -> n;
     lvars word, n = 'pair-' <> lp_audio_slug(word);
 enddefine;
 
-;;; "en" literally: the pairs are English words and so is their audio,
-;;; whichever language the session is being taught in.  A Japanese
-;;; speaker drilling /r/ against /l/ needs an English voice saying them,
-;;; and lp_lang at that moment is "en" anyway -- but the contrast is a
-;;; property of English, not of the session.
+;;; The language of a pair word is the language of its contrast, not of
+;;; the session: a Japanese speaker drilling /r/ against /l/ needs an
+;;; English voice saying them, and きて against きって needs a Japanese
+;;; one.  It used to be "en" literally, which was true while every
+;;; contrast was English.
+define lp_pair_lang(word) -> l;
+    lvars word, l;
+    lp_pairs_of("none").erase;          ;;; loads them, and lp_pair_langs
+    lp_pair_langs(consword(word sys_>< '')) or "en" -> l;
+enddefine;
+
 define lp_pair_audio(word, rate) -> (path, why);
     lvars word, rate, path, why;
-    lp_audio_path_of(lp_pair_word_name(word), word, "en", rate)
+    lp_audio_path_of(lp_pair_word_name(word), word, lp_pair_lang(word), rate)
         -> (path, why);
 enddefine;
 

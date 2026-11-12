@@ -3335,6 +3335,25 @@ tl1 -> lp_l1;
 check('a question with no shape has no instruction',
       lp_task_line("hi_a", "read", "none", ''), false);
 
+;;; LENGTH BY EAR.  The mora skills are counted on paper; these are the
+;;; same three features as sound contrasts, asked the way /r/ - /l/ is.
+check('small っ is a Japanese sound contrast', lp_kind("l_sokuon"), "sound");
+check('and heard, not said', lp_channels("l_sokuon"), [hear]);
+check('while an English contrast is still both', lp_channels("s_r_l"),
+      [hear speak]);
+check('it has four pairs to ask', length(lp_pairs_of("l_sokuon")), 4);
+check('so does the long vowel', length(lp_pairs_of("l_long")), 4);
+check('and ん', length(lp_pairs_of("l_moraic_n")), 4);
+check_true('a pair is two different words',
+           hd(hd(lp_pairs_of("l_sokuon"))) /= hd(tl(hd(lp_pairs_of("l_sokuon")))));
+check('a Japanese pair word is said in Japanese', lp_pair_lang('きって'), "ja");
+check('and an English one in English', lp_pair_lang('light'), "en");
+check('a word in no pair defaults to English', lp_pair_lang('zzz'), "en");
+check('it is on the pre-school rung', lp_ilevel("l_sokuon"), "preschool");
+check_true('its instruction says one of two words is coming',
+           issubstring('ONE of these two words',
+                       lp_task_line("l_sokuon", "hear", "listen_pick", '/x')));
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 
