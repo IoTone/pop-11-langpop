@@ -1719,6 +1719,26 @@ which is the state every fresh checkout and every CI run is in. macOS's own
 teaching voice up — not a teaching voice itself, but something to compare one
 against, which is easier than judging a voice in the absolute.
 
+On a Mac, use the **Enhanced** Kyoko if it is installed (System Settings →
+Accessibility → Spoken Content → System voice → Manage Voices). It records
+two to three times louder than plain Kyoko and is much easier to follow:
+
+```json
+{"ja": {"cmd": "/usr/bin/say -v 'Kyoko (Enhanced)' -r %r -f %i -o %o --file-format=WAVE --data-format=LEI16@22050",
+        "voice": "KyokoEnhanced", "model": "macos-say",
+        "rates": {"slow": "110", "normal": "150", "fast": "190"}}}
+```
+
+`voice` is only a label for the recordings' filenames, so keep spaces and
+brackets out of it; the real voice name goes in `cmd`. After changing the
+voice, run `./langpop --lang ja --audio preschool` again so the recordings
+are remade in it. Listening questions are only asked about words that have
+a recording.
+
+Don't expect the rate to make much difference. With this voice, 150 instead
+of 175 makes a word about 6% longer, and even 90 adds only about 20%. A lone
+kana stays at about a tenth of a second at every rate.
+
 **`model` is declared, not detected**, because an external command cannot be
 asked what weights it loaded. The declaration is part of the cache key:
 

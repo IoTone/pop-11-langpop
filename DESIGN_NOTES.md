@@ -3641,3 +3641,27 @@ back and expected "10:0". A second ticking over in between made it "9:59".
 That was the intermittent client failure seen once before, and the check
 now accepts both.
 
+## Kyoko (Enhanced) at 150
+
+The student found `say -v "Kyoko (Enhanced)" -r 150` "very listenable" on
+a full sentence, and asked whether to slow the rate. Measured with that
+voice, the rate is the smaller part of the improvement:
+
+    rate         90     110    150    175
+    あたらしい    810    780    710    670 ms
+    ねこ          420    410    380    350 ms
+    これが最初の授業です。 2120  2080  1850  1760 ms
+
+The voice is the larger part. Enhanced Kyoko peaks at 0.43-0.74 of full
+scale against plain Kyoko's 0.12-0.32, and sounds more natural. A lone kana
+stays at about 0.1-0.2 s at every rate and in every voice; only Otoya
+(Enhanced) holds one longer, at about 0.23 s.
+
+The dkords install now uses Kyoko (Enhanced) with normal at 150 (slow 110,
+fast 190). Its `voice` label is `KyokoEnhanced`, because the label goes
+into the cache filename and the real name has a space and brackets. The
+188 preschool recordings were remade, and a driven sitting on a copy of the
+profile played four listening questions, each with a replay, as eight
+separate bursts at the microphone. The old Kyoko recordings stay in the
+cache under their own names. Nothing reaches them any more.
+
