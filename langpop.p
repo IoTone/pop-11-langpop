@@ -5391,6 +5391,28 @@ define lp_practice_items() -> out;
     endfor;
 enddefine;
 
+;;; ONE AT A TIME, for a caller that asks question by question -- the
+;;; server, which has no loop to go round the list in.  The item
+;;; practised least, in the list's order among equals, so that asking
+;;; again and again goes round them all and no state has to be kept:
+;;; the journal already says what has been practised.  Also how many
+;;; there are, so a client can say what a round is.
+define lp_practice_next() -> (item, limit, total);
+    lvars item = false, limit = false, todo = lp_practice_items(),
+          total = length(todo), o, e, n, best = false,
+          done = newproperty([], 64, 0, "perm");
+    returnif(todo == []);
+    for e in lp_journal do
+        if lp_jphase(e) == "practice" then done(e(1)) + 1 -> done(e(1)) endif;
+    endfor;
+    for o in todo do
+        done(o(1)) -> n;
+        if not(best) or n < best then
+            n -> best; o(1) -> item; o(2) -> limit;
+        endif;
+    endfor;
+enddefine;
+
 define lp_practice(limit);
     lvars limit, todo = lp_practice_items(), o, n = 0, inside = 0, e,
           before, slow = [];

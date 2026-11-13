@@ -218,6 +218,7 @@ define help();
     printf('  :plan            what is ready now\n');
     printf('  :why <item>      the derivation, from the graph\n');
     printf('  :status          the exit criteria of this level, measured\n');
+    printf('  :drill           practise what was slow at its latest review -- unscored\n');
     printf('  :card <item>     ask the tutor to draw it\n');
     printf('  :assign          something to do away from the keyboard\n');
     printf('  :report <n> ok | 17/20\n');
@@ -227,10 +228,24 @@ enddefine;
 
 ;;; Ask, show, read, send.  The client never decides anything about the
 ;;; answer -- it does not even know what the answer was until it is told.
-define ask_one();
-    lvars q = rpc('langpop/next', jsonrpc_obj([% 'session_id', lp_sid %])),
+;;; Milliseconds as seconds to one place: 1437 is 1.4.
+define secs(ms) -> s;
+    lvars ms, s, t = round(ms / 100);
+    (t div 10) sys_>< '.' sys_>< (t mod 10) -> s;
+enddefine;
+
+;;; `practice` asks for one of the items :status names as slow or missed
+;;; instead of the next thing, and the answer then says its time.  The
+;;; result is whether a question was asked and answered, so :drill knows
+;;; when to stop, and how many items a round is.
+define ask_one_of(practice) -> (done, total);
+    lvars practice, done = false, total = 0,
+          q = rpc('langpop/next',
+                  jsonrpc_obj([% 'session_id', lp_sid,
+                                 if practice then 'practice', true endif %])),
           item, shape, opts, i = 0, o, line, ans;
     returnunless(q);
+    p(q, 'practice_items') or 0 -> total;
     p(q, 'item') -> item;
     unless item then
         printf('  %p\n', [% p(q, 'note') or 'nothing ready' %]);
@@ -267,8 +282,41 @@ define ask_one();
     else
         printf('  %p  It is %p.\n', [% p(ans, 'reply'), p(ans, 'expected') %]);
     endif;
+    true -> done;
+    ;;; Practice says the time, because speed cannot be practised blind.
+    ;;; The limit came with the question; the time is the server's.
+    if practice and p(ans, 'correct') and p(q, 'limit_ms') then
+        printf('  %p s -- %p %p s.\n',
+               [% secs(p(ans, 'latency_ms')),
+                  if p(ans, 'latency_ms') <= p(q, 'limit_ms')
+                  then 'inside the' else 'the limit is' endif,
+                  secs(p(q, 'limit_ms')) %]);
+    endif;
     lp_goal_check();
 enddefine;
+
+define ask_one();
+    lvars d, r;
+    ask_one_of(false) -> (d, r);
+enddefine;
+
+;;; :drill [n] -- a round of practice, or n questions of it.  Nothing is
+;;; scored; the server records each answer as practice and moves nothing.
+define do_drill(arg);
+    lvars arg, n = strnumber(arg), i = 0, d, r;
+    printf('\n  Practice on what was slow or missed at its latest review.\n');
+    printf('  Nothing here is scored -- it is for getting quicker.\n');
+    repeat
+        ask_one_of(true) -> (d, r);
+        quitunless(d);
+        i + 1 -> i;
+        quitif(i >= (n or r));
+    endrepeat;
+    if i > 0 then
+        printf('\n  %p practised.  Their reviews are what count.\n', [^i]);
+    endif;
+enddefine;
+
 
 define show_plan();
     lvars pl = rpc('langpop/plan', jsonrpc_obj([% 'session_id', lp_sid %])), it;
@@ -603,6 +651,7 @@ define client_main();
             elseif cmd = 'why' then
                 if arg = '' then printf('  :why <item id>\n') else show_why(arg) endif
             elseif cmd = 'status' then show_status()
+            elseif cmd = 'drill' or cmd = 'practice' then do_drill(arg)
             elseif cmd = 'card' then
                 if arg = '' then printf('  :card <item id>\n') else show_card(arg) endif
             elseif cmd = 'assign' then do_assign()

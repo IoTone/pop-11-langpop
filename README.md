@@ -584,6 +584,9 @@ blind, and because a review should not be the first time since the last
 one that a student sees the kana they were told is slow. The answers are
 still in the record, so the minutes show in `:progress`.
 
+The line client has the same `:drill`, and any other client gets it by
+sending `practice: true` with `langpop/next`.
+
 With nothing owed today the tutor says which day the next review falls
 on, rather than that it has run out of work.
 
@@ -2234,7 +2237,7 @@ shim. `--port N` for TCP, nothing for stdio.
 | `langpop/register` | a student, by username; no password, because this is a local tool |
 | `langpop/session.open` / `session.close` | a session is a row, not a process |
 | `langpop/plan` | what is ready now, and why that order |
-| `langpop/next` | the question — **and not its answer** |
+| `langpop/next` | the question — **and not its answer**. With `practice: true`, one of the items `:status` names as slow or missed instead; the reply carries `phase: "practice"` and the `limit_ms` it is held to, and its answer is recorded but moves nothing |
 | `langpop/answer` | the judging, which stays on this side |
 | `langpop/explain` | the derivation: prerequisites, provenance, belief |
 | `langpop/status` | the level's exit criteria, measured |

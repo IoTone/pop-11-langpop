@@ -30,6 +30,10 @@ check('and is not there when it is not', lp_clock(730000), '12:10');
 check('a sitting that has only just started', lp_clock(400), '0:00');
 check('nothing is not an error', lp_clock(0), '0:00');
 check('a round ten minutes', lp_clock(600000), '10:00');
+;;; :drill says each answer's time, in seconds to one place.
+check('an answer time reads in seconds', secs(1437), '1.4');
+check('and a quick one is not rounded to nothing it was not', secs(40), '0.0');
+check('two seconds is two seconds', secs(2000), '2.0');
 
 ;;; An hour is where "how long is this sitting" stops being the question
 ;;; and "what happened to the afternoon" starts, so the shape changes.

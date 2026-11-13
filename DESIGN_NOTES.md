@@ -3868,3 +3868,22 @@ the repo's own path, which moves if the tree does).
 Three states, not two: `off` (not configured) is not `missing`
 (configured and not found), or a fresh clone would report a dozen
 problems it does not have.
+
+## :drill through the server
+
+`langpop/next` takes `practice: true`. The server has no loop to go round
+a list in, so `lp_practice_next` picks the practice item with the fewest
+practice entries in the journal, in list order among equals: asking
+repeatedly goes round them all with no state kept. The reply carries
+`phase: "practice"`, `limit_ms` and `practice_items` (the size of a
+round).
+
+The answer needs no flag. The phase was already remembered with the
+question in flight (slot 10) and `langpop/answer` records in it, so a
+client cannot turn an ordinary answer into practice after seeing how it
+went, or a practice answer into a review. The reply now says its `phase`.
+
+`client.p` gained `:drill [n]`, printing the server's latency against the
+limit. Run against a live server on a copy of the real profile: three
+answers, three `practice` lines in the journal, no belief or review
+changed.

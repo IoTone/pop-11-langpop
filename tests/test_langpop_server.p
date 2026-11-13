@@ -498,6 +498,46 @@ check('on the channel it was asked on', lp_journal(1)(2), "read");
 check('and still as a review', lp_jphase(lp_journal(1)), "review");
 check('so the rung moved', lp_review_of("w_neko", "read")(1), 2);
 
+;;; PRACTICE, THE OTHER DOOR TO :drill.  `practice: true` on next asks
+;;; for an item whose latest review was slow or missed; the phase rides
+;;; with the question, and the answer moves nothing.
+vars pq0 = result('langpop/next', jsonrpc_obj([% 'session_id', ssid,
+                                                 'practice', true %]));
+check('with nothing slow there is nothing to practise', pq0('item'), json_null);
+check_true('and the reply says so', isstring(pq0('note')));
+;;; A kana mastered, then reviewed right but slowly: held by its speed.
+repeat 3 times lp_record("hi_a", "read", 1, "right", 100) endrepeat;
+{% 1, lp_now_ms() - 1 %} -> lp_reviews(lp_bkey("slipper", "hi_a", "read"));
+lp_record_phase("review", "hi_a", "read", 1, "right", 4000);
+vars pbel = lp_bel("hi_a", "read"), prev = lp_review_of("hi_a", "read"),
+     pjn = length(lp_journal);
+vars pq = result('langpop/next', jsonrpc_obj([% 'session_id', ssid,
+                                                'practice', true %]));
+check('now the slow kana is what practice asks', pq('item'), 'hi_a');
+check('as practice', pq('phase'), 'practice');
+check('with the time it is held to', pq('limit_ms'), 2000);
+check('and how many a round is', pq('practice_items'), 1);
+vars pa = result('langpop/answer',
+                 jsonrpc_obj([% 'session_id', ssid, 'item', 'hi_a',
+                                'answer', 'zzz' %]));
+check('a practice answer is recorded', pa('recorded'), true);
+check('and the reply says what it was for', pa('phase'), 'practice');
+check('in the journal, as practice', lp_jphase(lp_journal(1)), "practice");
+check('one line of it', length(lp_journal), pjn + 1);
+check('a wrong one moves no belief', lp_bel("hi_a", "read"), pbel);
+check('and no review', lp_review_of("hi_a", "read"), prev);
+vars pq2 = result('langpop/next', jsonrpc_obj([% 'session_id', ssid,
+                                                 'practice', true %]));
+check('asking again goes round to it again', pq2('item'), 'hi_a');
+vars pa2 = result('langpop/answer',
+                  jsonrpc_obj([% 'session_id', ssid, 'item', 'hi_a',
+                                 'answer', 'a' %]));
+check('a right one moves nothing either', lp_bel("hi_a", "read"), pbel);
+check_true('and comes back with its time', isnumber(pa2('latency_ms')));
+vars pq3 = result('langpop/next', jsonrpc_obj([% 'session_id', ssid %]));
+check_true('an ordinary next is not practice', pq3('phase') /= 'practice');
+check('and carries no limit', pq3('limit_ms'), json_null);
+
 ;;; THE CHANNEL THE ANSWER WAS ABOUT.  `belief` is the gate channel's,
 ;;; which answers "is this item known"; a listening answer moves a
 ;;; different number, and without `channel_belief` nothing outside the

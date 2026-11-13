@@ -597,6 +597,23 @@ define lp_m_next(msg) -> res;
         lvars hitem2 = lp_choose_hear();
         if hitem2 then hitem2 -> item; "hear" -> ch endif;
     endunless;
+    ;;; PRACTICE, when the caller asks for it: `practice: true`.  Instead
+    ;;; of whatever is next, one of the items whose latest review was
+    ;;; slow or missed -- see lp_practice in langpop.p, which this is the
+    ;;; other door to.  The phase is what makes it count for nothing, and
+    ;;; the phase is remembered with the question, so the answer needs no
+    ;;; flag of its own and cannot be turned into practice after the fact.
+    lvars plimit = false, ptotal = 0;
+    if lp_param(msg, 'practice') == true then
+        lp_practice_next() -> (item, plimit, ptotal);
+        false -> ch; false -> requeued; "practice" -> phase;
+        unless item then
+            jsonrpc_obj([% 'item', json_null,
+                           'note', 'nothing to practise -- no latest review here was slow or missed' %])
+                -> res;
+            return;
+        endunless;
+    endif;
     unless item then
         jsonrpc_obj([% 'item', json_null,
                        'note', 'nothing here can be checked by typing -- try assign' %])
@@ -639,6 +656,10 @@ define lp_m_next(msg) -> res;
                    ;;; something they already know rather than a fresh
                    ;;; failure waiting to happen.
                    'phase', lp_jkey(phase),
+                   ;;; For practice: the time this item is held to, and
+                   ;;; how many items a round of practice is.
+                   'limit_ms', plimit or json_null,
+                   'practice_items', ptotal,
                    'reviews_due', lp_review_count(),
                    'belief', lp_bel(item, ch) %]) -> res;
 enddefine;
@@ -829,8 +850,8 @@ define lp_m_answer(msg) -> res;
     ;;; In the phase the question was ASKED in, and only when the answer
     ;;; is to the question in flight -- a client answering something else
     ;;; is learning, whatever the last question happened to be.
-    lp_record_phase(if asked then s(10) else "learn" endif,
-                    item, ach, 1, outcome, used);
+    lvars aphase = if asked then s(10) else "learn" endif;
+    lp_record_phase(aphase, item, ach, 1, outcome, used);
     lp_undo_stop();
     lp_answered(item);
     ;;; A rung finished by this answer moves the student now, and the
@@ -884,6 +905,11 @@ define lp_m_answer(msg) -> res;
                    'channel', lp_jkey(ach),
                    'channel_belief', lp_bel(item, ach),
                    'latency_ms', used,
+                   ;;; What the answer was FOR.  A practice answer moved
+                   ;;; nothing, and a client should be able to say so
+                   ;;; rather than show a belief that did not change as
+                   ;;; though it had been earned or lost.
+                   'phase', lp_jkey(aphase),
                    'latency_source', if timed then 'server' else 'client' endif,
                    'tier', 1 %]) -> res;
 enddefine;
