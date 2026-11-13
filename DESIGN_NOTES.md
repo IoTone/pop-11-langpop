@@ -3998,3 +3998,23 @@ carries `to_work_on` (`item`, `form`, `outcome`, `latency_ms`; outcome
 prints the same block the TUI does. Checked against a live server on a
 copy of the real profile: the same 20 hiragana, 16 katakana and 4
 dakuten as the TUI lists.
+
+## --audio-clean
+
+The cache key is the filename, so every change of voice, rate, model or
+lengthening writes new names and leaves the old. After a fortnight the
+Japanese cache held 1,195 files of which 424 were in use.
+
+`lp_audio_stale` computes what is in use rather than guessing at what is
+old: every name the present config would ask for, over every item of the
+language, every pair word and every declared rate. A file is stale when
+its name has a recording's shape (`name-voice-rate-digits` with a known
+extension) and is not one of those. The listening page, `.playing.wav`
+and anything else are not recordings and are never candidates. With no
+voice configured for a language, nothing there is touched: a missing
+config would otherwise make every recording look unused.
+
+Report by default; `--yes` removes. Proved on a copy of the real cache:
+770 removed, then `--audio preschool` for both languages made 0 and
+found all 212 and 88 cached, and a second report found nothing. The
+real cache was only reported on.

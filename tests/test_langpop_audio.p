@@ -1552,5 +1552,48 @@ lp_audio_make("w_neko", "normal") -> (path, made, why);
 check_false('a word\'s sidecar says nothing of the kind',
             has('lengthened', lp_read_file(substring(1, length(path) - 4, path) <> '.json')));
 
+;;; ------------------------------------------------ what nothing plays
+;;; A changed voice writes new names and leaves the old ones; the
+;;; cleaner finds exactly those, and removes them only when told.
+check('a recording has a name of a known shape',
+      lp_audio_stem('hi_a-Kyoko-normal-14029705.wav'), 'hi_a-Kyoko-normal-14029705');
+check('and so does its sidecar',
+      lp_audio_stem('hi_a-Kyoko-normal-14029705.json'), 'hi_a-Kyoko-normal-14029705');
+check('the listening page is not a recording', lp_audio_stem('listen-preschool.html'), false);
+check('nor the scratch copy that is played', lp_audio_stem('.playing.wav'), false);
+check('nor a wav somebody else put there', lp_audio_stem('my-notes.wav'), false);
+
+sysobey('rm -rf ' <> lp_audio_lang_dir("ja"));
+lp_write_file(lp_audio_conf_path(),
+    '{"ja": {"cmd": "cp %i %o", "voice": "old", "model": "m"}}');
+lp_voices_load();
+lvars oldp, newp, stl, skept;
+lp_audio_make("hi_a", "normal") -> (oldp, made, why);
+lp_write_file(lp_audio_lang_dir("ja") <> 'listen-preschool.html', 'a page');
+lp_audio_stale("ja") -> (stl, skept);
+check('with the voice that made it, nothing is stale', stl, []);
+check('and the wav and its sidecar are both in use', skept, 2);
+lp_write_file(lp_audio_conf_path(),
+    '{"ja": {"cmd": "cp %i %o", "voice": "new", "model": "m"}}');
+lp_voices_load();
+lp_audio_make("hi_a", "normal") -> (newp, made, why);
+lp_audio_stale("ja") -> (stl, skept);
+check('a new voice leaves the old recording behind, and its sidecar',
+      length(stl), 2);
+check_true('the old wav is one of them', member(oldp, stl) /== false);
+check_true('the new one is not', member(newp, stl) == false);
+lp_audio_clean(false);
+check_true('a report removes nothing', sys_file_exists(oldp));
+lp_audio_clean(true);
+check_false('told to, it removes the old one', sys_file_exists(oldp));
+check_true('and keeps the one in use', sys_file_exists(newp));
+check_true('and anything that is not a recording',
+           sys_file_exists(lp_audio_lang_dir("ja") <> 'listen-preschool.html'));
+;;; No voice named is a missing config, not an unused cache.
+lp_write_file(lp_audio_conf_path(), '{}');
+lp_voices_load();
+lp_audio_clean(true);
+check_true('with no voice at all, nothing is touched', sys_file_exists(newp));
+
 sysobey('rm -rf ' <> tmpdir);
 test_summary();

@@ -1828,6 +1828,12 @@ two to three times louder than plain Kyoko and is much easier to follow:
         "rates": {"slow": "110", "normal": "150", "fast": "190"}}}
 ```
 
+Changing the voice, its rate or the lengthening leaves the old recordings
+on disk, unused. `./langpop --audio-clean` counts them and
+`./langpop --audio-clean --yes` removes them; recordings the present
+configuration would play are never touched, and neither is anything that
+is not a recording.
+
 `voice` is only a label for the recordings' filenames, so keep spaces and
 brackets out of it; the real voice name goes in `cmd`. After changing the
 voice, run `./langpop --lang ja --audio preschool` again so the recordings

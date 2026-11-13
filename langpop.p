@@ -7705,7 +7705,7 @@ enddefine;
 define lp_main();
     lvars args = poparglist, a, user = false, display = false,
           batch = false, checkonly = false, auditonly = false,
-          depsonly = false,
+          depsonly = false, audioclean = false, sayyes = false,
           sheetonly = false, audioonly = false, rate = false,
           voicetest = false, vtitem = false, rest = [];
     find_dir() -> langpop_dir;
@@ -7734,6 +7734,8 @@ define lp_main();
         elseif a = '--check' then true -> checkonly; tl(args) -> args;
         elseif a = '--audit' then true -> auditonly; tl(args) -> args;
         elseif a = '--deps' then true -> depsonly; tl(args) -> args;
+        elseif a = '--audio-clean' then true -> audioclean; tl(args) -> args;
+        elseif a = '--yes' then true -> sayyes; tl(args) -> args;
         elseif a = '--chart' then
             consword(hd(tl(args))) -> sheetonly; tl(tl(args)) -> args;
         elseif a = '--sheet' then "today" -> sheetonly; tl(args) -> args;
@@ -7796,6 +7798,13 @@ define lp_main();
     if auditonly then lp_audit_show(); return endif;
     ;;; What this machine has of what the tutor reaches for.  No student.
     if depsonly then lp_deps_show(); return endif;
+    ;;; Recordings the present config would never play.  Lists; removes
+    ;;; only with --yes.
+    if audioclean then
+        lp_load_audio();
+        lp_audio_clean(sayyes);
+        return;
+    endif;
     ;;; Ahead of time, and with no student: the audio of an item is a
     ;;; property of the graph, like a card.
     if audioonly then

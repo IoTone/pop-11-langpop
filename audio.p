@@ -1042,6 +1042,132 @@ define lp_audio_level(level, rate) -> (made, cached, skipped);
     endfor;
 enddefine;
 
+;;; ------------------------------------------------ what nothing plays
+;;; THE CACHE ONLY GROWS.  The key is the filename, so a changed voice,
+;;; rate, model, spelling or lengthening writes a NEW name and the old
+;;; one stays: correct, and never read again.  One student's fortnight
+;;; left 1,195 files where about 450 are in use -- plain Kyoko at 175,
+;;; then Kyoko (Enhanced), then the lengthened kana.
+;;;
+;;; What is IN USE is computed, not guessed: every name the present
+;;; config would ask for, for every item of the language, every pair
+;;; word, and every rate the voice declares, made or not.  A file is
+;;; stale when it has the shape of a recording's name and is not one of
+;;; those.  Anything else in the directory -- the listening page, the
+;;; scratch copy that is played, a file somebody put there -- is not a
+;;; recording and is left alone.
+;;;
+;;; lp_audio_stale lists; lp_audio_clean removes only when told to.
+;;; Nothing here is hard to get back (--audio <level> makes it again)
+;;; but a tool that deletes should be asked twice.
+
+vars procedure lp_audio_base;
+
+;;; The stem a recording's name must have: something-voice-rate-DIGITS.
+define lp_audio_stem(file) -> stem;
+    lvars file, stem = false, s, i, n;
+    returnif(file = '' or file(1) == `.`);
+    if isendstring('.raw.wav', file) then
+        substring(1, length(file) - 8, file) -> s;
+        if isendstring('.wav', s) then substring(1, length(s) - 4, s) -> s endif;
+    elseif isendstring('.wav.txt', file) then substring(1, length(file) - 8, file) -> s
+    elseif isendstring('.wav', file) then substring(1, length(file) - 4, file) -> s
+    elseif isendstring('.json', file) then substring(1, length(file) - 5, file) -> s
+    else return
+    endif;
+    length(s) -> n; n -> i;
+    while i >= 1 and isnumbercode(s(i)) do i - 1 -> i endwhile;
+    returnunless(i < n and i >= 2 and s(i) == `-`);
+    s -> stem;
+enddefine;
+
+;;; The files in a directory, by asking ls: sys_file_match is not to be
+;;; trusted on macOS.
+define lp_dir_files(dir) -> files;
+    lvars dir, files = [], tmp = dir <> '.listing', s, i, start = 1, len;
+    dlocal pop_file_versions = false;
+    returnunless(sys_file_exists(dir));
+    sysobey('ls -1 \'' <> dir <> '\' > \'' <> tmp <> '\' 2>/dev/null');
+    lp_read_file(tmp) -> s;
+    if sys_file_exists(tmp) then sysdelete(tmp).erase endif;
+    returnunless(s);
+    length(s) -> len;
+    for i from 1 to len do
+        if subscrs(i, s) == `\n` then
+            if i > start then
+                files <> [% substring(start, i - start, s) %] -> files;
+            endif;
+            i + 1 -> start;
+        endif;
+    endfor;
+enddefine;
+
+define lp_audio_stale(lang) -> (stale, kept);
+    lvars lang, stale = [], kept = 0, i, r, p, w, pr, why, f, stem,
+          dir = lp_audio_lang_dir(lang),
+          want = newproperty([], 4096, false, "perm");
+    define lconstant note(p);
+        lvars p, b;
+        returnunless(p);
+        lp_audio_base(p) -> b;
+        true -> want(consword(substring(1, length(b) - 4, b)));
+    enddefine;
+    returnunless(lp_voice(lang));
+    for r in lp_audio_rates(lang) do
+        for i in lp_items do
+            nextunless(lp_ilang(i) == lang);
+            lp_audio_name(i, r) -> (p, why);
+            note(p);
+            if lp_kind(i) == "sound" or lp_kind(i) == "confusion" then
+                for pr in lp_pairs_of(i) do
+                    for w in pr do
+                        nextunless(lp_pair_lang(w) == lang);
+                        lp_audio_name_of(lp_pair_word_name(w), w, lang, r)
+                            -> (p, why);
+                        note(p);
+                    endfor;
+                endfor;
+            endif;
+        endfor;
+    endfor;
+    for f in lp_dir_files(dir) do
+        lp_audio_stem(f) -> stem;
+        nextunless(stem);
+        if want(consword(stem)) then kept + 1 -> kept
+        else stale <> [% dir <> f %] -> stale
+        endif;
+    endfor;
+enddefine;
+
+define lp_audio_clean(doit);
+    lvars doit, lang, stale, kept, f, bytes, n, total = 0;
+    dlocal pop_file_versions = false;
+    for lang in lp_langs() do
+        unless lp_voice(lang) then
+            ;;; With no voice named, NOTHING is "what the config would
+            ;;; ask for", and every recording would look stale.  That is
+            ;;; a config that is missing, not a cache that is unused.
+            printf('audio: no voice for %p, so its recordings are left alone\n',
+                   [^lang]);
+            nextloop;
+        endunless;
+        lp_audio_stale(lang) -> (stale, kept);
+        0 -> bytes; 0 -> n;
+        for f in stale do
+            bytes + (sysfilesize(f) or 0) -> bytes; n + 1 -> n;
+            if doit then sysdelete(f).erase endif;
+        endfor;
+        total + n -> total;
+        printf('audio: %p -- %p file(s) in use, %p %p (%pKB)\n',
+               [% lang, kept, n,
+                  if doit then 'removed' else 'no longer used' endif,
+                  bytes div 1024 %]);
+    endfor;
+    if total > 0 and not(doit) then
+        printf('audio: nothing was removed.  --audio-clean --yes removes them.\n');
+    endif;
+enddefine;
+
 ;;; ------------------------------------------------- the listening test
 ;;; The one part of Stage 0 that is not wiring: whether the Japanese is
 ;;; good enough to teach pronunciation with is a question for an ear, and
