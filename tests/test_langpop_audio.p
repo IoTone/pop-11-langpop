@@ -643,8 +643,38 @@ check_true(':audio off means no listening questions', not(lp_can_hear()));
 check_true('so the listening pool is empty', lp_hear_plan() == []);
 lp_question("w_neko", "read") -> (hsh, hpr, hans, hopt);
 check('and reading is unaffected by it', hsh, "type");
+;;; BUT IT IS NOT AN EXCUSE.  The machine can still speak, so what needs
+;;; an ear waits for the switch; it is not waved through.  Read the
+;;; other way, turning the sound off removed the listening half of
+;;; every rung.
+check_true('the machine is still able to', lp_hear_able());
+check_true('so hearing is still something this build can check',
+           lp_verifiable("hear"));
 true -> lp_sound;
 check_true(':audio on gives them back', lp_can_hear());
+
+;;; A MUTED SPEAKER is the same kind of thing: not now, rather than
+;;; cannot.  The machine is stood in for -- a test must not depend on
+;;; the volume of whatever it runs on, and must never change it.
+lvars realprobe = lp_mute_probe, probes = 0, is_muted = true;
+procedure() -> y; lvars y = is_muted; probes + 1 -> probes endprocedure
+    -> lp_mute_probe;
+check_true('nobody is asked unless this process plays the sound',
+           lp_can_hear() and probes == 0);
+true -> lp_mute_watch; false -> lp_mute_at;
+check_true('muted means no listening questions', not(lp_can_hear()));
+check_true('and an empty listening pool', lp_hear_plan() == []);
+check_true('but the machine is able, so nothing is excused',
+           lp_hear_able() and lp_verifiable("hear"));
+lvars probes1 = probes;
+lp_can_hear().erase; lp_can_hear().erase;
+check('the answer is kept a few seconds, not asked every time',
+      probes, probes1);
+false -> is_muted;
+check_true('and asked fresh when it matters', not(lp_muted_now()));
+check_true('unmuted, they come back', lp_can_hear());
+false -> lp_mute_watch; false -> lp_mute_at; false -> lp_mute_said;
+realprobe -> lp_mute_probe;
 ;;; The n5 words are imported content, so without the generated graph
 ;;; there is no unrendered word to ask about, and the pair is skipped
 ;;; rather than asked of nothing.
@@ -707,6 +737,20 @@ true -> lp_sound;
 [] -> played; [] -> typed_in;
 lp_drill("w_neko", "read").erase;
 check('nothing is said when no answer was given', played, []);
+;;; Muted between choosing a listening question and asking it: nothing
+;;; is played, nothing is asked, nothing is recorded.
+lvars realprobe2 = lp_mute_probe, mjn = length(lp_journal);
+procedure() -> y; lvars y = true; endprocedure -> lp_mute_probe;
+true -> lp_mute_watch; false -> lp_mute_at; false -> lp_mute_said;
+[] -> played; ['neko'] -> typed_in;
+check('a listening question into a muted speaker is not asked',
+      lp_drill("w_neko", "hear"), false);
+check('nothing was played', played, []);
+check('nothing was read from the student', typed_in, ['neko']);
+check('and nothing was recorded', length(lp_journal), mjn);
+check_true('and they were told why', lp_mute_said);
+false -> lp_mute_watch; false -> lp_mute_at; false -> lp_mute_said;
+realprobe2 -> lp_mute_probe;
 realplay -> lp_audio_play; realread -> lp_readline;
 
 ;;; The answer key is the reading question's, unchanged.  That is the

@@ -3887,3 +3887,34 @@ went, or a practice answer into a review. The reply now says its `phase`.
 limit. Run against a live server on a copy of the real profile: three
 answers, three `practice` lines in the journal, no belief or review
 changed.
+
+## Muted, and cannot against not now
+
+A listening question played into a muted speaker is asked of somebody
+who heard nothing. `lp_drill` already refuses to mark a question it
+could not play, but a muted machine plays without error. On macOS the
+tutor now asks (`osascript`, `get volume settings`: muted, or volume 0).
+The probe takes about 160 ms, so the answer is cached for five seconds
+and asked fresh at the top of `lp_drill` for a `hear` question, before
+the question is built and before its clock starts. Only the TUI watches
+(`lp_mute_watch`): the server's speaker says nothing about a client's.
+The student is told once on each change, and the setting is never
+touched.
+
+Verified with the probe stood in for, in both directions, and live with
+the sound on. NOT verified on real hardware in the muted state, because
+that would mean muting the user's machine.
+
+Building it showed a loophole in `:audio off`. `lp_verifiable("hear")`
+read `lp_can_hear`, which the switch makes false, so the listening
+criteria became "not checkable here", which is excused, which let a rung
+pass with its listening half never asked. Split in two:
+
+- `lp_hear_able`: a voice is configured and the client can play. False
+  means excused.
+- `lp_can_hear`: that, and sound is on, and not muted. False alone means
+  wait.
+
+`lp_verifiable` reads the first. With sound off on a copy of the real
+profile, `vocabulary(50, hear)` now stays in "still to finish" and
+`:status` adds "listening is waiting".

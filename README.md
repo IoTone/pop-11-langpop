@@ -2087,14 +2087,16 @@ just got wrong.
 
 ### When there is sound, and turning it off
 
-A sitting is mostly silent. Sound plays in two places only:
+Sound plays in three places:
 
 - **A listening question.** About one question in four is asked by ear. In
   Japanese that is a single hiragana kana (あ, ゆ, が …), so what plays is
   one short syllable and then nothing more. That is the whole question.
+- **After an answer.** Once a reading, counting or choice answer is in, the
+  item is said once (`:aids say off` stops this).
 - **`:say <item>`**, whenever the student asks for it.
 
-Reading questions are not read aloud.
+A reading question is never read aloud before it is answered.
 
 ```
 Aoi> :audio off
@@ -2108,6 +2110,27 @@ before. Anything that needs the student's ear waits, unasked, rather than
 being marked wrong. The switch is kept in the profile, like `:rate`, so it
 is still off tomorrow. `:audio on` turns it back on, and `:audio` says which
 it is.
+
+**Waiting is not the same as excused.** A machine with no voice cannot ask
+a listening question at all, so the listening half of a level is excused
+there and `:status` names it as "not checkable here". A student who has
+turned the sound off is on a machine that *can* ask, so the listening half
+waits for them: the level is not finished without it, and `:status` says
+"listening is waiting".
+
+**A muted speaker is treated the same way.** On a Mac the tutor checks
+whether the sound is muted or turned down to nothing before it asks by
+ear. If it is, no listening question is asked, nothing is marked, and the
+student is told once:
+
+```
+  Your sound is muted, or turned right down, so I will not ask
+  listening questions -- you would be marked on what you could
+  not hear.  Turn it up and they come back.  Reading goes on.
+```
+
+The tutor never changes the volume itself. Other systems are not checked;
+there, `again` at a listening question is still the remedy.
 
 ### Speaking it
 

@@ -417,10 +417,35 @@ enddefine;
 ;;; one place that decides whether a listening question is possible
 ;;; decides this too.
 vars lp_sound = true;
+vars procedure lp_muted;
+
+;;; CANNOT, AND NOT NOW, ARE DIFFERENT ANSWERS, and they were one.
+;;;
+;;; lp_hear_able: is there a voice here, and a client that can play it.
+;;; A fact about the machine.  When it is false, nothing that needs an
+;;; ear can ever be asked here, and a criterion on `hear` is EXCUSED --
+;;; the lp_ungateable argument, a tool's limit is not a student's.
+;;;
+;;; lp_can_hear: that, and the student has not said `:audio off`, and
+;;; the speaker is not muted.  A fact about this minute.  When only this
+;;; one is false, listening questions are not chosen and what needs an
+;;; ear WAITS.
+;;;
+;;; lp_verifiable read the second where it meant the first, so `:audio
+;;; off` made vocabulary(50, hear) "not checkable here", which excused
+;;; it, which let a rung be passed with its listening half never asked:
+;;; turn the sound off and half the criteria go away.  Nobody did it; the
+;;; status line said it in so many words -- "not holding you up".
+define lp_hear_able() -> yes;
+    lvars yes = (lp_audio_loaded and lp_audio_ready(lp_lang)) and true;
+    ;;; A client that said it cannot play is a machine that cannot.
+    if yes and not(lp_cap_play()) then false -> yes endif;
+enddefine;
 
 define lp_can_hear() -> yes;
     lvars yes = (lp_audio_loaded and lp_audio_ready(lp_lang)) and true;
     if yes and not(lp_sound) then false -> yes endif;
+    if yes and lp_muted() then false -> yes endif;
     ;;; AND A CLIENT THAT SAID IT CANNOT PLAY GETS NO LISTENING
     ;;; QUESTIONS, however well this machine can speak.  Until now the
     ;;; server asked whether IT could hear and sent the answer to a
@@ -467,7 +492,7 @@ enddefine;
 define lp_verifiable(ch);
     lvars ch;
     member(ch, VERIFIABLE)
-    or (member(ch, VERIFIABLE_HEARD) and lp_can_hear())
+    or (member(ch, VERIFIABLE_HEARD) and lp_hear_able())
     or (member(ch, VERIFIABLE_SEEN) and lp_can_see())
 enddefine;
 
@@ -1008,6 +1033,80 @@ enddefine;
 define lp_now_ms() -> ms;
     lvars ms;
     sys_microtime() div 1000 -> ms;
+enddefine;
+
+;;; -------------------------------------------------------------- muted
+;;; A LISTENING QUESTION PLAYED INTO A MUTED SPEAKER is asked of a
+;;; student who heard nothing, and the answer -- a guess, or an honest "I
+;;; do not know" -- is filed against them.  lp_drill already refuses to
+;;; mark a question it could not PLAY; a muted machine plays perfectly,
+;;; to nobody.  The first report of "the audio is broken" on this tutor
+;;; was a muted laptop.
+;;;
+;;; So the machine is asked.  macOS answers through osascript; anywhere
+;;; else there is nobody to ask and the answer is "not that I know",
+;;; which is what it was before.  Volume at nought is muted by another
+;;; name.  Nothing is ever CHANGED: the student muted it for a reason
+;;; the tutor does not know, and is told, not overruled.
+;;;
+;;; Only where this process is the one playing: lp_mute_watch is set by
+;;; the TUI's session.  The server's own speaker says nothing about a
+;;; client's, and a test must not depend on the volume of the machine it
+;;; runs on.
+;;;
+;;; Asking costs about 160 ms, so the answer is kept for MUTE_TTL and
+;;; asked again fresh at the one moment it matters -- just before a
+;;; listening question plays, and before its clock starts.
+lconstant MUTE_TTL = 5000;
+vars lp_mute_watch = false,
+     lp_mute_state = false, lp_mute_at = false,
+     lp_mute_said = false;
+
+;;; A procedure VARIABLE, so a test can stand in for the machine.
+define vars lp_mute_probe() -> yes;
+    lvars yes = false;
+    returnunless(sys_file_exists('/usr/bin/osascript'));
+    sysobey('[ "$(/usr/bin/osascript -e \'set v to get volume settings\''
+            <> ' -e \'set m to false\' -e \'try\''
+            <> ' -e \'if (output muted of v) is true then set m to true\''
+            <> ' -e \'if (output volume of v) is 0 then set m to true\''
+            <> ' -e \'end try\' -e \'m\' 2>/dev/null)" = true ]');
+    pop_status == 0 -> yes;
+enddefine;
+
+;;; Asked now, whatever was last heard.
+define lp_muted_now() -> yes;
+    lvars yes = false;
+    returnunless(lp_mute_watch);
+    lp_mute_probe() -> yes;
+    yes -> lp_mute_state; lp_now_ms() -> lp_mute_at;
+enddefine;
+
+define lp_muted() -> yes;
+    lvars yes = false;
+    returnunless(lp_mute_watch);
+    if lp_mute_at and lp_now_ms() - lp_mute_at < MUTE_TTL then
+        lp_mute_state -> yes
+    else lp_muted_now() -> yes
+    endif;
+enddefine;
+
+;;; SAID ONCE, when it becomes true, and once when it stops being: the
+;;; sitting goes on with reading meanwhile, and a line on every question
+;;; would be nagging about a choice that may be deliberate.
+define lp_mute_note();
+    returnunless(lp_mute_watch and lp_sound and lp_hear_able());
+    if lp_muted() then
+        unless lp_mute_said then
+            true -> lp_mute_said;
+            printf('  Your sound is muted, or turned right down, so I will not ask\n');
+            printf('  listening questions -- you would be marked on what you could\n');
+            printf('  not hear.  Turn it up and they come back.  Reading goes on.\n');
+        endunless;
+    elseif lp_mute_said then
+        false -> lp_mute_said;
+        printf('  Sound is back, so listening questions are too.\n');
+    endif;
 enddefine;
 
 ;;; OUTCOMES, and why there are four of them rather than two.
@@ -4107,6 +4206,16 @@ define lp_drill(item, ch) -> done;
     lvars item, ch, shape, prompt, answer, options, o, i = 0, t0, i0, line, typed,
           other, kslip = false, retried = false, heard = false, shown;
     true -> done;
+    ;;; MUTED SINCE THIS QUESTION WAS CHOSEN.  Asked fresh, before the
+    ;;; question is built and long before its clock starts: the choice
+    ;;; was made on an answer up to MUTE_TTL old, and this is the last
+    ;;; moment at which not asking costs the student nothing.  Here and
+    ;;; not lower down, because lp_question would decline a muted
+    ;;; listening question on its own and say nothing about why.
+    if ch == "hear" and lp_muted_now() then
+        lp_mute_note();
+        false -> done; return;
+    endif;
     lp_question(item, ch) -> (shape, prompt, answer, options);
     returnif(shape == "none")(false -> done);
     if shape == "listen" or shape == "listen_pick" then true -> heard endif;
@@ -5520,6 +5629,13 @@ define lp_status();
         printf('    not checkable here, so not holding you up: %p\n',
                [^lexcused]);
     endif;
+    ;;; Able to, and not doing it: said, so that "0 of 50 by ear" is not
+    ;;; read as fifty words nobody has learned.
+    if lp_hear_able() and not(lp_can_hear()) then
+        printf('    listening is waiting: %p\n',
+               [% if not(lp_sound) then 'sound is off -- :audio on brings it back'
+                  else 'your sound is muted or turned right down' endif %]);
+    endif;
     if lpassed then
         printf('    %p is finished%p\n',
                [% lp_level,
@@ -6824,6 +6940,8 @@ define lp_session();
     ;;; them are not study.
     lp_now_ms() -> lp_sit_t0;
     false -> lp_sit_said;
+    ;;; This process plays the sound, so its speaker is the one to ask.
+    true -> lp_mute_watch; false -> lp_mute_at; false -> lp_mute_said;
     ;;; The name and the recognition question were typed before this, and
     ;;; a long pause over them is not time this sitting owes back.
     0 -> lp_idle_ms;
@@ -6838,6 +6956,7 @@ define lp_session();
         quitif(line == termin);
         lp_trim(line) -> line;
         if line = '' then
+            lp_mute_note();
             lp_next();
             ;;; After the answer, not before the question: a rung
             ;;; finished by the answer just given should be said now.
