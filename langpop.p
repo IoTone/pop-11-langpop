@@ -6493,9 +6493,9 @@ define lp_help();
     printf('  :oops            that answer was an accident -- ask me again later\n');
     if lp_has_syllabary() then
         printf('  :aids            which helps are on (slip, oops, later,\n');
-        printf('                   glyph)\n');
+        printf('                   glyph, say)\n');
     else
-        printf('  :aids            which helps are on (slip, oops, later)\n');
+        printf('  :aids            which helps are on (slip, oops, later, say)\n');
     endif;
     printf('  :card <item>     draw it, in the terminal or in a viewer\n');
     printf('  :say <item>      hear it said, if a voice is installed\n');
