@@ -624,6 +624,44 @@ lp_measure_in([hi_a], 2000, lp_period_start, "review") -> (racc, , rcnt);
 check('and now sees exactly the review', rcnt, 1);
 check('which went well', racc, 1.0);
 
+;;; EACH ITEM ONCE, BY ITS LATEST REVIEW -- lp_measure_latest.
+lvars lacc2, lfast2, ln2, lmiss;
+lp_measure_latest([hi_a hi_i], 2000, lp_period_start)
+    -> (lacc2, lfast2, ln2, lmiss);
+check('one item reviewed of two is one, whatever else', ln2, 1);
+t_due_now("hi_a");
+lp_record_phase("review", "hi_a", "read", 1, "right", 100);
+lp_measure_latest([hi_a hi_i], 2000, lp_period_start)
+    -> (lacc2, lfast2, ln2, lmiss);
+check('two reviews of the same kana still cover one item, not two', ln2, 1);
+t_due_now("hi_a");
+lp_record_phase("review", "hi_a", "read", 1, "right", 4000);
+lp_measure_latest([hi_a], 2000, lp_period_start)
+    -> (lacc2, lfast2, ln2, lmiss);
+check('the latest review is the one that counts: right', lacc2, 1.0);
+check('but slow, so not within the time', lfast2, 0.0);
+check('and it is named as the thing to work on', lmiss(1)(1), "hi_a");
+t_due_now("hi_a");
+lp_record_phase("review", "hi_a", "read", 1, "wrong", 900);
+lp_measure_latest([hi_a], 2000, lp_period_start)
+    -> (lacc2, lfast2, ln2, lmiss);
+check('a wrong latest review holds it', lacc2, 0.0);
+check('named with what went wrong', lmiss(1)(2), "wrong");
+t_master("hi_i"); t_due_now("hi_i");
+lp_record_phase("review", "hi_i", "read", 1, "right", 4000);
+t_due_now("hi_i");
+lp_record_phase("review", "hi_i", "read", 1, "right", 900);
+lp_measure_latest([hi_i], 2000, lp_period_start)
+    -> (lacc2, lfast2, ln2, lmiss);
+check('a fast review after a slow one replaces it -- a slow start is not for good',
+      lfast2, 1.0);
+check('and nothing is left to name', lmiss, []);
+lp_record("hi_a", "read", 1, "right", 900);
+lp_measure_latest([hi_a], 2000, lp_period_start)
+    -> (lacc2, lfast2, ln2, lmiss);
+check('a learning answer is not a review and does not replace it',
+      lacc2, 0.0);
+
 ;;; The period is a lower bound on the journal and nothing is deleted.
 lvars before = lp_period_start;
 lp_now_ms() + 1 -> lp_period_start;     ;;; as though the period had rolled
@@ -1190,7 +1228,7 @@ check_true('offered again afterwards', lp_can_later("hi_a"));
 ;;; tutor: an aid that cannot be refused is indistinguishable from a
 ;;; lower standard.
 lp_aids_reset();
-check('four of them', length(lp_aid_names()), 4);
+check('five of them', length(lp_aid_names()), 5);
 check_true('all on to begin with',
            lp_aid("slip") and lp_aid("oops") and lp_aid("later")
            and lp_aid("glyph"));

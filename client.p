@@ -338,7 +338,7 @@ define show_status();
             printf('    %p: no reviews yet this period (needs %p)\n',
                    [% p(c, 'criterion'), p(c, 'need') %]);
         elseif p(c, 'kind') = 'measured' then
-            printf('    %p: %p%% right, %p%% within %pms, over %p of %p reviews (need %p)\n',
+            printf('    %p: %p%% right, %p%% within %pms at the latest review, %p of %p reviewed (need %p)\n',
                    [% p(c, 'criterion'), round(p(c, 'accuracy') * 100),
                       round(p(c, 'within_latency') * 100), p(c, 'latency_ms'),
                       p(c, 'answers'), p(c, 'need'),

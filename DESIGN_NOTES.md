@@ -3747,3 +3747,39 @@ that wrote the answer down. `lp_journal_flush` already handled it (the
 marked pair is no longer in the list, so the file is rewritten whole);
 a test now pins it: save, answer, save, undo, save reads back one
 fewer, and appending carries on after.
+
+## Said aloud after reading, and each item once by its latest review
+
+Two changes that came from asking how the student leaves preschool.
+
+**Said aloud.** `vocabulary(50, hear)` is half the rung's words, and
+listening questions are only asked of words already mastered by eye, so
+the ear met each word for the first time when it was tested.
+`lp_say_after` now plays the cached normal-rate clip once a reading,
+counting or choice answer is recorded. It is an aid (`:aids say off`),
+because it costs about a second per answer and a student drilling for
+speed may want it gone; it never plays after a listening question, which
+has just played the same thing; it never synthesises. A pty sitting on a
+copy of the real profile with the mic open heard the word after each of
+four reading answers.
+
+**The criteria.** The words were not stuck: since the afternoon's sitting
+`hiragana_all` is known and all 50 are in the plan, tied at 0.45, so the
+next hundred questions are words. What was stuck was the kana. Measured on
+the same profile:
+
+| | every review this period | latest review of each item |
+|---|---|---|
+| hiragana | 83 reviews, 64% within 2 s | 60 of 69 reviewed, 40 fast |
+| katakana | 73 reviews, 75% | 61 of 69, 45 fast |
+| dakuten | 46 reviews (floor "met") | 38 of 46 reviewed |
+
+The left column needed about 516 fast hiragana reviews in a row to reach
+95%, from a 69-item set whose reviews are days apart, with sixteen days of
+the period left. And its floor counted reviews, so it was satisfied with
+nine hiragana and eight dakuten never reviewed at all. `lp_measure_latest`
+reads each item once: settled if burned, else its latest review this
+period. The floor is items. `lp_blend` and `lp_criterion_met` are
+unchanged; the row's `answers` now means items reviewed. `:status` lists
+the items whose latest review was slow or wrong, and how many are not yet
+reviewed, which is what the student can act on.

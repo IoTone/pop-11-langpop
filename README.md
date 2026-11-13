@@ -522,9 +522,19 @@ three days, a week and four weeks, and is then burned — four consecutive
 correct answers across that ladder and the item is done.
 
 Scores reset every 28 days on the student's own clock. The *reading*
-resets; the record never does. Exit criteria are measured over the reviews
-in the current period, because measured over a lifetime they report what
-it cost somebody to learn rather than what they know now.
+resets; the record never does. Exit criteria read **each item once, by
+its latest review this period** (or as settled, if it is burned), because
+measured over a lifetime, or even over every review of the month, they
+report what it cost somebody to learn rather than what they know now. A
+slow review a fortnight ago is replaced by the next one. Every item in the
+set has to have been reviewed this period, so nothing passes on a sample.
+
+`:status` names the items holding a criterion back:
+
+```
+    to work on (slow or missed at the latest review):
+      recognise(hiragana): は  つ  か  ん  め wrong  こ wrong  (9 not reviewed yet this period)
+```
 
 With nothing owed today the tutor says which day the next review falls
 on, rather than that it has run out of work.
@@ -1301,7 +1311,7 @@ unaffected.
 
 ## Teaching aids the student controls
 
-Four aids, each one switchable:
+Five aids, each one switchable:
 
 ```
 Aoi> :aids
@@ -1309,7 +1319,15 @@ Aoi> :aids
     on  oops   :oops takes back the answer you just gave
     off later  puts a question off until later today
     on  glyph  draw a complicated character big the first time
+    on  say    after you answer, I say it aloud
 ```
+
+`say` plays the item's recording once a reading, counting or choice answer
+is in, so a sitting spent reading is also a sitting spent hearing: the
+words arrive at the listening half of the rung already familiar. It plays
+after the clock has stopped, so it is no hint and costs no speed, and only
+recordings already made (`--audio <level>`) are used. `:audio off` silences
+it with everything else.
 
 `:aids later off` takes one away. **An aid that cannot be refused is
 indistinguishable from a lower standard**, and a learner who suspects they

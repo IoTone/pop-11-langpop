@@ -668,6 +668,47 @@ check('and the prompt is the SOUND, not the glyph', hpr, path);
 check_true('the glyph is nowhere in the prompt',
            not(has('ねこ', hpr)));
 
+;;; SAID ALOUD AFTER A READING ANSWER.  The player and the keyboard are
+;;; stood in for, so what is checked is what the drill ASKED to play.
+lvars played = [], realplay = lp_audio_play, realread = lp_readline,
+      typed_in = [];
+procedure(p) -> ok; lvars p, ok = true; played <> [^p] -> played endprocedure
+    -> lp_audio_play;
+procedure() -> l; lvars l;
+    if typed_in == [] then termin -> l
+    else hd(typed_in) -> l; tl(typed_in) -> typed_in endif;
+endprocedure -> lp_readline;
+['neko'] -> typed_in;
+lp_drill("w_neko", "read").erase;
+check('a reading answer is followed by the word, said once', played, [^path]);
+lp_undo_last().erase;
+[] -> played; ['zzz'] -> typed_in;
+lp_drill("w_neko", "read").erase;
+check('and so is a wrong one -- that is when it is needed most',
+      played, [^path]);
+lp_undo_last().erase;
+[] -> played; ['neko'] -> typed_in;
+lp_drill("w_neko", "hear").erase;
+check('a listening question plays it once and not again after',
+      length(played), 1);
+lp_undo_last().erase;
+lp_aid_set("say", false).erase;
+[] -> played; ['neko'] -> typed_in;
+lp_drill("w_neko", "read").erase;
+check(':aids say off keeps it quiet', played, []);
+lp_undo_last().erase;
+lp_aid_set("say", true).erase;
+false -> lp_sound;
+[] -> played; ['neko'] -> typed_in;
+lp_drill("w_neko", "read").erase;
+check('and so does :audio off', played, []);
+lp_undo_last().erase;
+true -> lp_sound;
+[] -> played; [] -> typed_in;
+lp_drill("w_neko", "read").erase;
+check('nothing is said when no answer was given', played, []);
+realplay -> lp_audio_play; realread -> lp_readline;
+
 ;;; The answer key is the reading question's, unchanged.  That is the
 ;;; whole design: one stimulus swapped, nothing else.
 lvars rsh, rpr, rans, ropt;

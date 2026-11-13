@@ -978,8 +978,11 @@ define lp_m_status(msg) -> res;
                ;;; the floor: a client that showed 100% over three
                ;;; reviews of a sixty-nine item set would be reporting
                ;;; a sample, not a skill.
-               lp_measure_in(items, ms, lp_period_start, "review")
-                   -> (acc, fast, n);
+               ;;; Each item once, by its latest review: `answers` is the
+               ;;; number of ITEMS read that way, which is what `need`
+               ;;; is a floor on.  See lp_measure_latest.
+               lp_measure_latest(items, ms, lp_period_start)
+                   -> (acc, fast, n, );
                lvars settled = lp_settled_count(items);
                ;;; Blended with the settled items -- see lp_blend.  Both
                ;;; counts stay in the reply, so a client can show what

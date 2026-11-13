@@ -1214,13 +1214,17 @@ enddefine;
 ;;; student's.  It is an aid by the test this list applies: a student who
 ;;; suspects they are leaning on it must be able to take it away, and
 ;;; reading 聞 small is itself a skill they may want to practise.
-lconstant AIDS = [slip oops later glyph];
+;;; `say` is the other one that forgives nothing.  It says the item
+;;; aloud once the answer is in, so a sitting spent reading is also a
+;;; sitting spent hearing.  An aid by the same test: it costs a second
+;;; per answer, and a student going for speed may want it gone.
+lconstant AIDS = [slip oops later glyph say];
 
 ;;; `true` has to be lifted in with ^, because `true` inside a list
 ;;; literal is the WORD true, which is not the boolean and is not false
 ;;; either -- so an unlifted default would read as on and never go off.
 vars lp_aids = newproperty([[slip ^true] [oops ^true] [later ^true]
-                            [glyph ^true]],
+                            [glyph ^true] [say ^true]],
                            8, false, "perm"),
      lp_aid_log = [];                   ;;; [{aid on? when_ms} ...]
 
@@ -1256,6 +1260,7 @@ define lp_aid_why(a) -> s;
     if     a == "slip"  then 'one more go when a typed answer looks mistyped'
     elseif a == "oops"  then ':oops takes back the answer you just gave'
     elseif a == "glyph" then 'a complicated character is drawn big first'
+    elseif a == "say"   then 'after you answer, I say it aloud'
     else                     'puts a question off until later today -- type it'
                              <> ' at a question'
     endif -> s;
@@ -1874,6 +1879,68 @@ enddefine;
 define lp_measure(items, latency_ms) -> (acc, fast, n);
     lvars items, latency_ms;
     lp_measure_in(items, latency_ms, false, false) -> (acc, fast, n);
+enddefine;
+
+;;; WHAT AN EXIT CRITERION READS: EACH ITEM ONCE, BY ITS LATEST REVIEW.
+;;;
+;;; lp_measure_in over this period's reviews was the first answer, and it
+;;; was wrong twice over, both found on a real profile twelve days in.
+;;;
+;;; It counted REVIEWS against a floor of ITEMS.  83 hiragana reviews met
+;;; the floor of 69 while nine of the 69 had not been reviewed at all --
+;;; some kana are owed again inside a day and others not for a week, so
+;;; the reviews pile onto the ones that come round fastest.  Dakuten
+;;; "covered" its 46 with 46 reviews of 38 kana.
+;;;
+;;; And it averaged the period's whole history.  The same student stood
+;;; at 64% within two seconds over those 83 and needed 95%: something
+;;; over 500 fast reviews in a row to get there, from a set of 69 whose
+;;; reviews are spaced over days, with sixteen days of the period left.
+;;; The first, slow reviews of a fortnight ago were deciding a criterion
+;;; that is meant to say whether the student can read NOW -- the same
+;;; bias lp_measure_in's own comment finds in the lifetime number, in a
+;;; window that was supposed to have fixed it.
+;;;
+;;; So each item in the set is read once: by its most recent review this
+;;; period, or as settled if it is burned.  The floor is then a count of
+;;; ITEMS, and every one of them has to have been shown, right and in
+;;; time, at its latest asking.  Nothing is easier: a single slow or
+;;; wrong latest review holds the item, and so the criterion, until the
+;;; next one replaces it.  What goes is the arithmetic that made a slow
+;;; start unforgivable for the rest of the month.  Reviews are only
+;;; owed on items already at mastery and spaced a day and more apart, so
+;;; a latest review is a retrieval after a gap, not a lucky repeat.
+;;;
+;;; n is the items READ THIS WAY, not counting settled ones, which
+;;; lp_blend adds.  `misses` lists the items whose latest review was
+;;; wrong or slow, newest first, as {item outcome latency}: what to work
+;;; on, by name, which no percentage says.
+define lp_measure_latest(items, latency_ms, since)
+        -> (acc, fast, n, misses);
+    lvars items, latency_ms, since, e, right = 0, quick = 0, n = 0,
+          misses = [], seen = newproperty([], 64, false, "perm"), i;
+    for i in items do
+        if lp_burned(i, lp_primary(i)) then "settled" -> seen(i) endif;
+    endfor;
+    ;;; lp_journal is newest first, so the first review met of an item is
+    ;;; its latest.
+    for e in lp_journal do
+        nextunless(e(3) == 1 and lp_jphase(e) == "review");
+        nextif(since and e(6) < since);
+        nextif(seen(e(1)));
+        nextunless(member(e(1), items));
+        true -> seen(e(1));
+        n + 1 -> n;
+        if lp_outcome_ok(e(4)) and e(5) <= latency_ms then
+            right + 1 -> right; quick + 1 -> quick;
+        else
+            if lp_outcome_ok(e(4)) then right + 1 -> right endif;
+            misses <> [% {% e(1), e(4), e(5) %} %] -> misses;
+        endif;
+    endfor;
+    if n == 0 then (0.0, 0.0) -> (acc, fast)
+    else ((right * 1.0) / n, (quick * 1.0) / n) -> (acc, fast)
+    endif;
 enddefine;
 
 ;;; --------------------------------------------------------- the persona
@@ -4005,6 +4072,29 @@ define lp_task_line(item, ch, shape, prompt) -> s;
     endif;
 enddefine;
 
+;;; SAID ALOUD ONCE THE ANSWER IS IN.  A student who reads ねこ a hundred
+;;; times and never hears it arrives at the listening half of the rung
+;;; -- vocabulary(50, hear) -- with the sound of nothing, and listening
+;;; questions are only asked about words already known by eye, so the
+;;; ear starts from zero exactly when it is tested.  Saying the item
+;;; after every reading, counting and choice answer puts the sound
+;;; beside the spelling the whole way up.
+;;;
+;;; AFTER the answer, never before: the clock has stopped and the answer
+;;; is recorded, so hearing it is not a hint and costs no speed.  Only a
+;;; clip already on disk at the normal rate -- the rule lp_hear_question
+;;; keeps, a student must not wait on a voice mid-sitting -- and nothing
+;;; at all after a listening question, which has just played it.
+;;; Nothing is recorded: hearing a word is exposure, not evidence.
+define lp_say_after(item, heard);
+    lvars item, heard, path, why;
+    returnif(heard);
+    returnunless(lp_aid("say") and lp_can_hear());
+    lp_audio_path(item, "normal") -> (path, why);
+    returnif(why);
+    lp_audio_play(path).erase;
+enddefine;
+
 define lp_drill(item, ch) -> done;
     lvars item, ch, shape, prompt, answer, options, o, i = 0, t0, i0, line, typed,
           other, kslip = false, retried = false, heard = false, shown;
@@ -4209,6 +4299,7 @@ define lp_drill(item, ch) -> done;
         endif;
     endif;
     lp_undo_stop();
+    lp_say_after(item, heard);
 enddefine;
 
 ;;; ----------------------------------------------------------- assignments
@@ -4917,8 +5008,10 @@ define lp_status_rows() -> rows;
             endif;
             ;;; Reviews, this period.  Not everything ever answered: see
             ;;; lp_measure_in for why that number cannot be passed.
-            lp_measure_in(items, ms, lp_period_start, "review")
-                -> (acc, fast, n);
+            ;;; Each item once, by its latest review this period: see
+            ;;; lp_measure_latest for why not every review.
+            lp_measure_latest(items, ms, lp_period_start)
+                -> (acc, fast, n, );
             lvars settled = lp_settled_count(items);
             lp_blend(acc, fast, n, settled) -> (acc, fast);
             {% "measured", round(acc * 100), round(fast * 100), ms, n,
@@ -4963,7 +5056,7 @@ define lp_status_text(r) -> txt;
     elseif r(6) == 0 then
         sprintf('all %p settled, nothing owed this period', [% r(9) %])
     else
-        sprintf('%p%% right, %p%% within %pms, over %p reviews and %p settled of %p (need %p)',
+        sprintf('%p%% right, %p%% within %pms at the latest review; %p reviewed and %p settled of %p (need %p)',
                 [% r(3), r(4), r(5), r(6), r(9), r(8), r(7) %])
     endif -> txt;
 enddefine;
@@ -5244,6 +5337,51 @@ define lp_progress();
     printf('\n  :status says what is left of %p.\n', [% lp_level %]);
 enddefine;
 
+;;; WHAT TO WORK ON, BY NAME.  "64% within 2000ms" tells a student they
+;;; are slow and not at what; the criterion is held by particular kana,
+;;; and those are what the next sitting can do something about.  For
+;;; each measured criterion of this rung: the items whose latest review
+;;; was slow or wrong, and how many have not been reviewed this period.
+;;; Nothing is printed for a criterion with nothing to name.
+define lp_status_work();
+    lvars e, c, ms, items, m, x, said = false, shown, n, rows = [];
+    for e in lp_exits do
+        nextunless(hd(e) == lp_lang and hd(tl(e)) == lp_level);
+        hd(tl(tl(e))) -> c; hd(tl(tl(tl(tl(e))))) -> ms;
+        nextif(prolog_complexterm(c)
+               and member(prolog_functor(c), [vocabulary kanji coverage]));
+        lp_ask(c, "criterion_items", 1) -> items;
+        nextif(items == []);
+        lvars acc, fast, rd, misses;
+        lp_measure_latest(items, ms, lp_period_start)
+            -> (acc, fast, rd, misses);
+        length(items) - rd - lp_settled_count(items) -> n;
+        nextif(misses == [] and n <= 0);
+        unless said then
+            printf('\n    to work on (slow or missed at the latest review):\n');
+            true -> said;
+        endunless;
+        ;;; A set of one is the criterion itself: naming the item again
+        ;;; says nothing, so say only what went wrong with it.
+        [% for m in misses do
+               if m(2) == "right" then 'slow' else m(2) sys_>< '' endif
+               -> x;
+               if length(items) == 1 then x
+               elseif m(2) == "right" then lp_any_form(m(1)) sys_>< ''
+               else (lp_any_form(m(1)) sys_>< '') <> ' ' <> x
+               endif
+           endfor %] -> shown;
+        printf('      %p: ', [% lp_term_str(c) %]);
+        if shown /== [] then
+            for x in shown do printf('%p  ', [^x]) endfor;
+        endif;
+        if n > 0 then
+            printf('(%p not reviewed yet this period)', [^n]);
+        endif;
+        printf('\n');
+    endfor;
+enddefine;
+
 define lp_status();
     lvars r;
     printf('\n  %p, %p -- level %p, period %p\n',
@@ -5252,6 +5390,7 @@ define lp_status();
     for r in lp_status_rows() do
         printf('    %p: %p\n', [% r(1), lp_status_text(r) %]);
     endfor;
+    lp_status_work();
     lvars lpassed, lmet, lunmet, lexcused;
     lp_level_state() -> (lpassed, lmet, lunmet, lexcused);
     if lexcused /== [] then

@@ -72,10 +72,15 @@ every period. *The reading resets, not the record:* the journal stays
 append-only and complete, and the period is a lower bound on what the
 criteria read from it. Nothing is deleted to make a student look better.
 
-**The criteria read reviews from the current period**, and carry a floor.
-`lp_measure_in(items, ms, since, phase)` does the scoping; the status row
-reports `need` — the size of the item set — beside `answers`, because
-100% over three reviews of a 69-item set is a sample and not a skill.
+**The criteria read each item's latest review from the current period**,
+and carry a floor. `lp_measure_latest(items, ms, since)` does the scoping;
+the status row reports `need` (the size of the item set) beside `answers`
+(the items read that way), because 100% over three of a 69-item set is a
+sample and not a skill. It replaced `lp_measure_in` over every review of
+the period, which counted reviews against a floor of items (83 reviews
+"covered" 69 hiragana with nine never reviewed) and let a slow first week
+hold the criterion for the rest of the month (64% over 83 reviews needed
+500-odd fast ones in a row to reach 95%).
 Without the floor the window would be easier to game than the lifetime
 denominator was, which is the objection the old "a skip counts in the
 denominator" comment existed to answer. Placement still reads
