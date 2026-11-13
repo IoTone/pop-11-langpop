@@ -1360,6 +1360,11 @@ define imp_default_out() -> p;
         <> '.pl' -> p;
 enddefine;
 
+;;; Defined further down; declared so the compiler has nothing to say,
+;;; and a notice that does appear is a real one.
+vars procedure (imp_gap_run, imp_en_forms, imp_frequency, imp_cmudict,
+                imp_unexercised, imp_scale);
+
 define imp_main();
     lvars es = [], unresolved = [], picks = [], srcname, out, dev, bad, b;
     ;;; No back versions.  syscreate keeps pop_file_versions of a file by

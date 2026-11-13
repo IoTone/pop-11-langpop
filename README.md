@@ -102,6 +102,10 @@ source](https://github.com/IoTone/poplog/blob/master/INSTALL). langpop
 probes for both libraries at startup and names the release it needs
 rather than failing part-way through compiling.
 
+Starting up is quiet: the first thing on the screen is the teacher. To see
+what Poplog prints while it loads (useful when something will not start),
+run with `LANGPOP_VERBOSE=1`.
+
 ### What it needs, and what is optional
 
 **Only Poplog is required.** Everything else switches on one feature, and

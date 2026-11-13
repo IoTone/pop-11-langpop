@@ -156,6 +156,9 @@ define sheet_head(title, sub) -> out;
                [% PAGE_M, PAGE_W - PAGE_M %]) -> out;
 enddefine;
 
+;;; Defined further down; declared so the compiler has nothing to say.
+vars procedure zine_wrap;
+
 define sheet_foot(note) -> out;
     lvars note, out, l, y = PAGE_H - 130;
     sprintf('    <line x1="%p" y1="%p" x2="%p" y2="%p" '

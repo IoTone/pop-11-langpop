@@ -21,8 +21,37 @@
        knowing it is not a table.  That is the whole boundary.
 */
 
-uses prolog;
-uses define_prolog;
+;;; LOADED QUIETLY.  This Poplog compiles its Prolog from source when it
+;;; is first asked for, and says so: a banner, a LOADING line for each of
+;;; forty files and a garbage-collection trace between them -- about 210
+;;; lines, on every start, ahead of a greeting that is two lines long.
+;;; A student opening a language tutor was shown a compiler.
+;;;
+;;; So the screen is pointed elsewhere while it loads, both the character
+;;; consumers and the devices under them (the loader flushes the devices
+;;; directly).  An ERROR must still be seen, or a broken install would
+;;; exit in silence: the mishap printer puts the screen back before it
+;;; prints.  LANGPOP_VERBOSE=1 shows everything, as before.
+define lp_quietly(src);
+    lvars src, out = cucharout, err = cucharerr,
+          outdev = pop_charout_device, errdev = pop_charerr_device,
+          nowhere, was = prmishap,
+          loud = systranslate('LANGPOP_VERBOSE');
+    if loud and loud /= '' and loud /= '0' then
+        pop11_compile(stringin(src)); return;
+    endif;
+    sysopen('/dev/null', 1, false) -> nowhere;
+    unless nowhere then pop11_compile(stringin(src)); return endunless;
+    dlocal cucharout = erase, cucharerr = erase,
+           pop_charout_device = nowhere, pop_charerr_device = nowhere;
+    dlocal prmishap = procedure(m, l); lvars m, l;
+        outdev -> pop_charout_device; errdev -> pop_charerr_device;
+        out -> cucharout; err -> cucharerr;
+        was(m, l);
+    endprocedure;
+    pop11_compile(stringin(src));
+enddefine;
+lp_quietly('uses prolog; uses define_prolog;');
 uses utf8;
 
 ;;; ------------------------------------------------------------- the heap
@@ -75,6 +104,39 @@ define lp_need_lib(lib, marker);
     sysexit();
 enddefine;
 lp_need_lib("json", "json_object");
+
+;;; ------------------------------------------------------ declared forward
+;;; NAMES USED BEFORE THE LINE THAT DEFINES THEM.  Some are further down
+;;; this file; most are in audio.p, card.p and sheet.p, which are loaded
+;;; only when something asks for sound, a card or a sheet -- so that a
+;;; machine with no voice never compiles the audio code at all.  Pop-11
+;;; allows the reference and says so every time: fifty-one DECLARING
+;;; VARIABLE notices, 385 lines on the screen before the greeting, on
+;;; every start.  A notice that always appears is one nobody reads, and
+;;; it hid whichever one day would be a misspelt name.
+;;;
+;;; Declared here, the compiler has nothing to remark on, and a notice
+;;; that does appear is a real one.  A name belongs in this list only
+;;; if it is DEFINED somewhere; a typo must not be added to silence it.
+vars
+    lp_audio_loaded, lp_kanji_map_ready, lp_passed,
+    lp_rate, lp_rate_want, lp_rate_asked, lp_vt_only;
+vars procedure (
+    ;;; later in this file
+    lp_lower, lp_edit, lp_level_index, lp_asked, lp_learner_lang,
+    lp_question, lp_place_seen, lp_place_levels, lp_renderable,
+    lp_probeable, lp_askable_here, lp_secs, lp_load_audio, lp_show_sheet,
+    lp_langs, lp_drillable_on,
+    ;;; audio.p
+    lp_audio_ready, lp_audio_slug, lp_audio_path_of, lp_audio_path,
+    lp_audio_play_bg, lp_audio_play, lp_audio_text, lp_recorder,
+    lp_audio_capture, lp_mic_meter, lp_can_speak, lp_sokuon_detectable,
+    lp_pronounced, lp_audio_rates, lp_audio_make, lp_audio_rate_of,
+    lp_audio_timing, lp_voice, lp_audio_player, lp_scorer, lp_meter,
+    lp_audio_clean, lp_audio_show, lp_voice_test,
+    ;;; card.p and sheet.p
+    lp_card_render, lp_card_inline, lp_card_open, lp_sheet_render,
+);
 
 define find_dir() -> d;
     lvars c;

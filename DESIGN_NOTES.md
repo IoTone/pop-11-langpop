@@ -4044,3 +4044,26 @@ it plays.
 Tested with a six-second silent file, at night: still playing after the
 call returned, one player after a second call, none after a hush. Not
 listened to.
+
+## A first screen with only the tutor on it
+
+Starting the tutor printed about 600 lines before the greeting: on
+stderr, 51 `DECLARING VARIABLE` notices (385 lines) for names used
+before the line that defines them; on stdout, about 210 lines of
+Poplog loading its Prolog from source, with a garbage-collection trace.
+
+The notices were forward references, most of them into `audio.p`,
+`card.p` and `sheet.p`, which load on demand. They are now declared in
+one block at the top of `langpop.p` (and two more in `server.p` and
+`sheet.p`, six in `import.p`). A notice that always appears is one
+nobody reads; now one that appears is a misspelt name.
+
+The loader's chatter goes through both `cucharout` and the output
+devices directly, so `lp_quietly` points all four at `/dev/null` for the
+duration of `uses prolog; uses define_prolog;`. A mishap during the load
+must still be seen, so `prmishap` is wrapped to restore them first;
+checked by loading a library that does not exist, which reports
+`LIBRARY FILE NOT FOUND` as before. `LANGPOP_VERBOSE=1` shows it all.
+
+After: `./langpop --check` prints one line, and the TUI's first line is
+the teacher's.

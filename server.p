@@ -1471,6 +1471,9 @@ enddefine;
 ;;; Everything about WHICH sound is audio.say's, called straight through,
 ;;; so the two cannot disagree about rates, caching or what a missing
 ;;; voice means.  This method adds exactly one thing: the bytes.
+;;; Defined further down; declared so the compiler has nothing to say.
+vars procedure lp_m_audio_say;
+
 define lp_m_audio_fetch(msg) -> res;
     lvars msg, res, item, path, raw, b64;
     lp_m_audio_say(msg) -> res;
