@@ -3922,11 +3922,11 @@ profile, `vocabulary(50, hear)` now stays in "still to finish" and
 ## What the oracle found in the length pairs
 
 The latest-review criteria had not been run through the oracle, so it
-was run: 3,000 answers, seeds 42 and 7. The criteria were fine. The
-length pairs from two days earlier were not, three ways.
+was run: 3,000 answers, seeds 42 and 7, and `--lang en`. The criteria
+were fine. The length pairs from two days earlier were not, three ways.
 
 **Offered before their prerequisite.** `ORACLE VIOLATION: l_sokuon
-offered before its prerequisite mora_sokuon`. `lp_hear_plan` admits an
+offered before its prerequisite mora_sokuon`. `lp_hear_plan` admitted an
 item with no `read` channel without asking about its prerequisites: for
 a word, "mastered by eye" stood in for that, and the English contrasts
 require nothing. `lp_prereqs_ok` now asks, for every item in the pool.
@@ -3935,20 +3935,24 @@ require nothing. `lp_prereqs_ok` now asks, for every item in the pool.
 and weakest-first picks an item nobody can answer at every turn the
 requeue gap allows; three of them is three questions in four. The oracle
 cannot hear, so it showed the extreme: 1,297 skips in 2,961 answers and
-0 of 50 words learned. A real student who cannot yet hear the difference
+0 of 50 words read. A real student who cannot yet hear the difference
 would get a milder version of the same sitting. Two rules:
 
 - `lp_choose` takes an item whose gate channel is `hear` only when
   nothing readable is ready and fresh. Ear-only items wait for the
   listening slot.
-- `lp_choose_hear` does not ask two ear-only items running when the pool
-  holds something that can also be read.
+- `lp_choose_hear` gives an ear-only item one listening slot in
+  `CONTRAST_EVERY` (4) while the pool holds a word or kana. Alternating
+  was tried first and still spent half of all listening on pairs for a
+  student who cannot hear them.
 
-After: 41 to 48 of 50 words read in the same 3,000 answers. A rung made
-only of contrasts (English pre-school) is unchanged, because there is
-nothing else to prefer. The oracle still spends half its listening slots
-skipping pairs it cannot hear; that is the oracle's deafness, not the
-schedule.
+After: about 500 skips, and between 31 and 48 of the 50 words read at
+the 3,000th answer, depending on the run (the oracle's day is 200 ms of
+real time, so how far a run gets varies with the machine). A rung made
+only of contrasts, as English pre-school is, is unchanged, because there
+is nothing else to prefer. `vocabulary(50, hear)` is still at 0 after
+3,000 answers: listening is one question in four, shared among 138 kana
+and 50 words, each needing three right answers.
 
 **The oracle crashed** on the first pair whose reply carried `expected`:
 a pair it declines never got a competence, and the turn ended in
@@ -3958,36 +3962,13 @@ And one thing it showed by being slow: 3,000 answers took 5:16. The
 criteria are checked after every answer, and `skill(dakuten)` finds its
 46 items by walking every `requires/2` fact, 60 ms a time, though the
 graph never changes. `lp_criterion_items` asks once and keeps the list.
-The check went from 112 ms to 22 ms per answer and the run to 2:23.
+The check went from 112 ms to 22 ms per answer and the run to about
+2:10.
 
-## What the oracle found in the length pairs
-
-The simulated student had not been run since the Japanese length pairs
-(`l_sokuon`, `l_long`, `l_moraic_n`) went in. Run at seed 42 for 3,000
-answers, it found three faults, all from that change.
-
-**Offered before its prerequisite.** `lp_hear_plan` gated an item on
-reading mastery and exempted items with no read channel, which had only
-ever been the English contrasts, and those require nothing. The length
-pairs require their counting skill, and nothing asked. The pool now
-checks prerequisites itself for anything that cannot be read
-(`lp_prereqs_ok`).
-
-**Ear-only items took the sitting.** The pairs are also in the ordinary
-plan, weakest-first, and an item a student cannot hear stays at nothing.
-The oracle cannot hear pairs at all: 1,297 skips in 2,961 answers, 0 of
-50 words read. `lp_choose` now takes an ear-only item only when nothing
-readable is ready and fresh, and `lp_choose_hear` gives contrasts one
-listening slot in four while a word or kana is waiting (alternating was
-tried first and still left 0 of 50 heard). After: 493 skips, 50 of 50
-words read. A rung made only of contrasts, like English pre-school, is
-unchanged.
-
-**The oracle itself** did `1.0 - false` on the first pair whose reply
-carried an `expected`: a pair it cannot answer never got a competence.
-
-A student who can hear the pairs masters all three in nine answers and
-they leave the pool, so the limits cost that student a short delay.
+Two sessions were editing this repository at once while this was done,
+and one commit swept in the other's work (`CONTRAST_EVERY` and three
+checks in `test_langpop.p`). The code above is the union, and was
+re-measured as it stands.
 
 ## The server names what to work on too
 
