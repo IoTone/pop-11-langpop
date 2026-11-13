@@ -3988,3 +3988,13 @@ carried an `expected`: a pair it cannot answer never got a competence.
 
 A student who can hear the pairs masters all three in nine answers and
 they leave the pool, so the limits cost that student a short delay.
+
+## The server names what to work on too
+
+`langpop/status` gave percentages; the TUI had gained a list of the
+items holding each criterion. Each measured criterion in the reply now
+carries `to_work_on` (`item`, `form`, `outcome`, `latency_ms`; outcome
+`right` means right but over the time) and `not_reviewed`. `client.p`
+prints the same block the TUI does. Checked against a live server on a
+copy of the real profile: the same 20 hiragana, 16 katakana and 4
+dakuten as the TUI lists.

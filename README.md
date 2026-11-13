@@ -2263,7 +2263,7 @@ shim. `--port N` for TCP, nothing for stdio.
 | `langpop/next` | the question — **and not its answer**. With `practice: true`, one of the items `:status` names as slow or missed instead; the reply carries `phase: "practice"` and the `limit_ms` it is held to, and its answer is recorded but moves nothing |
 | `langpop/answer` | the judging, which stays on this side |
 | `langpop/explain` | the derivation: prerequisites, provenance, belief |
-| `langpop/status` | the level's exit criteria, measured |
+| `langpop/status` | the level's exit criteria, measured. Each measured criterion carries `to_work_on` (the items whose latest review was slow or wrong, with form, outcome and time) and `not_reviewed` |
 | `langpop/placement.next` / `placement.report` | find out where they are |
 | `langpop/aids` | which helps are on, and switching them |
 | `langpop/audit` | which rungs of the ladder are hollow |

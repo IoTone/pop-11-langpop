@@ -538,6 +538,22 @@ vars pq3 = result('langpop/next', jsonrpc_obj([% 'session_id', ssid %]));
 check_true('an ordinary next is not practice', pq3('phase') /= 'practice');
 check('and carries no limit', pq3('limit_ms'), json_null);
 
+;;; AND :status NAMES IT.  The slow kana is in the criterion's own row,
+;;; with what was wrong with it, so a client can say what to work on.
+vars wst = result('langpop/status', jsonrpc_obj([% 'session_id', ssid %])),
+     wrow = false, wc;
+for wc in_vector wst('criteria') do
+    if wc('criterion') = 'recognise(hiragana)' then wc -> wrow endif;
+endfor;
+check_true('the hiragana criterion is measured', wrow and wrow('kind') = 'measured');
+check('one kana holds it', datalength(wrow('to_work_on')), 1);
+check('by name', wrow('to_work_on')(1)('item'), 'hi_a');
+check('with the form to show', wrow('to_work_on')(1)('form'), 'あ');
+check('right, so what was wrong was the time', wrow('to_work_on')(1)('outcome'), 'right');
+check('which is given', wrow('to_work_on')(1)('latency_ms'), 4000);
+check('and the rest have not been reviewed this period',
+      wrow('not_reviewed'), wrow('need') - 1);
+
 ;;; THE CHANNEL THE ANSWER WAS ABOUT.  `belief` is the gate channel's,
 ;;; which answers "is this item known"; a listening answer moves a
 ;;; different number, and without `channel_belief` nothing outside the

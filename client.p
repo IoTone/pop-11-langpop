@@ -398,6 +398,31 @@ define show_status();
             printf('    %p: %p\n', [% p(c, 'criterion'), p(c, 'note') %]);
         endif;
     endfor;
+    ;;; What holds each criterion, by name, as the server reports it.
+    lvars w, said = false, one;
+    for c in_vector (p(st, 'criteria') or {}) do
+        nextunless(p(c, 'kind') = 'measured');
+        nextunless(datalength(p(c, 'to_work_on') or {}) > 0
+                   or (p(c, 'not_reviewed') or 0) > 0);
+        unless said then
+            printf('\n    to work on (slow or missed at the latest review) -- :drill practises them:\n');
+            true -> said;
+        endunless;
+        printf('      %p: ', [% p(c, 'criterion') %]);
+        p(c, 'need') == 1 -> one;
+        for w in_vector (p(c, 'to_work_on') or {}) do
+            if one then
+                printf('%p  ', [% if p(w, 'outcome') = 'right' then 'slow'
+                                  else p(w, 'outcome') endif %]);
+            elseif p(w, 'outcome') = 'right' then printf('%p  ', [% p(w, 'form') %]);
+            else printf('%p %p  ', [% p(w, 'form'), p(w, 'outcome') %]);
+            endif;
+        endfor;
+        if (p(c, 'not_reviewed') or 0) > 0 then
+            printf('(%p not reviewed yet this period)', [% p(c, 'not_reviewed') %]);
+        endif;
+        printf('\n');
+    endfor;
     printf('    %p items ready to teach now', [% p(st, 'ready_count') %]);
     if (p(st, 'reviews_due') or 0) > 0 then
         printf(', %p waiting to come round again', [% p(st, 'reviews_due') %]);

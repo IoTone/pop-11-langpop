@@ -1007,8 +1007,9 @@ define lp_m_status(msg) -> res;
                ;;; Each item once, by its latest review: `answers` is the
                ;;; number of ITEMS read that way, which is what `need`
                ;;; is a floor on.  See lp_measure_latest.
+               lvars misses, mm;
                lp_measure_latest(items, ms, lp_period_start)
-                   -> (acc, fast, n, );
+                   -> (acc, fast, n, misses);
                lvars settled = lp_settled_count(items);
                ;;; Blended with the settled items -- see lp_blend.  Both
                ;;; counts stay in the reply, so a client can show what
@@ -1024,6 +1025,21 @@ define lp_m_status(msg) -> res;
                               ;;; towards the floor rather than towards
                               ;;; the percentage -- see lp_settled_count
                               'settled', settled,
+                              ;;; WHAT HOLDS IT, BY NAME: the items whose
+                              ;;; latest review was slow or wrong.  A
+                              ;;; percentage tells a student they are
+                              ;;; slow and not at what.  `outcome` right
+                              ;;; means right but over the time.
+                              'to_work_on',
+                              lp_vec([% for mm in misses do
+                                  jsonrpc_obj([% 'item', lp_jkey(mm(1)),
+                                                 'form', lp_jkey(lp_any_form(mm(1))),
+                                                 'outcome', lp_jkey(mm(2)),
+                                                 'latency_ms', mm(3) %])
+                              endfor %]),
+                              ;;; and the ones not yet shown this period
+                              'not_reviewed',
+                              max(0, length(items) - n - settled),
                               'threshold', th,
                               'latency_ms', ms %])
            endif;
