@@ -4025,3 +4025,22 @@ real cache was only reported on.
 prints (captured from `lp_progress` through `cucharout`, so there is one
 wording), and `days`, the 28 per-day rows it was drawn from, for a
 client that would rather draw its own. `client.p` prints the text.
+
+## The word after an answer, without the wait
+
+`lp_say_after` played the word the way a question is played, blocking:
+400 ms of lead, the word, 150 ms of tail, about 0.8 s before the next
+prompt could appear, on every reading answer. Over a ten-minute sitting
+that is about a minute of waiting for sound nothing depends on.
+
+It is now started in the background (`lp_audio_play_bg`, 8 ms to
+return). Its pid is kept in `audio/.echo.pid`, and `lp_audio_hush` stops
+it before any other sound starts: a listening question, `:say`, another
+echo, and before the microphone opens for `:speak`. The kill checks the
+pid still names a player, because pids are reused. It has its own
+scratch copy (`.echo.wav`) so the padded file is not overwritten while
+it plays.
+
+Tested with a six-second silent file, at night: still playing after the
+call returned, one player after a second call, none after a hush. Not
+listened to.

@@ -701,9 +701,12 @@ check_true('the glyph is nowhere in the prompt',
 ;;; SAID ALOUD AFTER A READING ANSWER.  The player and the keyboard are
 ;;; stood in for, so what is checked is what the drill ASKED to play.
 lvars played = [], realplay = lp_audio_play, realread = lp_readline,
-      typed_in = [];
+      realbg = lp_audio_play_bg, typed_in = [];
 procedure(p) -> ok; lvars p, ok = true; played <> [^p] -> played endprocedure
     -> lp_audio_play;
+;;; The word after an answer is started and not waited for, by a
+;;; procedure of its own; stood in for by the same recorder.
+lp_audio_play -> lp_audio_play_bg;
 procedure() -> l; lvars l;
     if typed_in == [] then termin -> l
     else hd(typed_in) -> l; tl(typed_in) -> typed_in endif;
@@ -751,7 +754,7 @@ check('and nothing was recorded', length(lp_journal), mjn);
 check_true('and they were told why', lp_mute_said);
 false -> lp_mute_watch; false -> lp_mute_at; false -> lp_mute_said;
 realprobe2 -> lp_mute_probe;
-realplay -> lp_audio_play; realread -> lp_readline;
+realplay -> lp_audio_play; realread -> lp_readline; realbg -> lp_audio_play_bg;
 
 ;;; The answer key is the reading question's, unchanged.  That is the
 ;;; whole design: one stimulus swapped, nothing else.
@@ -1551,6 +1554,20 @@ check_true('and its sidecar records the length the voice gave it',
 lp_audio_make("w_neko", "normal") -> (path, made, why);
 check_false('a word\'s sidecar says nothing of the kind',
             has('lengthened', lp_read_file(substring(1, length(path) - 4, path) <> '.json')));
+
+;;; ------------------------------------------- said without waiting
+;;; The pid of the word still sounding is kept so it can be stopped
+;;; before the next sound.  A stale number must cost nothing: no error,
+;;; and nothing killed that is not a player.
+sysobey('mkdir -p ' <> lp_audio_dir());
+lp_write_file(lp_audio_echo_pid(), '999999\n');
+lp_audio_hush();
+check_false('a stale pid is cleared away', sys_file_exists(lp_audio_echo_pid()));
+lp_audio_hush();
+check_false('and hushing nothing is nothing', sys_file_exists(lp_audio_echo_pid()));
+check('the two scratch copies do not share a file',
+      lp_audio_lead_path(), lp_audio_dir() <> '.playing.wav');
+check('neither is taken for a recording', lp_audio_stem('.echo.wav'), false);
 
 ;;; ------------------------------------------------ what nothing plays
 ;;; A changed voice writes new names and leaves the old ones; the

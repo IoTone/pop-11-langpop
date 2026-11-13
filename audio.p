@@ -643,8 +643,13 @@ define lp_sample_path(item) -> path;
         -> path;
 enddefine;
 
+vars procedure lp_audio_hush;
+
 define lp_audio_capture(item) -> (path, why);
     lvars item, path = false, why = false, cfg = lp_recorder(), cmd;
+    ;;; The microphone must not record the tutor's own voice finishing
+    ;;; the last word.
+    lp_audio_hush();
     dlocal pop_file_versions = false;
     unless cfg then 'no_recorder' -> why; return endunless;
     lp_sample_path(item) -> path;
@@ -933,8 +938,13 @@ define lp_audio_player() -> player;
     endfor;
 enddefine;
 
+;;; Which scratch file the padded copy is written to.  Two of them, so a
+;;; word still sounding in the background is not overwritten by the
+;;; next thing to be played.
+vars lp_lead_name = '.playing.wav';
+
 define lp_audio_lead_path() -> p;
-    lvars p = lp_audio_dir() <> '.playing.wav';
+    lvars p = lp_audio_dir() <> lp_lead_name;
 enddefine;
 
 define lp_audio_lead(path) -> out;
@@ -989,9 +999,53 @@ define lp_audio_lead(path) -> out;
     syswrite(dev, o, datalength(o)); sysclose(dev);
 enddefine;
 
+;;; --------------------------------------------- said without waiting
+;;; THE WORD AFTER AN ANSWER IS NOT WORTH WAITING FOR.  Played the way a
+;;; question is, it holds the next question back until it has finished:
+;;; 0.4 s of lead, the word, the tail -- about 0.8 s an answer, a minute
+;;; of a ten-minute sitting spent looking at a prompt that will not
+;;; come.  A question's sound has to finish before anything is typed;
+;;; this one is company for the feedback line and nothing depends on it.
+;;;
+;;; So it is started and left.  What must not happen is the next sound
+;;; arriving on top of it -- a listening question with the last word
+;;; still in it is a different question -- so its process id is kept,
+;;; and lp_audio_hush stops it before anything else is played.  Only a
+;;; process this tutor started, and only if it is still a player: a pid
+;;; is a number, and numbers get reused.
+define lp_audio_echo_pid() -> p;
+    lvars p = lp_audio_dir() <> '.echo.pid';
+enddefine;
+
+define lp_audio_hush();
+    lvars f = lp_audio_echo_pid();
+    returnunless(sys_file_exists(f));
+    sysobey('p=$(cat \'' <> f <> '\' 2>/dev/null); rm -f \'' <> f <> '\';'
+            <> ' case "$(ps -p "$p" -o comm= 2>/dev/null)" in'
+            <> ' *play*) kill "$p" 2>/dev/null;; esac');
+enddefine;
+
+define vars lp_audio_play_bg(path) -> ok;
+    lvars path, ok = false, player;
+    dlocal lp_lead_name = '.echo.wav';
+    returnunless(path and sys_file_exists(path));
+    lp_audio_hush();
+    lp_audio_lead(path) -> path;
+    for player in PLAYERS do
+        if sys_file_exists(player) then
+            sysobey('(' <> player <> ' \'' <> path <> '\' >/dev/null 2>&1 &'
+                    <> ' echo $! > \'' <> lp_audio_echo_pid() <> '\')');
+            true -> ok;
+            return;
+        endif;
+    endfor;
+enddefine;
+
 define lp_audio_play(path) -> ok;
     lvars path, ok = false, player;
     returnunless(path and sys_file_exists(path));
+    ;;; Nothing else is sounding when this starts.
+    lp_audio_hush();
     lp_audio_lead(path) -> path;
     for player in PLAYERS do
         if sys_file_exists(player) then

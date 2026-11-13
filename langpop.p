@@ -4237,7 +4237,9 @@ define lp_say_after(item, heard);
     returnunless(lp_aid("say") and lp_can_hear());
     lp_audio_path(item, "normal") -> (path, why);
     returnif(why);
-    lp_audio_play(path).erase;
+    ;;; Started and left -- see lp_audio_play_bg.  The next question does
+    ;;; not wait for it.
+    lp_audio_play_bg(path).erase;
 enddefine;
 
 define lp_drill(item, ch) -> done;
