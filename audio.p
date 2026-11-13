@@ -46,6 +46,13 @@
    nothing substituted, which is what an engine with no rate control
    wants -- so %r simply does not appear in its template.
 
+   A voice may also name a command that LENGTHENS a one-beat clip to a
+   floor, because no voice says a lone kana as long as a teacher does:
+
+       "lengthen": {"cmd": "sox %i %o tempo %f 20 8 6", "min_ms": "250"}
+
+   See lp_audio_lengthen.  %i and %o are wavs, %f the tempo for this clip.
+
    `model` is declared rather than detected, because an external command
    cannot be asked what weights it loaded.  It is part of the cache key,
    so a line edited in the config is a cache invalidated -- which is the
@@ -121,6 +128,11 @@ define lp_rates_of(o) -> rs;
 enddefine;
 
 
+;;; The floor a one-beat clip is lengthened to when the config asks for
+;;; lengthening and names no floor of its own.  A kana said alone by a
+;;; teacher runs a quarter of a second and more.
+lconstant LENGTHEN_MS = 250;
+
 define lp_voices_load();
     lvars s, o, lang, cfg;
     newproperty([], 8, false, "perm") -> lp_voices;
@@ -135,10 +147,16 @@ define lp_voices_load();
     for lang in ['ja' 'en'] do
         o(lang) -> cfg;
         if cfg and (isproperty(cfg) or isjson_object(cfg)) and cfg('cmd') then
+            lvars ln = cfg('lengthen');
             {% cfg('cmd'),
                cfg('voice') or 'default',
                cfg('model') or 'unnamed',
-               lp_rates_of(cfg('rates')) %} -> lp_voices(consword(lang));
+               lp_rates_of(cfg('rates')),
+               ;;; {cmd min_ms} or false -- see lp_audio_lengthen
+               if ln and (isproperty(ln) or isjson_object(ln)) and ln('cmd')
+               then {% ln('cmd'),
+                       strnumber(ln('min_ms') sys_>< '') or LENGTHEN_MS %}
+               else false endif %} -> lp_voices(consword(lang));
         endif;
     endfor;
     ;;; The microphone and the scorer are not per-language: see the
@@ -369,17 +387,37 @@ enddefine;
 ;;; So the key is {name, voice, rate, model, text} -- a name the caller
 ;;; chooses, and the text to say.  An item's name is its id; a pair
 ;;; word's is a slug of the word.  Everything else below is unchanged.
+;;; The voice's `lengthen` entry, if this text is one it applies to: ONE
+;;; BEAT, and nothing longer.  A word's rhythm is the lesson -- きて
+;;; against きって is told apart by length alone -- so nothing with two
+;;; beats in it is ever stretched, however short the voice said it.
+define lp_audio_long(lang, text) -> ln;
+    lvars lang, text, cfg = lp_voice(lang), ln = false;
+    returnunless(cfg and length(cfg) >= 5 and cfg(5));
+    if lp_morae(text) == 1 then cfg(5) -> ln endif;
+enddefine;
+
 define lp_audio_name_of(name, text, lang, rate) -> (path, why);
-    lvars name, text, lang, rate, path = false, why = false, cfg, val, ok;
+    lvars name, text, lang, rate, path = false, why = false, cfg, val, ok,
+          ln;
     lp_voice(lang) -> cfg;
     unless cfg then 'no_voice' -> why; return endunless;
     lp_audio_rate_of(rate) -> rate;
     lp_audio_rate_value(lang, rate) -> (val, ok);
     unless ok then 'no_such_rate' -> why; return endunless;
+    lp_audio_long(lang, text) -> ln;
     lp_audio_lang_dir(lang)
         <> (name sys_>< '') <> '-' <> cfg(2) <> '-' <> (rate sys_>< '') <> '-'
         <> (lp_audio_hash((text sys_>< '') <> '\n' <> cfg(3) <> '\n'
-                          <> (val or '')) sys_>< '') <> '.wav' -> path;
+                          <> (val or '')
+                          ;;; and how it is lengthened, where it is: a
+                          ;;; config that turns lengthening on, off, or
+                          ;;; to another floor has to make these again.
+                          ;;; Nothing is added where it does not apply,
+                          ;;; so every other name stays what it was.
+                          <> (if ln then '\n' <> ln(1) <> '\n'
+                                          <> (ln(2) sys_>< '')
+                              else '' endif)) sys_>< '') <> '.wav' -> path;
 enddefine;
 
 define lp_audio_name(item, rate) -> (path, why);
@@ -409,6 +447,10 @@ define lp_audio_path(item, rate) -> (path, why);
     endunless;
 enddefine;
 
+;;; Set by lp_audio_make_of around the one call that writes a sidecar.
+vars lp_len_from = false, lp_len_factor = false;
+vars procedure lp_audio_lengthen;
+
 ;;; --------------------------------------------------------- provenance
 ;;; A sidecar per file rather than one manifest: no read-modify-write, so
 ;;; two renders cannot race a shared file, and a stale wav's provenance
@@ -433,6 +475,12 @@ define lp_audio_note(path, name, text, lang, rate, item);
     cfg(3) -> o('model');
     cfg(1) -> o('command');
     sysdaytime() -> o('made');
+    ;;; What the voice made and what was done to it, so a clip that
+    ;;; sounds odd can be traced to the stretch and not to the voice.
+    if lp_len_from then
+        lp_len_from -> o('lengthened_from_ms');
+        lp_len_factor -> o('lengthen_tempo');
+    endif;
     lp_write_file(substring(1, length(path) - 4, path) <> '.json',
                   json_generate(o));
 enddefine;
@@ -457,6 +505,7 @@ define lp_audio_make_of(name, text, lang, rate, item) -> (path, made, why);
     lvars name, text, lang, rate, item,
           path = false, made = false, why = false, cfg, cmd, tf, ok, val;
     dlocal pop_file_versions = false;
+    dlocal lp_len_from = false, lp_len_factor = false;
     lp_audio_name_of(name, text, lang, rate) -> (path, why);
     returnif(why);
     lp_audio_rate_of(rate) -> rate;
@@ -493,6 +542,10 @@ define lp_audio_make_of(name, text, lang, rate, item) -> (path, made, why);
     ;;; would be handed silence as though it were a reading.
     if sys_file_exists(path) and sysfilesize(path) > 0 then
         true -> made;
+        lvars ln = lp_audio_long(lang, text);
+        if ln then
+            lp_audio_lengthen(path, ln) -> (lp_len_from, lp_len_factor);
+        endif;
         lp_audio_note(path, name, text, lang, rate, item);
     else
         false -> path; 'voice_failed' -> why;
@@ -764,6 +817,111 @@ define lp_wav_level(o, start, len);
         if v < 0 then v + 65536 -> v endif;
         v mod 256 -> o(i); v div 256 -> o(i+1);
     endfor;
+enddefine;
+
+;;; ------------------------------------------------ a kana long enough
+;;; HOW LONG THE SOUND IN A CLIP IS: from the first 5 ms window above 8%
+;;; of the clip's own peak to the last.  False for anything that is not
+;;; 16-bit PCM, which is "cannot say", not nought.
+define lp_wav_voiced_ms(path) -> ms;
+    lvars path, ms = false, dev, size, s, i = 13, id, len, fmt = false,
+          dat = false, dlen = 0, rate, align, k, win, peak = 0, v, p,
+          first = false, last = false, w = 0, wp;
+    returnunless(isendstring('.wav', path));
+    sysfilesize(path) -> size;
+    returnunless(size and size > 44 and size < 50000000);
+    sysopen(path, 0, true) -> dev;
+    returnunless(dev);
+    inits(size) -> s;
+    sysread(dev, s, size) -> k; sysclose(dev);
+    returnunless(k == size);
+    returnunless(substring(1, 4, s) = 'RIFF' and substring(9, 4, s) = 'WAVE');
+    while i + 7 <= size do
+        substring(i, 4, s) -> id; lp_wav_u32(s, i + 4) -> len;
+        if id = 'fmt ' then i -> fmt
+        elseif id = 'data' then
+            i -> dat; min(len, size - i - 7) -> dlen; quitloop;
+        endif;
+        i + 8 + len + (len mod 2) -> i;
+    endwhile;
+    returnunless(fmt and dat);
+    returnunless(s(fmt + 8) + s(fmt + 9) * 256 == 1
+                 and s(fmt + 22) + s(fmt + 23) * 256 == 16);
+    lp_wav_u32(s, fmt + 12) -> rate;
+    s(fmt + 20) + s(fmt + 21) * 256 -> align;
+    returnunless(rate > 0 and align > 0);
+    ((rate * 5) div 1000) * align -> win;           ;;; bytes in 5 ms
+    returnunless(win > 0);
+    for p from dat + 8 by align to dat + 8 + dlen - 2 do
+        abs(lp_wav_s16(s, p)) -> v;
+        if v > peak then v -> peak endif;
+    endfor;
+    returnif(peak == 0)(0 -> ms);
+    dat + 8 -> p;
+    while p + win <= dat + 8 + dlen do
+        0 -> wp;
+        for k from p by align to p + win - 2 do
+            abs(lp_wav_s16(s, k)) -> v;
+            if v > wp then v -> wp endif;
+        endfor;
+        if wp * 100 > peak * 8 then
+            unless first then w -> first endunless;
+            w -> last;
+        endif;
+        w + 1 -> w; p + win -> p;
+    endwhile;
+    if first then (last - first + 1) * 5 else 0 endif -> ms;
+enddefine;
+
+;;; A KANA SAID ALONE IS TOO SHORT TO LEARN FROM.  Measured over the 138
+;;; kana Kyoko (Enhanced) made at 150: a median of 155 ms of sound, 44
+;;; under 150 ms, and う at 90 ms -- the length a vowel has inside a
+;;; word, where a teacher saying one kana to a beginner takes a quarter
+;;; of a second or more.  The first listening sittings were reported as
+;;; "one syllable, then nothing" five times before the cause turned out
+;;; to be wording; the sound being that short did not help.
+;;;
+;;; The voice cannot be asked for longer.  The rate does almost nothing
+;;; (う is 90 ms at 150 and 105 at 50) and neither does the spelling:
+;;; う。, 「う」 and う! are all 90.  So the clip is stretched after the
+;;; voice has made it, by a command the config names, on the terms
+;;; everything else in the config is on -- named or absent, and absent
+;;; without consequence:
+;;;
+;;;     "lengthen": {"cmd": "sox %i %o tempo %f 20 8 6", "min_ms": "250"}
+;;;
+;;; %f is the tempo that brings THIS clip up to the floor: voiced / min,
+;;; so 0.36 for う and 0.88 for し, and a clip already at the floor is
+;;; left exactly as the voice made it.  One factor for every kana would
+;;; make し half a second long.  Never below LENGTHEN_MIN: something that
+;;; short is a click, and stretching a click makes a longer click.
+;;;
+;;; Only for one-beat text -- lp_audio_long says why.  If the command
+;;; fails or writes nothing, the voice's own clip is put back.
+lconstant LENGTHEN_MIN = 350;                       ;;; thousandths
+
+define lp_audio_lengthen(path, ln) -> (from_ms, factor);
+    lvars path, ln, from_ms = false, factor = false, ms, k, raw, cmd, ks;
+    dlocal pop_file_versions = false;
+    lp_wav_voiced_ms(path) -> ms;
+    returnunless(ms and ms > 0 and ms < ln(2));
+    max(LENGTHEN_MIN, (ms * 1000) div ln(2)) -> k;
+    returnif(k >= 950);                             ;;; near enough already
+    k sys_>< '' -> ks;
+    '0.' <> ks -> ks;                               ;;; k is 350..949
+    path <> '.raw.wav' -> raw;
+    sys_file_move(path, raw);
+    lp_audio_subst(ln(1), '%i', raw) -> cmd;
+    lp_audio_subst(cmd, '%o', path) -> cmd;
+    lp_audio_subst(cmd, '%f', ks) -> cmd;
+    sysobey(cmd <> ' 2>/dev/null');
+    if sys_file_exists(path) and sysfilesize(path) > 44 then
+        sysdelete(raw).erase;
+        (ms, ks) -> (from_ms, factor);
+    else
+        if sys_file_exists(path) then sysdelete(path).erase endif;
+        sys_file_move(raw, path);
+    endif;
 enddefine;
 
 define lp_audio_lead_path() -> p;

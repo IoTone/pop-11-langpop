@@ -3804,3 +3804,37 @@ gained four lines marked `practice`.
 Massed repetition is not spaced retrieval, so letting it count would be
 a way round the spacing. Making it free to get wrong is what makes it
 usable. It is TUI only; the server has no method for it yet.
+
+## A kana long enough to hear
+
+Measured over the 138 kana clips from Kyoko (Enhanced) at 150: median
+155 ms of sound, 44 under 150 ms, う at 90 ms. A teacher saying one kana
+runs 250 ms and up.
+
+What does not lengthen it, measured on う い ぱ ふ か:
+
+| tried | う |
+|---|---|
+| rate 150 / 110 / 80 / 50 | 90 / 95 / 95 / 105 ms |
+| written う。 「う」 う! | 90 ms each |
+| Otoya (Enhanced) | 255 ms, but a different teacher's voice |
+
+So the clip is stretched after the voice makes it, by a command the
+config names (`lengthen`, per voice). The tempo is per clip, voiced
+length over the floor, because one factor for all would put し at half a
+second: with a 250 ms floor う gets 0.36 and し 0.88. SoX's `tempo` with
+20 ms segments kept the loudness envelope as smooth as the original on
+the five test kana (the default 82 ms speech segments are nearly the
+length of the whole sound). After re-rendering, all 140 one-beat clips
+measure 235 to 265 ms.
+
+Only one-beat text is lengthened (`lp_morae(text) == 1`), so no word and
+no length pair is touched, and their cache names do not change. The
+lengthen command and floor are in the hash for one-beat clips only, so
+turning it on, off, or to another floor re-renders exactly those. The
+sidecar records `lengthened_from_ms` and the tempo. A failed command
+puts the voice's clip back.
+
+Not judged here: how natural a 2.8x stretch of a plosive sounds. The
+envelope is clean (か is 50 ms of onset and 200 ms of vowel, no gap);
+whether it sounds right is for a listener.

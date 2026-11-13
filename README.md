@@ -1802,6 +1802,24 @@ Don't expect the rate to make much difference. With this voice, 150 instead
 of 175 makes a word about 6% longer, and even 90 adds only about 20%. A lone
 kana stays at about a tenth of a second at every rate.
 
+**A kana said alone is too short to learn from**, and the voice cannot be
+asked for a longer one. So a voice may name a command that lengthens it
+afterwards:
+
+```json
+        "rates": {"slow": "110", "normal": "150", "fast": "190"},
+        "lengthen": {"cmd": "/opt/homebrew/bin/sox %i %o tempo %f 20 8 6", "min_ms": "250"}}}
+```
+
+Every one-beat recording shorter than `min_ms` is stretched up to it (the
+pitch is kept), each by its own amount, so う and し both come out at about
+a quarter of a second. Words are never touched: how long a word takes is
+part of what is being taught, and きて against きって is told apart by
+nothing else. It needs [SoX](https://sox.sourceforge.net) (`brew install
+sox`); without the entry, or if the command fails, the voice's own
+recording is used. Run `--audio preschool` again after adding or changing
+it, and take the entry out and run it again to go back.
+
 **`model` is declared, not detected**, because an external command cannot be
 asked what weights it loaded. The declaration is part of the cache key:
 

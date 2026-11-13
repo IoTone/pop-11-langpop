@@ -1393,5 +1393,71 @@ check('a file that is not RIFF is played unchanged', lp_audio_lead(junk), junk);
 check('and so is one that is not a wav', lp_audio_lead(tmpdir <> 'x.mp3'),
       tmpdir <> 'x.mp3');
 
+;;; ---------------------------------------------- a kana long enough
+;;; One-beat clips are stretched to a floor by a command the config
+;;; names; nothing longer is, and nothing at all without the entry.
+77 -> t_lo; 77 -> t_hi;
+t_wav(wv, 2205);                                ;;; a tenth of a second
+check('the sound in a clip is measured', lp_wav_voiced_ms(wv), 100);
+check('and a file that is not a wav cannot be', lp_wav_voiced_ms(junk), false);
+
+define conf_len(len);
+    lvars len;
+    lp_write_file(lp_audio_conf_path(),
+        '{"ja": {"cmd": "cp %i %o", "voice": "v", "model": "m"' <> len <> '}}');
+    lp_voices_load();
+enddefine;
+
+lvars lname0, lname1, lname2, wname0, wname1, lfrom, lfac;
+conf_len('');
+check('with no entry nothing is lengthened', lp_audio_long("ja", 'あ'), false);
+lp_audio_name("hi_a", "normal") -> (lname0, why);
+lp_audio_name("w_neko", "normal") -> (wname0, why);
+conf_len(', "lengthen": {"cmd": "cp %i %o", "min_ms": "250"}');
+check_true('with one, a single kana is', lp_audio_long("ja", 'あ') /== false);
+check_true('and one written with a small kana, which is still one beat',
+           lp_audio_long("ja", 'きゃ') /== false);
+check('a word is not -- its rhythm is the lesson', lp_audio_long("ja", 'ねこ'), false);
+check('least of all one told apart by length', lp_audio_long("ja", 'きって'), false);
+lp_audio_name("hi_a", "normal") -> (lname1, why);
+lp_audio_name("w_neko", "normal") -> (wname1, why);
+check_true('turning it on renames the kana, so it is made again',
+           lname1 /= lname0);
+check('and leaves every word where it was', wname1, wname0);
+conf_len(', "lengthen": {"cmd": "cp %i %o", "min_ms": "300"}');
+lp_audio_name("hi_a", "normal") -> (lname2, why);
+check_true('and so does another floor', lname2 /= lname1);
+
+;;; The stand-in command copies, so what is checked is what it was ASKED.
+lp_audio_lengthen(wv, {'cp %i %o' 250}) -> (lfrom, lfac);
+check('a 100 ms clip under a 250 ms floor is lengthened from 100', lfrom, 100);
+check('at the tempo that brings it there', lfac, '0.400');
+check_true('the clip is still there', sys_file_exists(wv));
+check_false('and the voice\'s own copy is not left beside it',
+            sys_file_exists(wv <> '.raw.wav'));
+lp_audio_lengthen(wv, {'cp %i %o' 100}) -> (lfrom, lfac);
+check('a clip already at the floor is left as the voice made it', lfrom, false);
+lp_audio_lengthen(wv, {'cp %i %o' 1000}) -> (lfrom, lfac);
+check('nothing is stretched past the limit, however short', lfac, '0.350');
+lvars wsize = sysfilesize(wv);
+lp_audio_lengthen(wv, {'false %i %o %f' 250}) -> (lfrom, lfac);
+check('a command that fails lengthens nothing', lfrom, false);
+check('and the voice\'s clip is put back', sysfilesize(wv), wsize);
+
+;;; Through the renderer: the sidecar says what was done.
+t_wav(tmpdir <> 'src.wav', 2205);
+lp_write_file(lp_audio_conf_path(),
+    '{"ja": {"cmd": "cp ' <> tmpdir <> 'src.wav %o", "voice": "v", "model": "m",'
+    <> ' "lengthen": {"cmd": "cp %i %o", "min_ms": "250"}}}');
+lp_voices_load();
+lp_audio_make("hi_a", "normal") -> (path, made, why);
+check_true('a kana renders through the lengthener', made and not(why));
+check_true('and its sidecar records the length the voice gave it',
+           has('"lengthened_from_ms":100',
+               lp_read_file(substring(1, length(path) - 4, path) <> '.json')));
+lp_audio_make("w_neko", "normal") -> (path, made, why);
+check_false('a word\'s sidecar says nothing of the kind',
+            has('lengthened', lp_read_file(substring(1, length(path) - 4, path) <> '.json')));
+
 sysobey('rm -rf ' <> tmpdir);
 test_summary();
