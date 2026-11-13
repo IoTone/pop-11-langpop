@@ -1677,6 +1677,10 @@ define lp_record(item, ch, tier, outcome, latency_ms);
     else
         lp_cap(b, b + 0.05, TIER3_CAP)
     endif -> nb;
+    ;;; PRACTICE MOVES NOTHING -- see lp_practice.  The answer is written
+    ;;; down, because the minutes were studied and :progress should say
+    ;;; so, but the belief stays where the spaced evidence put it.
+    if lp_phase == "practice" then b -> nb endif;
     if lp_undo_watch then
         ;;; every belief this answer moves, so the undo is complete
         lp_undo <> [[% lp_bkey(lp_user, item, ch), b %]] -> lp_undo;
@@ -1693,6 +1697,7 @@ define lp_record(item, ch, tier, outcome, latency_ms);
     lp_period_roll();
     conspair({% item, ch, tier, outcome, latency_ms, lp_now_ms(), lp_phase %},
              lp_journal) -> lp_journal;
+    returnif(lp_phase == "practice");
     lp_review_note(item, ch, tier, outcome);
     ;;; Only a CHECK infers, and an inference records at tier 4, so this
     ;;; cannot run away: one level, once.
@@ -1858,6 +1863,9 @@ define lp_measure_in(items, latency_ms, since, phase) -> (acc, fast, n);
         nextunless(e(3) == 1 and member(e(1), items));
         nextif(since and e(6) < since);
         nextif(phase and lp_jphase(e) /== phase);
+        ;;; Practice is repetition on request, not evidence: it is in no
+        ;;; measurement unless practice is what was asked about.
+        nextif(lp_jphase(e) == "practice" and phase /== "practice");
         ;;; A skipped question counts in the denominator.  Declining to
         ;;; answer is evidence, and dropping it would let a student raise
         ;;; their accuracy by answering only what they knew.
@@ -5337,6 +5345,97 @@ define lp_progress();
     printf('\n  :status says what is left of %p.\n', [% lp_level %]);
 enddefine;
 
+;;; ------------------------------------------------------------ :drill
+;;; PRACTICE ON WHAT :status NAMES, TODAY.  A criterion is held by the
+;;; items whose latest review was slow or wrong, and a review only comes
+;;; round on its own day -- so a student told "は is slow" could do
+;;; nothing about it until は was owed again, and would then be measured
+;;; cold on the thing they had just been told they were bad at.
+;;;
+;;; :drill asks exactly those items, now, as often as wanted, and says
+;;; the time of each answer against the limit it is held to, which no
+;;; other question does and which is the whole point: speed cannot be
+;;; practised blind.
+;;;
+;;; AND IT COUNTS FOR NOTHING.  The phase is "practice": lp_record moves
+;;; no belief and no review date, lp_measure_in leaves it out, and the
+;;; criteria read reviews only.  Ten fast repetitions in a minute are
+;;; not a retrieval after a gap, and if they counted this would be the
+;;; way round the spacing that the criteria exist to respect.  It also
+;;; makes practice free to get wrong, or nobody would do it.  The answer
+;;; is still journalled, so the sitting shows in :progress.
+;;;
+;;; What to ask, as {item limit_ms}: every item a measured criterion of
+;;; this rung names as missed, once, at the tightest limit it is held
+;;; to (ぜ is a hiragana at 2000 and a dakuten at 3000).
+define lp_practice_items() -> out;
+    lvars e, c, ms, items, acc, fast, rd, misses, m, o, out = [], found;
+    for e in lp_exits do
+        nextunless(hd(e) == lp_lang and hd(tl(e)) == lp_level);
+        hd(tl(tl(e))) -> c; hd(tl(tl(tl(tl(e))))) -> ms;
+        nextif(prolog_complexterm(c)
+               and member(prolog_functor(c), [vocabulary kanji coverage]));
+        lp_ask(c, "criterion_items", 1) -> items;
+        lp_measure_latest(items, ms, lp_period_start)
+            -> (acc, fast, rd, misses);
+        for m in misses do
+            nextunless(lp_drillable(m(1)));
+            false -> found;
+            for o in out do
+                if o(1) == m(1) then
+                    true -> found; min(o(2), ms) -> o(2);
+                endif;
+            endfor;
+            unless found then out <> [% {% m(1), ms %} %] -> out endunless;
+        endfor;
+    endfor;
+enddefine;
+
+define lp_practice(limit);
+    lvars limit, todo = lp_practice_items(), o, n = 0, inside = 0, e,
+          before, slow = [];
+    dlocal lp_phase = "practice";
+    if todo == [] then
+        printf('  Nothing to drill: no latest review at %p was slow or\n',
+               [% lp_level %]);
+        printf('  missed.  :status says what is left.\n');
+        return;
+    endif;
+    if limit and limit < length(todo) then
+        [% for o in todo do quitif(n >= limit); n + 1 -> n; o endfor %] -> todo;
+        0 -> n;
+    endif;
+    printf('\n  Practice: %p item(s) that were slow or missed at their latest\n',
+           [% length(todo) %]);
+    printf('  review.  Nothing here is scored -- it is for getting quicker.\n');
+    for o in todo do
+        lp_journal -> before;
+        quitunless(lp_drill(o(1), lp_primary(o(1))));
+        ;;; "later" records nothing; only an answer gets a time.
+        nextif(lp_journal == before);
+        hd(lp_journal) -> e;
+        n + 1 -> n;
+        if e(4) == "right" and e(5) <= o(2) then
+            inside + 1 -> inside;
+            printf('  %p s -- inside the %p s.\n', [% lp_secs(e(5)), lp_secs(o(2)) %]);
+        elseif e(4) == "right" then
+            slow <> [% lp_any_form(o(1)) %] -> slow;
+            printf('  %p s -- the limit is %p s.\n', [% lp_secs(e(5)), lp_secs(o(2)) %]);
+        else
+            slow <> [% lp_any_form(o(1)) %] -> slow;
+        endif;
+    endfor;
+    returnif(n == 0);
+    printf('\n  %p of %p right and inside the time.', [% inside, n %]);
+    if slow /== [] then
+        printf('  Still to get quicker:\n   ');
+        for o in slow do printf(' %p', [^o]) endfor;
+        printf('\n  :drill again goes round them all once more.\n');
+    else
+        printf('\n  Their reviews are what count -- they come round on their own days.\n');
+    endif;
+enddefine;
+
 ;;; WHAT TO WORK ON, BY NAME.  "64% within 2000ms" tells a student they
 ;;; are slow and not at what; the criterion is held by particular kana,
 ;;; and those are what the next sitting can do something about.  For
@@ -5358,7 +5457,7 @@ define lp_status_work();
         length(items) - rd - lp_settled_count(items) -> n;
         nextif(misses == [] and n <= 0);
         unless said then
-            printf('\n    to work on (slow or missed at the latest review):\n');
+            printf('\n    to work on (slow or missed at the latest review) -- :drill practises them:\n');
             true -> said;
         endunless;
         ;;; A set of one is the criterion itself: naming the item again
@@ -6489,6 +6588,7 @@ define lp_help();
     printf('  :why <item>      the derivation: prerequisites, source, belief\n');
     printf('  :status          the exit criteria of this level, measured\n');
     printf('  :progress        the last four weeks, a mark a day, and the trend\n');
+    printf('  :drill           practise what :status says is slow -- unscored, timed\n');
     printf('  :place           find out where you are, instead of guessing\n');
     printf('  :oops            that answer was an accident -- ask me again later\n');
     if lp_has_syllabary() then
@@ -6742,6 +6842,8 @@ define lp_session();
                 else lp_why(consword(arg)) endif;
             elseif cmd = 'status' then lp_status();
             elseif cmd = 'progress' or cmd = 'stats' then lp_progress();
+            elseif cmd = 'drill' or cmd = 'practice' then
+                lp_practice(strnumber(arg));
             elseif cmd = 'place' then lp_place_run();
             elseif cmd = 'oops' then
                 if not(lp_aid("oops")) then

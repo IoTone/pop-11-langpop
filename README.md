@@ -536,6 +536,21 @@ set has to have been reviewed this period, so nothing passes on a sample.
       recognise(hiragana): は  つ  か  ん  め wrong  こ wrong  (9 not reviewed yet this period)
 ```
 
+`:drill` asks exactly those items, now, and says how long each answer took
+against the limit:
+
+```
+  は    ->   そうです。
+  1.4 s -- inside the 2.0 s.
+```
+
+**Practice counts for nothing.** It moves no score and no review date:
+ten quick repetitions in a minute are not a retrieval after a gap, and the
+criteria read reviews only. It is there because speed cannot be practised
+blind, and because a review should not be the first time since the last
+one that a student sees the kana they were told is slow. The answers are
+still in the record, so the minutes show in `:progress`.
+
 With nothing owed today the tutor says which day the next review falls
 on, rather than that it has run out of work.
 
@@ -2520,6 +2535,7 @@ arrows into nothing.
 | `:why <item>` | the derivation: prerequisites, source, belief |
 | `:status` | this level's exit criteria, measured, and which aids are off |
 | `:progress` | the last four weeks as sparklines: days studied, minutes, questions, accuracy, speed, and the trend |
+| `:drill` | practise the items `:status` names as slow or missed; unscored, and each answer is timed against its limit. `:drill 10` asks ten |
 | `:place` | find out where they are, rather than ask |
 | `later` | *at a question:* put it off until later this session |
 | `:oops` | that answer was an accident — take it back and ask again later |

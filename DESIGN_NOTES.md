@@ -3783,3 +3783,24 @@ period. The floor is items. `lp_blend` and `lp_criterion_met` are
 unchanged; the row's `answers` now means items reviewed. `:status` lists
 the items whose latest review was slow or wrong, and how many are not yet
 reviewed, which is what the student can act on.
+
+## :drill, practice that counts for nothing
+
+`:status` now names the kana holding a criterion, but a review only comes
+round on its own day, so the student could do nothing about は until は
+was owed, and would then be measured cold. `:drill [n]` asks the items
+`lp_measure_latest` reports as missed (each once, at the tightest limit
+it is held to: ぜ is a hiragana at 2000 ms and a dakuten at 3000) and
+prints each answer's time against the limit.
+
+The phase is `practice`. `lp_record` writes the journal entry and moves
+nothing: no belief, no review stage or date, no inference. `lp_measure_in`
+leaves practice out unless asked for it, so placement's lifetime reading
+is unaffected, and the criteria read reviews only. Checked on a copy of
+the real profile: four practice answers (two right, one wrong, one skip)
+changed no belief and no review, `:status` read the same, and the journal
+gained four lines marked `practice`.
+
+Massed repetition is not spaced retrieval, so letting it count would be
+a way round the spacing. Making it free to get wrong is what makes it
+usable. It is TUI only; the server has no method for it yet.

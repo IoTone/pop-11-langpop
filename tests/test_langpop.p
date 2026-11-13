@@ -662,6 +662,46 @@ lp_measure_latest([hi_a], 2000, lp_period_start)
 check('a learning answer is not a review and does not replace it',
       lacc2, 0.0);
 
+;;; :drill -- PRACTICE COUNTS FOR NOTHING, and is written down anyway.
+t_due_now("hi_i");
+lp_record_phase("review", "hi_i", "read", 1, "right", 4000);
+lvars pit = lp_practice_items(), pj = length(lp_journal),
+      pbel = lp_bel("hi_i", "read"), prev = t_rev("hi_i"), pn;
+check_true('the kana whose latest review was slow is what there is to drill',
+           pit /== [] and member("hi_i", maplist(pit, procedure(o); lvars o; o(1) endprocedure)));
+lvars po; for po in pit do
+    if po(1) == "hi_i" then
+        check('at the limit its criterion holds it to', po(2), 2000);
+    endif;
+endfor;
+lp_measure([hi_i], 2000) -> (, , pn);
+lp_record_phase("practice", "hi_i", "read", 1, "wrong", 500);
+lp_record_phase("practice", "hi_i", "read", 1, "right", 500);
+check('practice answers are journalled', length(lp_journal), pj + 2);
+check('as practice', lp_jphase(hd(lp_journal)), "practice");
+check('a wrong one moves no belief, and neither does a right one',
+      lp_bel("hi_i", "read"), pbel);
+check('nor the review that is owed', t_rev("hi_i"), prev);
+lp_measure_latest([hi_i], 2000, lp_period_start)
+    -> (lacc2, lfast2, ln2, lmiss);
+check('a fast practice answer does not stand in for the review', lfast2, 0.0);
+lvars pn2; lp_measure([hi_i], 2000) -> (, , pn2);
+check('and the lifetime measure leaves practice out', pn2, pn);
+;;; The command itself, with the keyboard stood in for.
+lvars realread2 = lp_readline, ptyped = ['i' 'zzz' 'zzz' 'zzz' 'zzz' 'zzz'];
+procedure() -> l; lvars l;
+    if ptyped == [] then termin -> l
+    else hd(ptyped) -> l; tl(ptyped) -> ptyped endif;
+endprocedure -> lp_readline;
+length(lp_journal) -> pj;
+lp_practice(1);
+realread2 -> lp_readline;
+check(':drill 1 asks one item and records one practice answer',
+      length(lp_journal), pj + 1);
+check('about the slow kana', hd(lp_journal)(1), hd(pit)(1));
+check('still as practice, with the phase put back after',
+      {% lp_jphase(hd(lp_journal)), lp_phase %}, {practice learn});
+
 ;;; The period is a lower bound on the journal and nothing is deleted.
 lvars before = lp_period_start;
 lp_now_ms() + 1 -> lp_period_start;     ;;; as though the period had rolled
