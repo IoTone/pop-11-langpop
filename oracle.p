@@ -524,6 +524,10 @@ define ora_turn() -> more;
         ;;; this side cannot know the answer (a listening pair): decline
         ;;; honestly rather than guess, and expect a recorded skip
         '' -> given; 'skip' -> intent;
+        ;;; It still has a competence, for the arithmetic at the end of
+        ;;; the turn: without one, the first pair with an `expected` in
+        ;;; its reply was 1.0 - false.
+        if ora_comp(itemw) == false then ora_skill -> ora_comp(itemw) endif;
     else
         if ora_comp(itemw) == false then ora_skill -> ora_comp(itemw) endif;
         ora_comp(itemw) -> c;

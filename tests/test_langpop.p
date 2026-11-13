@@ -3498,6 +3498,16 @@ check_true('slower is down', isstartstring('↓', lp_trend_ms(2500, 2000)));
 check('a time is said in seconds', lp_secs(1530), '1.5');
 pj_lang -> lp_lang; pj_j -> lp_journal;
 
+;;; THE LISTENING POOL ASKS ABOUT PREREQUISITES ITSELF, for what cannot
+;;; be read: a length pair came in by that door alone, and the oracle
+;;; was offered small っ by ear before the beat it is had been taught.
+"gatekeeper" -> lp_user; [] -> lp_journal;
+check_false('small っ by ear waits for small っ as a beat',
+            lp_prereqs_ok("l_sokuon"));
+repeat 3 times lp_record("mora_sokuon", lp_primary("mora_sokuon"), 1, "right", 100) endrepeat;
+check_true('and is ready once that is known', lp_prereqs_ok("l_sokuon"));
+check_true('an item that requires nothing is always ready', lp_prereqs_ok("hi_a"));
+
 ;;; ------------------------------------------------------------ --deps
 ;;; What the tutor reaches for outside itself, read from where it will
 ;;; reach.  The home is still the scratch one, so there is no voice.

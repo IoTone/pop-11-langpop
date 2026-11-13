@@ -999,7 +999,7 @@ define lp_m_status(msg) -> res;
                               'kind', 'coverage',
                               'note', 'needs the content build' %])
            else
-               lp_ask(c, "criterion_items", 1) -> items;
+               lp_criterion_items(c) -> items;
                ;;; Reviews, this period -- see lp_measure_in.  `need` is
                ;;; the floor: a client that showed 100% over three
                ;;; reviews of a sixty-nine item set would be reporting

@@ -981,6 +981,55 @@ check_true('and the gloss pair is what it offers',
 lp_write_file(lp_audio_conf_path(), encfg);
 lp_voices_load();
 
+;;; --- what lives on the ear alone, in a rung that also has reading
+;;; The Japanese length pairs: contrasts with prerequisites, beside kana
+;;; and words.  Found by the oracle, which was offered small っ by ear
+;;; before the skill it depends on, and then asked little else.
+lvars luser = lp_user, ljournal = lp_journal, lw, lpr;
+"lengths" -> lp_user; [] -> lp_journal;
+for lpr in lp_pairs_of("l_sokuon") do
+    for lw in lpr do
+        lp_audio_make_of(lp_pair_word_name(lw), lw, "ja", "normal", false)
+            -> (, , );
+    endfor;
+endfor;
+check_true('the pair can be asked here', lp_drillable_on("l_sokuon", "hear"));
+check_false('but its prerequisite is not in place', lp_prereqs_ok("l_sokuon"));
+check_true('so it is not in the listening pool',
+           member("l_sokuon", lp_hear_plan()) == false);
+repeat 3 times
+    lp_record("mora_sokuon", lp_primary("mora_sokuon"), 1, "right", 500);
+endrepeat;
+check_true('with the skill known, it is', lp_prereqs_ok("l_sokuon")
+           and member("l_sokuon", lp_hear_plan()) /== false);
+;;; In the ordinary slot it gives way to anything that can be read.
+check('a kana is asked before a contrast of the same belief',
+      lp_choose([l_sokuon hi_a]), "hi_a");
+check('whichever way round they are listed',
+      lp_choose([hi_a l_sokuon]), "hi_a");
+check('and a contrast is still asked when it is all there is',
+      lp_choose([l_sokuon]), "l_sokuon");
+;;; In the listening slot, not two contrasts running when a word waits.
+repeat 3 times lp_record("w_neko", "read", 1, "right", 500) endrepeat;
+lp_audio_make("w_neko", "normal") -> (path, made, why);
+check_true('a word and a contrast are both in the pool',
+           member("w_neko", lp_hear_plan()) /== false
+           and member("l_sokuon", lp_hear_plan()) /== false);
+lp_record("l_sokuon", "hear", 1, "wrong", 500);
+check_true('after a contrast, the next listening question can be read too',
+           lp_hear_readable(lp_choose_hear()));
+;;; The items of a criterion are asked of the graph once.
+lvars lcrit = false, lex;
+for lex in lp_exits do
+    if hd(lex) == "ja" and hd(tl(lex)) == "preschool" and not(lcrit) then
+        hd(tl(tl(lex))) -> lcrit
+    endif;
+endfor;
+check_true('a criterion has items', lp_criterion_items(lcrit) /== []);
+check_true('and the second asking is the first one\'s answer',
+           lp_criterion_items(lcrit) == lp_criterion_items(lcrit));
+luser -> lp_user; ljournal -> lp_journal;
+
 ;;; --- the queue remembers the channel
 ;;; Without this a listening question put off came back as a reading
 ;;; question, so the belief the student was working on never moved.

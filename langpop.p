@@ -127,6 +127,7 @@ vars
     ;;; down this file.  The flags live up here so lp_index can clear
     ;;; them without a forward reference.
     lp_edges_ready = false,
+    lp_crit_cache = newproperty([], 64, false, "perm"), ;;; see lp_criterion_items
     lp_kana_rom_ready = false,
     lp_journal  = [],
     lp_assigns  = [],
@@ -940,6 +941,7 @@ define lp_index();
     [] -> lp_items; [] -> lp_ladders; [] -> lp_exits; [] -> lp_rsrc;
     [] -> lp_gens;
     false -> lp_edges_ready;
+    clearproperty(lp_crit_cache);
     false -> lp_kanji_map_ready;
     lp_ask("index", 0).erase;
     rev(lp_items) -> lp_items;
@@ -1153,6 +1155,24 @@ vars lp_edges = newproperty([], 512, [], "perm");
 ;;; to each other and one of them must be forward.
 vars procedure lp_record;
 
+;;; THE ITEMS A CRITERION IS MEASURED OVER, asked of the graph once.
+;;; The graph does not change while the program runs, and the answer was
+;;; being asked for again after every answer a student gave: 60 ms a time
+;;; for skill(dakuten), whose items are found by walking every requires/2
+;;; fact, in a check that runs for every criterion of the rung.  Keyed by
+;;; the criterion as text, because a Prolog term is a fresh structure
+;;; each time it is read and a property compares by identity.  Emptied
+;;; when the graph is loaded again.  The list is shared: do not update it.
+define lp_criterion_items(c) -> items;
+    lvars c, k = consword(lp_term_str(c)), items = lp_crit_cache(k);
+    unless items then
+        lp_ask(c, "criterion_items", 1) -> items;
+        ;;; [] is a real answer and false is "not asked yet"
+        if items == [] then "none" else items endif -> lp_crit_cache(k);
+    endunless;
+    if items == "none" then [] -> items endif;
+enddefine;
+
 define lp_build_edges();
     lvars t, a, b;
     returnif(lp_edges_ready);
@@ -1192,6 +1212,16 @@ define :prolog lp_gates_ok/2(s, i, contn);
         returnunless(lp_mastered(pre) or lp_ungateable(pre));
     endfor;
     chain(contn);
+enddefine;
+
+;;; The same question for a Pop-11 caller, which the listening pool is.
+define lp_prereqs_ok(i) -> yes;
+    lvars i, yes = true, pre;
+    for pre in lp_edges_of(i) do
+        unless lp_mastered(pre) or lp_ungateable(pre) then
+            false -> yes; return;
+        endunless;
+    endfor;
 enddefine;
 
 ;;; Is the prerequisite WRITTEN INSIDE the item?
@@ -2025,18 +2055,26 @@ enddefine;
 define lp_measure_latest(items, latency_ms, since)
         -> (acc, fast, n, misses);
     lvars items, latency_ms, since, e, right = 0, quick = 0, n = 0,
-          misses = [], seen = newproperty([], 64, false, "perm"), i;
+          misses = [], i, left = 0,
+          ;;; item -> "want" until it has been read, then true.  A table
+          ;;; and not member(): this runs for every criterion after every
+          ;;; answer, and a list search per journal entry made the check
+          ;;; cost 112 ms at 1,500 answers and grow with the record.
+          seen = newproperty([], 128, false, "perm");
     for i in items do
-        if lp_burned(i, lp_primary(i)) then "settled" -> seen(i) endif;
+        if lp_burned(i, lp_primary(i)) then "settled" -> seen(i)
+        else "want" -> seen(i); left + 1 -> left
+        endif;
     endfor;
     ;;; lp_journal is newest first, so the first review met of an item is
-    ;;; its latest.
+    ;;; its latest -- and the walk can stop at the first entry older than
+    ;;; the period, or once every item has been read.
     for e in lp_journal do
+        quitif(left == 0);
+        quitif(since and e(6) < since);
         nextunless(e(3) == 1 and lp_jphase(e) == "review");
-        nextif(since and e(6) < since);
-        nextif(seen(e(1)));
-        nextunless(member(e(1), items));
-        true -> seen(e(1));
+        nextunless(seen(e(1)) == "want");
+        true -> seen(e(1)); left - 1 -> left;
         n + 1 -> n;
         if lp_outcome_ok(e(4)) and e(5) <= latency_ms then
             right + 1 -> right; quick + 1 -> quick;
@@ -4650,7 +4688,7 @@ enddefine;
 ;;; is how the empty rungs and the unprobeable roll-ups drop out.
 define lp_place_items(axis, level) -> items;
     lvars axis, level, i, items = [], pool, sh, how = axis(2), arg = axis(3);
-    if     how == "crit"  then lp_ask(arg, "criterion_items", 1) -> pool
+    if     how == "crit"  then lp_criterion_items(arg) -> pool
     elseif how == "skill" then lp_edges_of(arg) -> pool
     else                       lp_items -> pool
     endif;
@@ -5100,7 +5138,7 @@ define lp_status_rows() -> rows;
                 {% "unbuilt", 0, 0, 0, false %}
             endif -> row;
         else
-            lp_ask(c, "criterion_items", 1) -> items;
+            lp_criterion_items(c) -> items;
             ;;; NOT ONE OF THEM CAN BE ASKED HERE.  The same claim the
             ;;; vocabulary branch above makes with `audio`, reached from
             ;;; the other side: sound_contrasts is measured over thirteen
@@ -5484,7 +5522,7 @@ define lp_practice_items() -> out;
         hd(tl(tl(e))) -> c; hd(tl(tl(tl(tl(e))))) -> ms;
         nextif(prolog_complexterm(c)
                and member(prolog_functor(c), [vocabulary kanji coverage]));
-        lp_ask(c, "criterion_items", 1) -> items;
+        lp_criterion_items(c) -> items;
         lp_measure_latest(items, ms, lp_period_start)
             -> (acc, fast, rd, misses);
         for m in misses do
@@ -5580,7 +5618,7 @@ define lp_status_work();
         hd(tl(tl(e))) -> c; hd(tl(tl(tl(tl(e))))) -> ms;
         nextif(prolog_complexterm(c)
                and member(prolog_functor(c), [vocabulary kanji coverage]));
-        lp_ask(c, "criterion_items", 1) -> items;
+        lp_criterion_items(c) -> items;
         nextif(items == []);
         lvars acc, fast, rd, misses;
         lp_measure_latest(items, ms, lp_period_start)
@@ -5927,7 +5965,7 @@ define lp_audit_one(crit, level) -> (verdict, have, askable, want, silent);
         ;;; asked about does not cap the percentage -- it quietly leaves
         ;;; the measurement, which is worse.  Both numbers are reported
         ;;; so that a criterion measured over part of its set says so.
-        lp_ask(crit, "criterion_items", 1) -> items;
+        lp_criterion_items(crit) -> items;
         length(items) -> have;
         lvars audible = 0, rend = 0;
         for i in items do
@@ -6814,6 +6852,18 @@ define lp_hear_plan() -> items;
         ;;; ends.
         nextunless(not(member("read", lp_channels(i)))
                    or lp_mastered_on(i, "read"));
+        ;;; AND ITS PREREQUISITES, which the line above was standing in
+        ;;; for.  A word mastered by eye had them, or it would never have
+        ;;; been in the plan to be mastered; an item with no read channel
+        ;;; came in by this door alone and nothing had ever asked.  It
+        ;;; did not matter while the only such items were the English
+        ;;; contrasts, which require nothing.  The Japanese length pairs
+        ;;; require the counting skill they are the ear's half of, and
+        ;;; the oracle was offered small っ by ear before it had been
+        ;;; taught that small っ is a beat.
+        ;;; Asked only of what cannot be read: a word's reading mastery
+        ;;; is the evidence for a word, however it was come by.
+        nextunless(member("read", lp_channels(i)) or lp_prereqs_ok(i));
         nextif(lp_mastered_on(i, "hear"));
         nextif(lp_deferred(i));
         nextunless(lp_drillable_on(i, "hear"));
@@ -6823,9 +6873,45 @@ enddefine;
 
 ;;; Weakest belief first, then least asked -- the same rule lp_choose
 ;;; uses, on the other channel.
+lconstant CONTRAST_EVERY = 4;
+
+;;; Is this something heard that can also be read -- a word, a kana --
+;;; rather than a contrast that lives on the ear alone?
+define lp_hear_readable(i);
+    lvars i;
+    member("read", lp_channels(i)) and true
+enddefine;
+
 define lp_choose_hear() -> best;
     lvars best = false, i, b, a, bb = false, ba = false, fresh,
-          pool = lp_hear_plan();
+          pool = lp_hear_plan(), e, last = false, rest;
+    ;;; NOT TWO CONTRASTS RUNNING, when there is a word waiting.  Weakest
+    ;;; first is the rule, and a contrast a student cannot yet hear stays
+    ;;; weakest: three of them would take every listening slot there is,
+    ;;; and the words -- which vocabulary(N, hear) is measured over, as
+    ;;; the contrasts are not -- would never be asked by ear at all.  So
+    ;;; after a contrast the next listening questions are things that
+    ;;; can also be read, if the pool holds any.  Where it holds only
+    ;;; contrasts, as English pre-school does, nothing changes.
+    ;;; One listening slot in CONTRAST_EVERY, in fact, and not every
+    ;;; other one.  Alternating still gave a student who cannot hear the
+    ;;; contrasts half of all their listening to them for good: the
+    ;;; oracle, deaf to pairs, then read all fifty words and in 3,000
+    ;;; answers heard none of them to mastery, because 188 kana and
+    ;;; words were sharing what was left.  A student who CAN hear them
+    ;;; masters three contrasts in nine answers and they leave the pool,
+    ;;; so the limit costs that student a few questions' delay.
+    lvars since = 0;
+    for e in lp_journal do
+        nextunless(e(2) == "hear");
+        if lp_hear_readable(e(1)) then since + 1 -> since
+        else e(1) -> last; quitloop
+        endif;
+    endfor;
+    if last and since < CONTRAST_EVERY - 1 then
+        [% for i in pool do if lp_hear_readable(i) then i endif endfor %] -> rest;
+        if rest /== [] then rest -> pool endif;
+    endif;
     for fresh in [^true ^false] do
     quitif(best);
     for i in pool do
@@ -6840,15 +6926,32 @@ define lp_choose_hear() -> best;
 enddefine;
 
 define lp_choose(plan) -> best;
-    lvars plan, item, b, a, bb = false, ba = false, fresh;
+    lvars plan, item, b, a, bb = false, ba = false, fresh, pass, ear;
     false -> best;
-    ;;; Twice at most: once passing over what was just asked, and again
-    ;;; without that only when nothing else was ready (lp_just_asked).
-    for fresh in [^true ^false] do
+    ;;; WHAT IS ASKED BY EAR ALONE WAITS FOR THE LISTENING SLOT, while
+    ;;; there is anything else to ask.  A contrast -- small っ against
+    ;;; none, /r/ against /l/ -- has no reading to fall back on, so a
+    ;;; student who cannot hear it yet answers wrong, its belief goes to
+    ;;; nothing, and weakest-first then asks it again at every turn the
+    ;;; requeue gap allows.  Three of them is three questions in four.
+    ;;; The oracle, which cannot hear at all, showed it plainly: 1,297
+    ;;; skips in 2,961 answers and not one of fifty words learned.  The
+    ;;; listening slot is one question in four and lp_choose_hear shares
+    ;;; it out; here such an item is taken only when nothing that can be
+    ;;; read is ready and not just asked -- which is every question of a
+    ;;; rung made only of contrasts, and otherwise the rare turn on
+    ;;; which one stuck kana would have been asked twice running.
+    ;;;
+    ;;; Then, as before, twice at most: once passing over what was just
+    ;;; asked, and again without that only when nothing else was ready
+    ;;; (lp_just_asked).
+    for pass in [[^true ^false] [^true ^true] [^false ^false] [^false ^true]] do
     quitif(best);
+    hd(pass) -> fresh; hd(tl(pass)) -> ear;
     for item in plan do
         nextunless(lp_drillable(item));
         nextif(lp_deferred(item));
+        nextunless((lp_primary(item) == "hear") == ear);
         nextif(fresh and lp_just_asked(item));
         lp_bel(item, lp_primary(item)) -> b;
         lp_asked(item) -> a;

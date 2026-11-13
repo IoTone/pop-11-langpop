@@ -3918,3 +3918,44 @@ pass with its listening half never asked. Split in two:
 `lp_verifiable` reads the first. With sound off on a copy of the real
 profile, `vocabulary(50, hear)` now stays in "still to finish" and
 `:status` adds "listening is waiting".
+
+## What the oracle found in the length pairs
+
+The latest-review criteria had not been run through the oracle, so it
+was run: 3,000 answers, seeds 42 and 7. The criteria were fine. The
+length pairs from two days earlier were not, three ways.
+
+**Offered before their prerequisite.** `ORACLE VIOLATION: l_sokuon
+offered before its prerequisite mora_sokuon`. `lp_hear_plan` admits an
+item with no `read` channel without asking about its prerequisites: for
+a word, "mastered by eye" stood in for that, and the English contrasts
+require nothing. `lp_prereqs_ok` now asks, for every item in the pool.
+
+**Asked nearly all the time.** The pairs are also in the ordinary plan,
+and weakest-first picks an item nobody can answer at every turn the
+requeue gap allows; three of them is three questions in four. The oracle
+cannot hear, so it showed the extreme: 1,297 skips in 2,961 answers and
+0 of 50 words learned. A real student who cannot yet hear the difference
+would get a milder version of the same sitting. Two rules:
+
+- `lp_choose` takes an item whose gate channel is `hear` only when
+  nothing readable is ready and fresh. Ear-only items wait for the
+  listening slot.
+- `lp_choose_hear` does not ask two ear-only items running when the pool
+  holds something that can also be read.
+
+After: 41 to 48 of 50 words read in the same 3,000 answers. A rung made
+only of contrasts (English pre-school) is unchanged, because there is
+nothing else to prefer. The oracle still spends half its listening slots
+skipping pairs it cannot hear; that is the oracle's deafness, not the
+schedule.
+
+**The oracle crashed** on the first pair whose reply carried `expected`:
+a pair it declines never got a competence, and the turn ended in
+`1.0 - false`.
+
+And one thing it showed by being slow: 3,000 answers took 5:16. The
+criteria are checked after every answer, and `skill(dakuten)` finds its
+46 items by walking every `requires/2` fact, 60 ms a time, though the
+graph never changes. `lp_criterion_items` asks once and keeps the list.
+The check went from 112 ms to 22 ms per answer and the run to 2:23.
