@@ -3959,3 +3959,32 @@ criteria are checked after every answer, and `skill(dakuten)` finds its
 46 items by walking every `requires/2` fact, 60 ms a time, though the
 graph never changes. `lp_criterion_items` asks once and keeps the list.
 The check went from 112 ms to 22 ms per answer and the run to 2:23.
+
+## What the oracle found in the length pairs
+
+The simulated student had not been run since the Japanese length pairs
+(`l_sokuon`, `l_long`, `l_moraic_n`) went in. Run at seed 42 for 3,000
+answers, it found three faults, all from that change.
+
+**Offered before its prerequisite.** `lp_hear_plan` gated an item on
+reading mastery and exempted items with no read channel, which had only
+ever been the English contrasts, and those require nothing. The length
+pairs require their counting skill, and nothing asked. The pool now
+checks prerequisites itself for anything that cannot be read
+(`lp_prereqs_ok`).
+
+**Ear-only items took the sitting.** The pairs are also in the ordinary
+plan, weakest-first, and an item a student cannot hear stays at nothing.
+The oracle cannot hear pairs at all: 1,297 skips in 2,961 answers, 0 of
+50 words read. `lp_choose` now takes an ear-only item only when nothing
+readable is ready and fresh, and `lp_choose_hear` gives contrasts one
+listening slot in four while a word or kana is waiting (alternating was
+tried first and still left 0 of 50 heard). After: 493 skips, 50 of 50
+words read. A rung made only of contrasts, like English pre-school, is
+unchanged.
+
+**The oracle itself** did `1.0 - false` on the first pair whose reply
+carried an `expected`: a pair it cannot answer never got a competence.
+
+A student who can hear the pairs masters all three in nine answers and
+they leave the pool, so the limits cost that student a short delay.
