@@ -3838,3 +3838,33 @@ puts the voice's clip back.
 Not judged here: how natural a 2.8x stretch of a plosive sounds. The
 envelope is clean (か is 50 ms of onset and 200 ms of vowel, no gap);
 whether it sounds right is for a listener.
+
+## --deps: what it reaches for
+
+Adding SoX made the question pressing: what does this need from outside
+its own tree? An audit of every `sysobey`, every `uses`, the launcher and
+`tools/` found one requirement and about fifteen optional programs:
+
+- Poplog, with `lib/json`; `lib/jsonrpc` for server, client and oracle;
+  `lib/poptest` for the suites.
+- Sound: whatever `audio.conf` names per language, plus the first of
+  `afplay`/`aplay`/`paplay`/`play`; the `lengthen` command (SoX).
+- Microphone: the `record` and `verdict` commands, and `python3` for the
+  meter.
+- Pictures: `python3` and one of `rsvg-convert`/`magick`/`convert`;
+  `open`/`xdg-open`/`see`.
+- Content: `curl`, `gunzip`, `python3` to fetch and import.
+
+Every optional one follows the voice's rule, named or absent and absent
+without consequence. The cost of that rule is that a missing program is
+silent, so `./langpop --deps` says it. It is derived: commands are read
+from the config that will run them and programs are looked for where the
+calling code looks. Two checks go past "is the binary there", because
+both were real on this machine: the voice named after `say -v` is looked
+up in `say -v ?` (Kyoko (Enhanced) is a download), and a script given by
+absolute path in a command is checked to exist (the scorer line holds
+the repo's own path, which moves if the tree does).
+
+Three states, not two: `off` (not configured) is not `missing`
+(configured and not found), or a fresh clone would report a dozen
+problems it does not have.

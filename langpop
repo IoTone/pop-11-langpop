@@ -8,6 +8,7 @@
 #     ./langpop import ...         the importer
 #     ./langpop test               every suite, and a nonzero exit if any fails
 #     ./langpop --check | --audit | --gap ...               reports
+#     ./langpop --deps             what it needs from this machine, and has
 #
 # Finds a Poplog in this order: $LANGPOP_POPLOG (the poplog command to
 # run), the enclosing Poplog source tree's own ./poplog (which is where

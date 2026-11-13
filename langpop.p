@@ -6949,6 +6949,244 @@ define lp_session();
     endif;
 enddefine;
 
+;;; ------------------------------------------------------------------ deps
+;;; WHAT THIS PROGRAM NEEDS FROM OUTSIDE ITSELF, AND WHETHER IT IS HERE.
+;;;
+;;; Only one thing is required -- a Poplog -- and everything else is on
+;;; the terms the voice is on: named or absent, and absent without
+;;; consequence.  That rule is what lets the suites pass on a machine
+;;; with nothing installed, and it has a cost: a feature whose program is
+;;; missing does not fail, it quietly is not there.  The listening half
+;;; of a rung is "not checkable here", a kana stays short, a card opens
+;;; nowhere, and nothing says a `brew install` would change it.
+;;;
+;;; So this says it, in one place.  It is DERIVED and not a list kept by
+;;; hand: the commands are read out of the config the tutor will run
+;;; them from, and the programs are looked for where the code that calls
+;;; them will look.  A table in the README goes stale the day somebody
+;;; adds a tool; this cannot name a program the code does not use
+;;; without the same edit that makes the code use it.
+
+;;; Is this program on the machine?  A path is looked at; a bare name is
+;;; asked of the shell, which is who will be asked to run it.
+define lp_which(cmd) -> yes;
+    lvars cmd, yes = false, c, safe = true;
+    returnif(cmd = '');
+    if cmd(1) == `/` then sys_file_exists(cmd) and true -> yes; return endif;
+    ;;; Only a plain name goes anywhere near a shell.
+    for c in_string cmd do
+        unless (c >= `a` and c <= `z`) or (c >= `A` and c <= `Z`)
+        or (c >= `0` and c <= `9`) or c == `-` or c == `_` or c == `.` then
+            false -> safe
+        endunless;
+    endfor;
+    returnunless(safe);
+    sysobey('command -v ' <> cmd <> ' >/dev/null 2>&1');
+    pop_status == 0 -> yes;
+enddefine;
+
+;;; The program a configured command runs: its first word.
+define lp_cmd_program(cmd) -> prog;
+    lvars cmd, prog, at;
+    cmd sys_>< '' -> cmd;
+    locchar(` `, 1, cmd) -> at;
+    if at then substring(1, at - 1, cmd) else cmd endif -> prog;
+enddefine;
+
+;;; The words of a command, with '...' kept together and its quotes
+;;; taken off: enough to read a config line, not a shell.
+define lp_cmd_words(cmd) -> ws;
+    lvars cmd, ws = [], c, cur = '', inq = false;
+    for c in_string (cmd sys_>< '') do
+        if c == `'` then not(inq) -> inq
+        elseif c == ` ` and not(inq) then
+            if cur /= '' then ws <> [^cur] -> ws; '' -> cur endif;
+        else cur <> consstring(c, 1) -> cur
+        endif;
+    endfor;
+    if cur /= '' then ws <> [^cur] -> ws endif;
+enddefine;
+
+;;; A SCRIPT NAMED BY ITS FULL PATH IN A CONFIG, which is how the scorer
+;;; is configured: "python3 -I /somewhere/tools/score-morae.py ...".
+;;; python3 being installed says nothing about whether the tree was
+;;; moved since the line was written.  The first one that is not there.
+define lp_cmd_lost_script(cmd) -> lost;
+    lvars cmd, lost = false, w;
+    for w in lp_cmd_words(cmd) do
+        if w(1) == `/` and (isendstring('.py', w) or isendstring('.sh', w))
+        and not(sys_file_exists(w)) then
+            w -> lost; return;
+        endif;
+    endfor;
+enddefine;
+
+;;; THE VOICE, not just the program that speaks.  /usr/bin/say is on
+;;; every Mac; "Kyoko (Enhanced)" is a download in System Settings, and
+;;; a config naming a voice that is not installed renders nothing.
+;;; say(1) only: the name after -v, looked for in `say -v ?`.  False
+;;; when there is nothing to check or it is there; the name when not.
+define lp_cmd_lost_voice(cmd) -> lost;
+    lvars cmd, lost = false, ws = lp_cmd_words(cmd), name = false, c;
+    returnunless(ws /== [] and isendstring('say', hd(ws)) and lp_which(hd(ws)));
+    until ws == [] or tl(ws) == [] do
+        if hd(ws) = '-v' then hd(tl(ws)) -> name endif;
+        tl(ws) -> ws;
+    enduntil;
+    returnunless(name and name /= '' and name /= '%v');
+    for c in_string name do returnif(c == `'` or c == `\\`) endfor;
+    sysobey(lp_cmd_program(cmd) <> ' -v \'?\' 2>/dev/null | grep -qF \''
+            <> name <> '  \'');
+    unless pop_status == 0 then name -> lost endunless;
+enddefine;
+
+;;; Rows of {group need state detail remedy}.  state is "ok", "missing"
+;;; (wanted and not here), or "off" (nothing asks for it).  Only a
+;;; missing row in the `required` group is a reason to stop.
+define lp_deps() -> rows;
+    lvars rows = [], lang, cfg, prog, f, n, c, conv = false, opener = false,
+          conf = lp_audio_conf_path(), has_conf = sys_file_exists(conf);
+    define lconstant row(group, need, state, detail, remedy);
+        lvars group, need, state, detail, remedy;
+        rows <> [% {% group, need, state, detail, remedy %} %] -> rows;
+    enddefine;
+    define lconstant prog_row(group, need, cmd, remedy);
+        lvars group, need, cmd, remedy, pr = lp_cmd_program(cmd), lost;
+        if not(lp_which(pr)) then
+            row(group, need, "missing", pr, remedy);
+        elseif lp_cmd_lost_script(cmd) ->> lost then
+            row(group, need, "missing", lost,
+                'the config names a script that is not there -- fix the path');
+        elseif lp_cmd_lost_voice(cmd) ->> lost then
+            row(group, need, "missing", 'the voice "' <> lost <> '"',
+                'install it: System Settings, Accessibility, Spoken Content, Manage Voices');
+        else
+            row(group, need, "ok", pr, remedy);
+        endif;
+    enddefine;
+
+    ;;; --- required
+    row("required", 'Poplog', "ok", popversion, false);
+    row("required", 'lib/json', "ok", 'the profile and every config', false);
+    syssearchpath(popuseslist, 'jsonrpc.p') -> f;
+    row("server", 'lib/jsonrpc',
+        if f then "ok" else "missing" endif,
+        'server, client and oracle',
+        'a Poplog from 2026-10-20 or later, or one built from source');
+    syssearchpath(popuseslist, 'poptest.p') -> f;
+    row("tests", 'lib/poptest', if f then "ok" else "missing" endif,
+        './langpop test', 'comes with Poplog');
+
+    ;;; --- sound
+    lp_load_audio();
+    row("sound", 'voice config', if has_conf then "ok" else "off" endif,
+        conf, 'see "Voices" in the README; without it there is no sound');
+    for lang in lp_langs() do
+        lp_voice(lang) -> cfg;
+        if cfg then
+            prog_row("sound", 'a voice for ' <> (lang sys_>< ''), cfg(1),
+                     'name a speech command for it in the voice config');
+            if length(cfg) >= 5 and cfg(5) then
+                prog_row("sound", 'lengthening short kana, ' <> (lang sys_>< ''),
+                         cfg(5)(1), 'brew install sox (or apt install sox)');
+            elseif lang == "ja" then
+                row("sound", 'lengthening short kana, ja', "off",
+                    'no "lengthen" entry', 'optional; see "Voices" in the README');
+            endif;
+        else
+            row("sound", 'a voice for ' <> (lang sys_>< ''), "off",
+                'none named', 'listening questions in it cannot be asked');
+        endif;
+    endfor;
+    lp_audio_player() -> f;
+    row("sound", 'something to play a recording',
+        if f then "ok" elseif has_conf then "missing" else "off" endif,
+        f or 'afplay, aplay, paplay or play',
+        'afplay comes with macOS; on Linux, alsa-utils or sox');
+
+    ;;; --- the microphone
+    lp_recorder() -> cfg;
+    if cfg then
+        prog_row("microphone", 'recording', cfg(1), 'brew install sox (rec), or ffmpeg');
+    else
+        row("microphone", 'recording', "off", 'no "record" entry',
+            'only :speak and :mic need it');
+    endif;
+    lp_scorer() -> cfg;
+    if cfg then
+        prog_row("microphone", 'scoring what was said', cfg(1), 'python3');
+    else
+        row("microphone", 'scoring what was said', "off", 'no "verdict" entry',
+            'only :speak needs it');
+    endif;
+    if lp_recorder() then
+        prog_row("microphone", 'the level meter', lp_meter(), 'python3');
+    endif;
+
+    ;;; --- cards and pictures
+    prog_row("pictures", 'drawing in the terminal', 'python3',
+             'python3; without it a card opens in a viewer instead');
+    for c in ['rsvg-convert' 'magick' 'convert'] do
+        if not(conv) and lp_which(c) then c -> conv endif;
+    endfor;
+    row("pictures", 'turning a card into an image',
+        if conv then "ok" else "missing" endif,
+        conv or 'rsvg-convert, magick or convert',
+        'brew install librsvg (or imagemagick); only for in-terminal cards');
+    for c in ['/usr/bin/open' '/usr/bin/xdg-open' '/usr/bin/see'] do
+        if not(opener) and sys_file_exists(c) then c -> opener endif;
+    endfor;
+    row("pictures", 'opening a card, sheet or booklet',
+        if opener then "ok" else "missing" endif,
+        opener or 'open, xdg-open or see',
+        'the file is still written, and its path printed');
+
+    ;;; --- content
+    0 -> n;
+    for f in lp_generated_files() do
+        if sys_file_exists(find_dir() <> f) then n + 1 -> n endif;
+    endfor;
+    row("content", 'imported levels',
+        if n == length(lp_generated_files()) then "ok"
+        elseif n == 0 then "off" else "missing" endif,
+        (n sys_>< '') <> ' of ' <> (length(lp_generated_files()) sys_>< '')
+            <> ' built',
+        'optional: tools/fetch-upstream.sh, then ./langpop import');
+    for c in ['curl' 'gunzip' 'python3'] do
+        prog_row("content", 'building them: ' <> c, c,
+                 'only to fetch and import reference data');
+    endfor;
+enddefine;
+
+define lp_deps_show();
+    lvars r, group = false, missing = 0, required = 0, mark, need;
+    printf('\nWhat langpop reaches for, and whether this machine has it.\n');
+    for r in lp_deps() do
+        unless r(1) == group then
+            r(1) -> group; printf('\n  %p\n', [^group]);
+        endunless;
+        if     r(3) == "ok"  then 'ok     ' -> mark
+        elseif r(3) == "off" then '--     ' -> mark
+        else 'MISSING' -> mark; missing + 1 -> missing;
+            if r(1) == "required" then required + 1 -> required endif;
+        endif;
+        r(2) -> need;
+        until length(need) >= 34 do need <> ' ' -> need enduntil;
+        printf('  %p  %p %p\n', [% mark, need, r(4) %]);
+        if r(3) /== "ok" and r(5) then
+            printf('             -> %p\n', [% r(5) %]);
+        endif;
+    endfor;
+    printf('\n  ok = here.  -- = not set up, and nothing depends on it.\n');
+    if missing == 0 then
+        printf('  Nothing that is asked for is missing.\n');
+    else
+        printf('  %p thing(s) asked for and not found.  Only Poplog is required;\n',
+               [^missing]);
+        printf('  each of the others switches off the one feature named beside it.\n');
+    endif;
+enddefine;
+
 ;;; ---------------------------------------------------------------- sheets
 ;;; Something to take away from the screen and put on a desk.  Loaded on
 ;;; demand exactly as card.p is, and for the same reason.
@@ -7223,6 +7461,7 @@ enddefine;
 define lp_main();
     lvars args = poparglist, a, user = false, display = false,
           batch = false, checkonly = false, auditonly = false,
+          depsonly = false,
           sheetonly = false, audioonly = false, rate = false,
           voicetest = false, vtitem = false, rest = [];
     find_dir() -> langpop_dir;
@@ -7250,6 +7489,7 @@ define lp_main();
             strnumber(hd(tl(args))) -> lp_day_ms; tl(tl(args)) -> args;
         elseif a = '--check' then true -> checkonly; tl(args) -> args;
         elseif a = '--audit' then true -> auditonly; tl(args) -> args;
+        elseif a = '--deps' then true -> depsonly; tl(args) -> args;
         elseif a = '--chart' then
             consword(hd(tl(args))) -> sheetonly; tl(tl(args)) -> args;
         elseif a = '--sheet' then "today" -> sheetonly; tl(args) -> args;
@@ -7310,6 +7550,8 @@ define lp_main();
     ;;; Before the check, because a hollow rung is a fact about the
     ;;; graph and wants no student bound to it.
     if auditonly then lp_audit_show(); return endif;
+    ;;; What this machine has of what the tutor reaches for.  No student.
+    if depsonly then lp_deps_show(); return endif;
     ;;; Ahead of time, and with no student: the audio of an item is a
     ;;; property of the graph, like a card.
     if audioonly then

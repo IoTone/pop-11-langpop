@@ -924,6 +924,15 @@ define lp_audio_lengthen(path, ln) -> (from_ms, factor);
     endif;
 enddefine;
 
+;;; The first player on this machine, or false.  PLAYERS is file-local
+;;; and --deps has to be able to say which one it found.
+define lp_audio_player() -> player;
+    lvars player = false, pl;
+    for pl in PLAYERS do
+        if sys_file_exists(pl) then pl -> player; return endif;
+    endfor;
+enddefine;
+
 define lp_audio_lead_path() -> p;
     lvars p = lp_audio_dir() <> '.playing.wav';
 enddefine;

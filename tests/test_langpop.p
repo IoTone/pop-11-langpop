@@ -3498,6 +3498,38 @@ check_true('slower is down', isstartstring('↓', lp_trend_ms(2500, 2000)));
 check('a time is said in seconds', lp_secs(1530), '1.5');
 pj_lang -> lp_lang; pj_j -> lp_journal;
 
+;;; ------------------------------------------------------------ --deps
+;;; What the tutor reaches for outside itself, read from where it will
+;;; reach.  The home is still the scratch one, so there is no voice.
+check_true('a program at a path that exists is found', lp_which('/bin/sh'));
+check_false('and one that does not is not', lp_which('/no/such/program'));
+check_true('a bare name is asked of the shell', lp_which('sh'));
+check_false('which does not know this one', lp_which('langpop-no-such-tool'));
+check_false('and is never handed anything but a plain name',
+            lp_which('sh; echo'));
+check('a command runs its first word', lp_cmd_program('rec -S -r 16000 %o'), 'rec');
+check('quoted words stay whole, without their quotes',
+      lp_cmd_words('/usr/bin/say -v \'Kyoko (Enhanced)\' -r %r'),
+      ['/usr/bin/say' '-v' 'Kyoko (Enhanced)' '-r' '%r']);
+check('a script named by a path that is gone is noticed',
+      lp_cmd_lost_script('python3 -I /nowhere/tools/score.py --out %v'),
+      '/nowhere/tools/score.py');
+check('one that is there is not',
+      lp_cmd_lost_script('python3 -I ' <> langpop_dir <> 'tools/score-morae.py'),
+      false);
+check('and a command with no script has none to lose',
+      lp_cmd_lost_script('rec -S %o'), false);
+check('a voice is only looked up for say', lp_cmd_lost_voice('kokoro -v jf_alpha'), false);
+lvars drows = lp_deps(), dr, dreq = 0, dvoice = false;
+for dr in drows do
+    if dr(1) == "required" and dr(3) /== "ok" then dreq + 1 -> dreq endif;
+    if dr(2) = 'voice config' then dr(3) -> dvoice endif;
+endfor;
+check_true('there is a row for each thing', length(drows) >= 12);
+check('nothing required is missing, or this would not be running', dreq, 0);
+check('no voice config is OFF, not missing -- nothing depends on it',
+      dvoice, "off");
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 

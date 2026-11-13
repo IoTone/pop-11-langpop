@@ -30,6 +30,7 @@ phone app would not have.
 ./langpop --lang en          # English, with Mr Hill
 ./langpop --check            # integrity-check the graph
 ./langpop --audit            # which rungs can be climbed
+./langpop --deps             # what it needs from this machine, and has
 ./langpop --chart hiragana   # a page to print
 ./langpop --zine --user bob  # a booklet to fold
 ./langpop --audio preschool  # make the sound files
@@ -100,6 +101,38 @@ those three need a Poplog [built from
 source](https://github.com/IoTone/poplog/blob/master/INSTALL). langpop
 probes for both libraries at startup and names the release it needs
 rather than failing part-way through compiling.
+
+### What it needs, and what is optional
+
+**Only Poplog is required.** Everything else switches on one feature, and
+without it that feature is simply not there: nothing fails, which is also
+why a missing program is easy not to notice. `./langpop --deps` checks this
+machine and says, for anything missing, what it costs and how to get it:
+
+```
+  sound
+    ok       a voice for ja                     /usr/bin/say
+    MISSING  lengthening short kana, ja         sox
+             -> brew install sox (or apt install sox)
+    --       a voice for en                     none named
+```
+
+`ok` is here, `--` is not set up and nothing depends on it, `MISSING` is
+asked for by your configuration and not found. It reads the commands out of
+your own voice config, so it also catches a voice that is named but not
+installed, and a script path that no longer exists.
+
+| for | needs | without it |
+|---|---|---|
+| the tutor | Poplog with `lib/json` | does not start |
+| `server`, `client`, `oracle` | Poplog with `lib/jsonrpc` (2026-10-20) | those three do not start |
+| sound | a speech command named in `~/.langpop/audio.conf` (macOS `say` and an installed voice, or any other), and a player (`afplay`, `aplay`, `paplay`, `play`) | no listening questions; the listening half of each level is reported as not checkable |
+| longer single kana | [SoX](https://sox.sourceforge.net) (`sox`) | kana are played as short as the voice says them |
+| `:speak`, `:mic` | a recorder (`rec` from SoX, or `ffmpeg`) and `python3` | no speaking practice |
+| cards in the terminal | `python3`, one of `rsvg-convert` / `magick` / `convert`, and a terminal with the kitty or iTerm image protocol | cards open in a viewer instead |
+| opening cards, sheets, booklets | `open`, `xdg-open` or `see` | the file is written and its path printed |
+| importing reference content | `curl`, `gunzip`, `python3` | the 1,309 committed items only |
+| new photographs (authors only) | `magick` or `sips`, and an image model | the committed photographs only |
 
 A fresh clone holds 1,309 items. The content imported from reference
 sources is not kept in git — it is regenerated on demand (see [Adding
