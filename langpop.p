@@ -769,10 +769,21 @@ define lp_read_file(path) -> s;
     consstring(n) -> s;
 enddefine;
 
+;;; WRITTEN BESIDE AND MOVED INTO PLACE.  The TUI saves after every
+;;; question, so a sitting closed with Ctrl-C or by shutting the window
+;;; keeps its answers; that makes a kill DURING a write a thing that
+;;; happens, and discout writes in place, so it would leave half a
+;;; profile.  A rename is all or nothing.  The move keeps the one back
+;;; version (`name-`) the plain discout used to; the scratch file keeps
+;;; none, or every save would leave a `name.new-` behind as well.
 define lp_write_file(path, s);
-    lvars path, s, dev = discout(path), c;
+    lvars path, s, tmp = path <> '.new', dev, c, was = pop_file_versions;
+    dlocal pop_file_versions = false;
+    discout(tmp) -> dev;
     for c in_string s do dev(c) endfor;
     dev(termin);
+    was -> pop_file_versions;
+    sys_file_move(tmp, path);
 enddefine;
 
 ;;; ----------------------------------------------------- loading the graph
@@ -6679,6 +6690,13 @@ define lp_session();
             printf('  This is not a conversation yet -- that comes with the\n');
             printf('  dialogue layer.  Try <enter>, or :help.\n');
         endif;
+        ;;; EVERY TIME ROUND, not only at :quit.  Saving once at the end
+        ;;; lost the whole sitting to Ctrl-C or a closed window -- three
+        ;;; answers in, the journal had none of them.  The server has
+        ;;; always saved per answer; the cost is one appended journal
+        ;;; line and a profile bounded by the graph (10KB for a student
+        ;;; nine days in), and lp_write_file makes a kill mid-save safe.
+        lp_save();
     endrepeat;
     lp_save();
     printf('\n%p\n', [% lp_line('signoff') %]);

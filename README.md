@@ -2521,7 +2521,7 @@ arrows into nothing.
 | `:report <n> 17/20` | done it, with a result (tier 2) |
 | `:level <name>` | move the goal |
 | `:time` | how long this sitting has run, and how many questions were in it |
-| `:quit` | save and stop |
+| `:quit` | stop (every answer is already saved, so Ctrl-C or closing the window loses nothing) |
 
 ---
 

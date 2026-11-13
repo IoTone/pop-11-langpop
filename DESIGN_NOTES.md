@@ -3722,3 +3722,28 @@ literal makes `false` the WORD false. That is the same trap lp_aids notes.
 The "no answer that day" marker was therefore never false, and lp_spark
 died subtracting a number from a word.
 
+
+## Saved every question, not at :quit
+
+The TUI wrote the journal and profile once, after the session loop.
+Measured on a copy of a real profile in a pty: three answers then
+`:quit` added three journal lines, three answers then Ctrl-C added
+none, and three answers then closing the terminal (SIGHUP) added none.
+A student who closes the window has lost the sitting, and `:progress`
+and `:status` say they did not study.
+
+The server always saved per answer, and the journal split made that
+cheap: one appended line plus a profile bounded by the graph (10KB nine
+days in). So the TUI now calls `lp_save` at the bottom of every pass of
+its loop. After the change the same three runs each added three lines.
+
+Saving that often makes a kill *during* a write a real case, and
+`discout` writes in place. `lp_write_file` now writes `path.new` with
+no back versions and `sys_file_move`s it over the target, which keeps
+the one `name-` back version the old write left.
+
+The other thing per-answer saving exposes is `:oops` after the save
+that wrote the answer down. `lp_journal_flush` already handled it (the
+marked pair is no longer in the list, so the file is rewritten whole);
+a test now pins it: save, answer, save, undo, save reads back one
+fewer, and appending carries on after.

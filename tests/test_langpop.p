@@ -2398,6 +2398,35 @@ check_false('and a word it does not know changes nothing', lp_sound);
 true -> lp_sound;
 lp_save();
 
+;;; THE TUI SAVES EVERY QUESTION, so writes are moved into place rather
+;;; than written over it, and nothing is left beside the profile.
+check_false('no scratch file is left by a save',
+            sys_file_exists(lp_profile_path("switcher") <> '.new'));
+check_true('and the profile is whole', lp_load_profile("switcher"));
+
+;;; And saving after every answer means :oops can come AFTER the save
+;;; that wrote the answer down.  The file is then one answer longer than
+;;; the truth, and the next save has to put it right -- or the answer
+;;; that was taken back would count anyway, read back next sitting.
+[] -> lp_journal; [] -> lp_journal_mark;
+lp_record("hi_a", "read", 1, "right", 900);
+lp_save();
+lp_undo_start("hi_i");
+lp_record("hi_i", "read", 1, "wrong", 900);
+lp_undo_stop();
+lp_save();
+check('two answers saved', length(lp_journal_read("switcher")), 2);
+lp_undo_last().erase;
+lp_save();
+check('and one after an :oops past the save',
+      length(lp_journal_read("switcher")), 1);
+check('which is the one that was kept',
+      lp_journal_read("switcher")(1)(1), "hi_a");
+lp_record("hi_u", "read", 1, "right", 900);
+lp_save();
+check('and appending carries on from there',
+      length(lp_journal_read("switcher")), 2);
+
 ;;; And a profile that never named one does not invent a rate, so the
 ;;; engine's own default stands.
 lvars withrate = lp_read_file(lp_profile_path("switcher"));
