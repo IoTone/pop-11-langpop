@@ -5492,6 +5492,21 @@ define lp_progress();
     printf('\n  :status says what is left of %p.\n', [% lp_level %]);
 enddefine;
 
+;;; lconstant is file-local, and the server reports the same days.
+define lp_progress_span() -> n;
+    lvars n = PROGRESS_DAYS;
+enddefine;
+
+;;; What a procedure prints, as a string.  printf goes through cucharout,
+;;; so that is the seam.  For the server, which has to send a client the
+;;; same lines the TUI shows rather than have every client word them.
+define lp_printed(proc) -> s;
+    lvars proc, s, buf = [];
+    dlocal cucharout = procedure(c); lvars c; conspair(c, buf) -> buf endprocedure;
+    proc();
+    consstring(destlist(rev(buf))) -> s;
+enddefine;
+
 ;;; ------------------------------------------------------------ :drill
 ;;; PRACTICE ON WHAT :status NAMES, TODAY.  A criterion is held by the
 ;;; items whose latest review was slow or wrong, and a review only comes

@@ -958,6 +958,29 @@ define lp_m_consistency() -> o;
                              else json_null endif %]) -> o;
 enddefine;
 
+;;; THE LAST FOUR WEEKS, a mark a day -- :progress, down the line.
+;;;
+;;; Two things, because clients differ.  `text` is the lines the TUI
+;;; prints, sparklines and all: a terminal client shows it as it is, and
+;;; every client that does says the same thing about the same record.
+;;; `days` is what the text was drawn from, oldest first, for a client
+;;; with a screen that would rather draw its own: answers, how many were
+;;; right, minutes at the keyboard, and the typical time of a right
+;;; answer (null on a day with none).
+define lp_m_progress(msg) -> res;
+    lvars msg, res, s = lp_need_session(msg), r,
+          days;
+    returnif(lp_is_err(s))(s -> res);
+    lp_progress_days(lp_progress_span()) -> days;
+    jsonrpc_obj([% 'text', lp_printed(lp_progress),
+                   'span_days', lp_progress_span(),
+                   'days', lp_vec([% for r in_vector days do
+                       jsonrpc_obj([% 'answers', r(1), 'right', r(2),
+                                      'minutes', r(3),
+                                      'typical_ms', r(4) or json_null %])
+                   endfor %]) %]) -> res;
+enddefine;
+
 define lp_m_status(msg) -> res;
     lvars msg, res, s = lp_need_session(msg), e, c, th, ms, items, acc, fast, n,
           crits = [];
@@ -1715,6 +1738,7 @@ lconstant METHODS = [
     ['langpop/answer'        ^lp_m_answer]
     ['langpop/explain'       ^lp_m_explain]
     ['langpop/status'        ^lp_m_status]
+    ['langpop/progress'      ^lp_m_progress]
     ['langpop/aids'          ^lp_m_aids]
     ['langpop/audit'         ^lp_m_audit]
     ['langpop/placement.next'   ^lp_m_place_next]

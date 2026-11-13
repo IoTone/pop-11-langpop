@@ -218,6 +218,7 @@ define help();
     printf('  :plan            what is ready now\n');
     printf('  :why <item>      the derivation, from the graph\n');
     printf('  :status          the exit criteria of this level, measured\n');
+    printf('  :progress        the last four weeks, a mark a day, and the trend\n');
     printf('  :drill           practise what was slow at its latest review -- unscored\n');
     printf('  :card <item>     ask the tutor to draw it\n');
     printf('  :assign          something to do away from the keyboard\n');
@@ -469,6 +470,12 @@ define show_status();
     endif;
 enddefine;
 
+define show_progress();
+    lvars pr = rpc('langpop/progress', jsonrpc_obj([% 'session_id', lp_sid %]));
+    returnunless(pr);
+    printf('%p', [% p(pr, 'text') %]);
+enddefine;
+
 define do_assign();
     lvars a = rpc('langpop/assign', jsonrpc_obj([% 'session_id', lp_sid %]));
     returnunless(a);
@@ -677,6 +684,7 @@ define client_main();
                 if arg = '' then printf('  :why <item id>\n') else show_why(arg) endif
             elseif cmd = 'status' then show_status()
             elseif cmd = 'drill' or cmd = 'practice' then do_drill(arg)
+            elseif cmd = 'progress' or cmd = 'stats' then show_progress()
             elseif cmd = 'card' then
                 if arg = '' then printf('  :card <item id>\n') else show_card(arg) endif
             elseif cmd = 'assign' then do_assign()

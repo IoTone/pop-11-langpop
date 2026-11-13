@@ -69,7 +69,7 @@ enddefine;
 ;;; ------------------------------------------------------------- the door
 check('ping', result('ping', false), 'pong');
 check_true('methods are listable',
-           length(result('langpop/methods', false)) == 21);
+           length(result('langpop/methods', false)) == 22);
 check_true('and the list names them, not just counts them',
            member('langpop/card.render',
                   [% explode(result('langpop/methods', false)) %]) /== false);
@@ -553,6 +553,20 @@ check('right, so what was wrong was the time', wrow('to_work_on')(1)('outcome'),
 check('which is given', wrow('to_work_on')(1)('latency_ms'), 4000);
 check('and the rest have not been reviewed this period',
       wrow('not_reviewed'), wrow('need') - 1);
+
+;;; :progress, down the line: the TUI's lines, and the numbers under them.
+vars pg = result('langpop/progress', jsonrpc_obj([% 'session_id', ssid %]));
+check('four weeks of days', datalength(pg('days')), 28);
+check('which is said', pg('span_days'), 28);
+check_true('today has the answers this student just gave',
+           pg('days')(28)('answers') > 0);
+check_true('and how many were right', pg('days')(28)('right') > 0
+           and pg('days')(28)('right') <= pg('days')(28)('answers'));
+check('a day with nothing in it has no typical time',
+      pg('days')(1)('typical_ms'), json_null);
+check_true('the text is what :progress prints',
+           issubstring('studied', pg('text')) and issubstring('questions', pg('text')));
+check_true('sparklines and all', issubstring('█', pg('text')) /== false);
 
 ;;; THE CHANNEL THE ANSWER WAS ABOUT.  `belief` is the gate channel's,
 ;;; which answers "is this item known"; a listening answer moves a

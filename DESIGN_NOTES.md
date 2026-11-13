@@ -4018,3 +4018,10 @@ Report by default; `--yes` removes. Proved on a copy of the real cache:
 770 removed, then `--audio preschool` for both languages made 0 and
 found all 212 and 88 cached, and a second report found nothing. The
 real cache was only reported on.
+
+## :progress through the server
+
+`langpop/progress` returns `text`, the lines the TUI's `:progress`
+prints (captured from `lp_progress` through `cucharout`, so there is one
+wording), and `days`, the 28 per-day rows it was drawn from, for a
+client that would rather draw its own. `client.p` prints the text.
