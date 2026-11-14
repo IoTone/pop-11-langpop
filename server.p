@@ -572,21 +572,26 @@ define lp_m_next(msg) -> res;
     lvars requeued = lp_due(), ch = false, phase = "learn";
     (requeued or lp_choose(lp_plan())) -> item;
     if requeued then lp_due_ch(item) -> ch endif;
-    ;;; Then anything owed from an earlier day, before anything new --
-    ;;; the rule lives in the engine so both doors ask the same way.
-    unless requeued then
+    ;;; The order lp_next asks in, so both doors ask the same way: the
+    ;;; words by ear on the fourth question even with reviews owed, then
+    ;;; the reviews, then anything else by ear on the fourth question.
+    lvars slot = not(requeued) and (lp_asked_n + 1) mod lp_hear_every() == 0,
+          hitem;
+    if slot then
+        dlocal lp_hear_words_only = true;
+        lp_choose_hear() -> hitem;
+        false -> lp_hear_words_only;
+        if hitem then hitem -> item; "hear" -> ch endif;
+    endif;
+    unless requeued or ch == "hear" then
         lvars ritem, rch;
         lp_review_next() -> (ritem, rch);
         if ritem then ritem -> item; rch -> ch; "review" -> phase endif;
     endunless;
-    ;;; Every fourth question by ear, exactly as the TUI interleaves --
-    ;;; the rule lives in the engine so both doors ask the same way.
-    unless requeued or phase == "review" then
-        if (lp_asked_n + 1) mod lp_hear_every() == 0 then
-            lvars hitem = lp_choose_hear();
-            if hitem then hitem -> item; "hear" -> ch endif;
-        endif;
-    endunless;
+    if slot and not(ch) then
+        lp_choose_hear() -> hitem;
+        if hitem then hitem -> item; "hear" -> ch endif;
+    endif;
     ;;; Everything ready is deferred and nothing else can be asked: the
     ;;; gap gives way rather than handing the client an empty reply.
     if not(item) and lp_pending /== [] then

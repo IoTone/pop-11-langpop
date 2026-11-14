@@ -4048,3 +4048,26 @@ checked by loading a library that does not exist, which reports
 
 After: `./langpop --check` prints one line, and the TUI's first line is
 the teacher's.
+
+## Listening was starved by the reviews
+
+The real record, 786 answers over twelve days: 20 listening questions
+(2.5%, against one in four by design), all of them kana or length
+pairs, none of them a word. The sitting on 11-14 was 45 answers, all
+reviews. The listening slot came after the reviews in `lp_next`, so it
+only fired on a day with nothing owed, and 138 kana on a 1/3/7-day
+ladder owe something almost every day.
+
+First attempt: the whole listening slot ahead of the reviews. Oracle,
+3,000 answers: listening rose to 34%, but kana by ear, which no
+criterion counts, took most of it, the kana took longer to read, and
+the words (gated on every hiragana) opened at answer 2,694. 0 of 50
+words read, where the previous code reached 31 to 48.
+
+Kept: only the WORDS by ear go ahead of the reviews
+(`lp_hear_words_only` around `lp_choose_hear`); anything else by ear
+keeps its old place after them. Same order in `lp_m_next`. Oracle, seeds
+42 and 7, 5,000 answers: both finish preschool and move to N5, with
+`vocabulary(50, hear)` at 50 of 50. No earlier run had finished the rung,
+because listening to the words never got going. English unchanged
+(206 right in 2,000, was 196).

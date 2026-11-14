@@ -740,6 +740,37 @@ true -> lp_sound;
 [] -> played; [] -> typed_in;
 lp_drill("w_neko", "read").erase;
 check('nothing is said when no answer was given', played, []);
+;;; THE LISTENING SLOT DOES NOT WAIT FOR THE REVIEWS.  With a review
+;;; owed, the fourth question is still by ear; the others are reviews.
+lvars ouser = lp_user, ojournal = lp_journal, oasked = lp_asked_n,
+      orecent = lp_recent, sri, src;
+"slotter" -> lp_user; [] -> lp_journal; lp_queue_reset();
+repeat 3 times lp_record("w_neko", "read", 1, "right", 500) endrepeat;
+repeat 3 times lp_record("hi_a", "read", 1, "right", 500) endrepeat;
+{% 1, lp_now_ms() - 1 %} -> lp_reviews(lp_bkey("slotter", "hi_a", "read"));
+lp_review_next() -> (sri, src);
+check('a review is owed', sri, "hi_a");
+check_true('and a word is waiting to be heard', member("w_neko", lp_hear_plan()) /== false);
+3 -> lp_asked_n;                    ;;; the next question is the fourth
+['neko'] -> typed_in; [] -> played;
+lp_next();
+check('the fourth question is by ear, review or no review',
+      lp_journal(1)(2), "hear");
+check('and it is the word, which a criterion counts', lp_journal(1)(1), "w_neko");
+4 -> lp_asked_n;
+['a'] -> typed_in;
+lp_next();
+check('the next is the review', lp_jphase(lp_journal(1)), "review");
+;;; A kana by ear counts for no criterion, so it does not jump the queue.
+repeat 3 times lp_record("w_neko", "hear", 1, "right", 500) endrepeat;
+{% 1, lp_now_ms() - 1 %} -> lp_reviews(lp_bkey("slotter", "hi_a", "read"));
+3 -> lp_asked_n; lp_queue_reset(); [] -> lp_recent;
+['a'] -> typed_in;
+lp_next();
+check('with no word to hear, a review owed comes before a kana by ear',
+      lp_jphase(lp_journal(1)), "review");
+ouser -> lp_user; ojournal -> lp_journal; oasked -> lp_asked_n;
+orecent -> lp_recent; lp_queue_reset();
 ;;; Muted between choosing a listening question and asking it: nothing
 ;;; is played, nothing is asked, nothing is recorded.
 lvars realprobe2 = lp_mute_probe, mjn = length(lp_journal);

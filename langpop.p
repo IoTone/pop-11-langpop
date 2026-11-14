@@ -6961,9 +6961,17 @@ define lp_hear_readable(i);
     member("read", lp_channels(i)) and true
 enddefine;
 
+;;; Set by a caller that wants only the listening a criterion COUNTS --
+;;; the words of vocabulary(N, hear) -- and not a kana by ear, which no
+;;; criterion reads.  See lp_next.
+vars lp_hear_words_only = false;
+
 define lp_choose_hear() -> best;
     lvars best = false, i, b, a, bb = false, ba = false, fresh,
           pool = lp_hear_plan(), e, last = false, rest;
+    if lp_hear_words_only then
+        [% for i in pool do if lp_kind(i) == "word" then i endif endfor %] -> pool;
+    endif;
     ;;; NOT TWO CONTRASTS RUNNING, when there is a word waiting.  Weakest
     ;;; first is the rule, and a contrast a student cannot yet hear stays
     ;;; weakest: three of them would take every listening slot there is,
@@ -7073,6 +7081,29 @@ define lp_next();
         lp_drill(due, lp_due_ch(due)).erase;
         return;
     endif;
+    ;;; THE WORDS BY EAR, every fourth question, BEFORE THE REVIEWS.
+    ;;;
+    ;;; After them, the listening slot only fired on a day with nothing
+    ;;; owed, and a student learning 138 kana on a one-three-seven-day
+    ;;; ladder has something owed nearly every day.  Measured on a real
+    ;;; record: 20 listening questions in 786 answers, 2.5% where the
+    ;;; design says 25%, none of them about a word -- and the words are
+    ;;; what vocabulary(50, hear), half of the rung's word criteria,
+    ;;; is counted over.
+    ;;;
+    ;;; Words only, here.  Moving ALL listening ahead of the reviews was
+    ;;; tried and measured: kana by ear, which no criterion counts, took
+    ;;; a third of the oracle's questions, the kana took that much longer
+    ;;; to read, and the words -- gated on every hiragana -- opened at the
+    ;;; 2,694th answer of 3,000 instead of the first thousand.  So a word
+    ;;; already read waits for nothing; a kana by ear keeps its place
+    ;;; after the reviews, below.
+    if (lp_asked_n + 1) mod HEAR_EVERY == 0 then
+        dlocal lp_hear_words_only = true;
+        lp_choose_hear() -> hitem;
+        false -> lp_hear_words_only;
+        if hitem then lp_drill(hitem, "hear").erase; return endif;
+    endif;
     ;;; Then anything owed from an earlier day.  After the within-session
     ;;; deferral, which was promised to come straight back, and before
     ;;; anything new: a student with reviews waiting has already learned
@@ -7084,7 +7115,8 @@ define lp_next();
         lp_drill_review(ritem, rch);
         return;
     endif;
-    ;;; Every fourth question, by ear.
+    ;;; And every fourth question by ear for anything else -- a kana, a
+    ;;; length pair -- when nothing is owed, as it always was.
     if (lp_asked_n + 1) mod HEAR_EVERY == 0 then
         lp_choose_hear() -> hitem;
         if hitem then lp_drill(hitem, "hear").erase; return endif;

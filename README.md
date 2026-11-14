@@ -2099,9 +2099,12 @@ just got wrong.
 
 Sound plays in three places:
 
-- **A listening question.** About one question in four is asked by ear. In
-  Japanese that is a single hiragana kana (あ, ゆ, が …), so what plays is
-  one short syllable and then nothing more. That is the whole question.
+- **A listening question.** About one question in four is asked by ear.
+  Early on that is a single kana (あ, ゆ, が …), so what plays is one short
+  syllable and then nothing more. That is the whole question. Once a word
+  can be read, it is asked by ear too, and a word takes its turn even on a
+  day full of reviews: the words by ear are half of what a level counts.
+  A kana by ear waits until the reviews are done.
 - **After an answer.** Once a reading, counting or choice answer is in, the
   item is said once (`:aids say off` stops this).
 - **`:say <item>`**, whenever the student asks for it.
