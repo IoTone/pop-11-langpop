@@ -3540,6 +3540,70 @@ check('nothing required is missing, or this would not be running', dreq, 0);
 check('no voice config is OFF, not missing -- nothing depends on it',
       dvoice, "off");
 
+;;; ---------------------------------------------------------- the goal
+;;; What the student is learning for.  It moves which criteria hold a
+;;; rung and how strict the clock is, and nothing else.
+lvars g_lang = lp_lang, g_level = lp_level, g_user = lp_user,
+      g_journal = lp_journal, gr, gms = false, gaside;
+"goaler" -> lp_user; [] -> lp_journal;
+"ja" -> lp_lang; "preschool" -> lp_level;
+lp_goals_reset();
+check('never asked reads as a test', lp_goal(), "exam");
+check('and is known to be unasked', lp_goal_set_for(), false);
+check('a digit is an answer', lp_goal_parse('2'), "everyday");
+check('so is the word a person would use', lp_goal_parse('Travel'), "everyday");
+check('and the name of the test', lp_goal_parse('toeic'), "exam");
+check('reading by either word', lp_goal_parse('write'), "reading");
+check('and nonsense is not', lp_goal_parse('sideways'), false);
+check('a goal nobody defined is refused', lp_goal_set("sideways"), false);
+check('a test keeps the ladder\'s clock', lp_goal_ms(2000), 2000);
+check('and sets nothing aside', lp_goal_aside(), []);
+for gr in lp_status_rows() do
+    if gr(1) = 'recognise(hiragana)' then gr(5) -> gms endif;
+endfor;
+check('hiragana at the test\'s pace', gms, 2000);
+check('everyday is a goal', lp_goal_set("everyday"), true);
+check('and is now on file', lp_goal_set_for(), "everyday");
+check('with half as long again', lp_goal_ms(2000), 3000);
+for gr in lp_status_rows() do
+    if gr(1) = 'recognise(hiragana)' then gr(5) -> gms endif;
+endfor;
+check('which the criterion is measured at', gms, 3000);
+check('and still nothing aside', lp_goal_aside(), []);
+check('listening still takes its slot', lp_goal_outside_hear(), false);
+lp_goal_set("reading").erase;
+lp_goal_aside() -> gaside;
+check('a reader is not held by the words by ear', gaside, ['vocabulary(50, hear)']);
+lvars gp, gm, gu, gx;
+lp_level_state() -> (gp, gm, gu, gx);
+check_true('so it is excused', member('vocabulary(50, hear)', gx));
+check_false('and not unmet', member('vocabulary(50, hear)', gu));
+check_true('while reading the words still is', member('vocabulary(50, read)', gu));
+check('and the words by ear do not jump the reviews', lp_goal_outside_hear(), true);
+check('two changes, both logged', length(lp_goal_log), 2);
+;;; Per language, as the level is.
+"en" -> lp_lang;
+check('the other language was never asked', lp_goal_set_for(), false);
+lp_goal_set("reading").erase;
+lp_goal_aside() -> gaside;
+check_true('the sound contrasts are listening', member('sound_contrasts', gaside));
+check_false('the written confusions are not', member('written_confusions', gaside));
+lp_goal_set("exam").erase;
+"ja" -> lp_lang;
+check('and Japanese kept its own', lp_goal(), "reading");
+;;; Saved, and read back.
+lp_save();
+lp_goals_reset();
+check('cleared', lp_goal_set_for(), false);
+check('the profile is found', lp_load_profile("goaler"), true);
+"ja" -> lp_lang;
+check('the goal comes back', lp_goal(), "reading");
+"en" -> lp_lang;
+check('for each language', lp_goal(), "exam");
+check('with the log of changes', length(lp_goal_log), 4);
+lp_goals_reset();
+g_lang -> lp_lang; g_level -> lp_level; g_user -> lp_user; g_journal -> lp_journal;
+
 sysobey('rm -rf ' <> tmpdir);
 false -> lp_home_dir;
 

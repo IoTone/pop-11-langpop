@@ -575,7 +575,8 @@ define lp_m_next(msg) -> res;
     ;;; The order lp_next asks in, so both doors ask the same way: the
     ;;; words by ear on the fourth question even with reviews owed, then
     ;;; the reviews, then anything else by ear on the fourth question.
-    lvars slot = not(requeued) and (lp_asked_n + 1) mod lp_hear_every() == 0,
+    lvars slot = not(requeued) and (lp_asked_n + 1) mod lp_hear_every() == 0
+                 and not(lp_goal_outside_hear()),
           hitem;
     if slot then
         dlocal lp_hear_words_only = true;
@@ -1036,6 +1037,8 @@ define lp_m_status(msg) -> res;
                ;;; number of ITEMS read that way, which is what `need`
                ;;; is a floor on.  See lp_measure_latest.
                lvars misses, mm;
+               ;;; the limit this student is held to: see lp_goal_ms
+               lp_goal_ms(ms) -> ms;
                lp_measure_latest(items, ms, lp_period_start)
                    -> (acc, fast, n, misses);
                lvars settled = lp_settled_count(items);
@@ -1107,6 +1110,13 @@ define lp_m_status(msg) -> res;
                    'met', lp_vec([% lvars q; for q in lmet do q endfor %]),
                    'unmet', lp_vec([% lvars q; for q in lunmet do q endfor %]),
                    'excused', lp_vec([% lvars q; for q in lexc do q endfor %]),
+                   ;;; What the student is learning for, and which of
+                   ;;; the excused are excused by THAT rather than by
+                   ;;; the machine.  `goal_assumed` is true when nobody
+                   ;;; has been asked: a client can ask.
+                   'goal', lp_jkey(lp_goal()),
+                   'goal_assumed', not(lp_goal_set_for()),
+                   'outside_goal', lp_vec([% lvars q; for q in lp_goal_aside() do q endfor %]),
                    'next_level', if lp_level_next() then lp_jkey(lp_level_next())
                                  else json_null endif,
                    'criteria', lp_vec(crits) %]) -> res;
@@ -1343,6 +1353,32 @@ enddefine;
 ;;; an absent JSON field and a field set to false arrive here
 ;;; indistinguishable, so {"slip": false} could not be told from a client
 ;;; that simply did not mention slip.  {"off": ["slip"]} can.
+;;; --------------------------------------------------------------- goal
+;;; Read, and set.  The TUI asks a new student after their name; a
+;;; client has its own onboarding, so here it is a method and the
+;;; question is the client's to put.  `assumed` says nobody has answered.
+define lp_m_goal(msg) -> res;
+    lvars msg, res, s = lp_need_session(msg), g = lp_param(msg, 'goal'), w;
+    returnif(lp_is_err(s))(s -> res);
+    if g then
+        ;;; what a person types, as the TUI reads it: `travel`, `toeic`
+        lp_goal_parse(g sys_>< '') -> w;
+        unless w and lp_goal_set(w) then
+            lp_err(LP_E_PARAMS, 'no such goal: ' <> (g sys_>< '')) -> res;
+            return;
+        endunless;
+        lp_save();
+    endif;
+    jsonrpc_obj([% 'goal', lp_jkey(lp_goal()),
+                   'assumed', not(lp_goal_set_for()),
+                   'language', lp_jkey(lp_lang),
+                   'goals', lp_vec([% for w in lp_goal_names() do
+                       jsonrpc_obj([% 'name', lp_jkey(w),
+                                      'means', lp_goal_why(w) %])
+                   endfor %]),
+                   'changes_logged', length(lp_goal_log) %]) -> res;
+enddefine;
+
 define lp_m_aids(msg) -> res;
     lvars msg, res, s = lp_need_session(msg), a, i, pair, changed = [];
     returnif(lp_is_err(s))(s -> res);
@@ -1748,6 +1784,7 @@ lconstant METHODS = [
     ['langpop/status'        ^lp_m_status]
     ['langpop/progress'      ^lp_m_progress]
     ['langpop/aids'          ^lp_m_aids]
+    ['langpop/goal'          ^lp_m_goal]
     ['langpop/audit'         ^lp_m_audit]
     ['langpop/placement.next'   ^lp_m_place_next]
     ['langpop/placement.report' ^lp_m_place_report]

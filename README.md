@@ -325,6 +325,47 @@ Aoi> :progress
   minutes.
 - Only first-hand answers in the language being studied are counted.
 
+### What the student is learning for: `:goal`
+
+A new student is asked one question after their name:
+
+```
+What are you learning English for?
+  1  a test (TOEIC)
+  2  for fun, or travel, or talking to people
+  3  to read and write
+(1, 2 or 3 -- or enter to decide later)
+```
+
+The ladder is made of exam bands, and not everybody on it wants the
+exam. Somebody retired who wants English for a holiday is not raising a
+score, and neither is somebody who wants to read. The answer changes two
+things, and only two:
+
+| goal | which criteria hold a level shut | the clock |
+|---|---|---|
+| `exam` | all of them | the limit the ladder declares |
+| `everyday` | all of them | half as long again |
+| `reading` | the reading ones; listening is measured, shown, and does not hold the student back | half as long again |
+
+So a `reading` student can leave Japanese pre-school without the 50
+words by ear, and an `everyday` student passes hiragana at three seconds
+a character where the test asks for two. `:status` says which goal the
+figures were measured against, and names anything the goal set aside.
+With `reading`, words by ear also stop being asked ahead of the day's
+reviews.
+
+What it does **not** change yet is which words are taught: the graph has
+no notion of a travel word or an office word, so all three goals learn
+the same vocabulary in the same order.
+
+`:goal` shows the choice, `:goal travel` (or `toeic`, `read`, `2` — the
+word a person would use) changes it, and each change is logged with its
+time. The goal is kept per language. A student who was never asked — every
+profile from before this question existed, and anyone who pressed enter —
+is treated as `exam`, and `:status` says the goal is assumed. The 1.5 on
+the clock is a judgement, not a measurement.
+
 ### Which language a session is in
 
 `--lang` is an instruction and beats the language on file; with no flag, the
@@ -2280,6 +2321,7 @@ shim. `--port N` for TCP, nothing for stdio.
 | `langpop/status` | the level's exit criteria, measured. Each measured criterion carries `to_work_on` (the items whose latest review was slow or wrong, with form, outcome and time) and `not_reviewed` |
 | `langpop/placement.next` / `placement.report` | find out where they are |
 | `langpop/aids` | which helps are on, and switching them |
+| `langpop/goal` | what the student is learning for; with `goal`, set it. `assumed: true` means nobody has asked them yet. `langpop/status` carries `goal`, `goal_assumed` and `outside_goal` |
 | `langpop/audit` | which rungs of the ladder are hollow |
 | `langpop/card.render` | the item as a picture |
 | `langpop/sheet.render` | a page to print: a chart, today, or the booklet |
@@ -2644,7 +2686,8 @@ arrows into nothing.
 | `:assign` | something to do away from the keyboard |
 | `:report <n> ok` | done it (tier 3) |
 | `:report <n> 17/20` | done it, with a result (tier 2) |
-| `:level <name>` | move the goal |
+| `:goal [name]` | what the student is learning for: `exam`, `everyday` or `reading` |
+| `:level <name>` | move to another level |
 | `:time` | how long this sitting has run, and how many questions were in it |
 | `:quit` | stop (every answer is already saved, so Ctrl-C or closing the window loses nothing) |
 

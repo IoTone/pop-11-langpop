@@ -223,6 +223,7 @@ define help();
     printf('  :card <item>     ask the tutor to draw it\n');
     printf('  :assign          something to do away from the keyboard\n');
     printf('  :report <n> ok | 17/20\n');
+    printf('  :goal [name]     what you are learning for (exam, everyday, reading)\n');
     printf('  :time            how long this sitting has run\n');
     printf('  :quit            close the session and stop\n');
 enddefine;
@@ -379,6 +380,17 @@ define show_status();
     printf('\n  %p, %p -- level %p, period %p\n',
            [% p(st, 'display_name'), p(st, 'language'), p(st, 'level'),
               p(st, 'period') %]);
+    if p(st, 'goal') then
+        printf('    learning for: %p%p\n',
+               [% p(st, 'goal'),
+                  if p(st, 'goal_assumed') == true
+                  then ' (assumed -- :goal to tell me)' else '' endif %]);
+    endif;
+    if datalength(p(st, 'outside_goal') or {}) > 0 then
+        printf('    outside your goal, so not holding you up:');
+        for c in_vector p(st, 'outside_goal') do printf(' %p', [^c]) endfor;
+        printf('\n');
+    endif;
     for c in_vector (p(st, 'criteria') or {}) do
         if p(c, 'kind') = 'measured' and p(c, 'answers') == 0 then
             ;;; Nothing to read yet rather than nought per cent: a
@@ -467,6 +479,24 @@ define show_status();
                        [% p(ad, 'times'), p(ad, 'minutes') %]);
             endif;
         endif;
+    endif;
+enddefine;
+
+;;; What the student is learning for.  The server holds it and says what
+;;; each one means; this only prints and passes the choice on.
+define show_goal(arg);
+    lvars arg, g, r = rpc('langpop/goal',
+        if arg = '' then jsonrpc_obj([% 'session_id', lp_sid %])
+        else jsonrpc_obj([% 'session_id', lp_sid, 'goal', arg %]) endif);
+    returnunless(r);
+    printf('\n');
+    for g in_vector (p(r, 'goals') or {}) do
+        printf('    %p %p -- %p\n',
+               [% if p(g, 'name') = p(r, 'goal') then '>' else ' ' endif,
+                  p(g, 'name'), p(g, 'means') %]);
+    endfor;
+    if p(r, 'assumed') == true then
+        printf('  You have not said, so a test is assumed.  :goal <name>\n');
     endif;
 enddefine;
 
@@ -689,6 +719,7 @@ define client_main();
                 if arg = '' then printf('  :card <item id>\n') else show_card(arg) endif
             elseif cmd = 'assign' then do_assign()
             elseif cmd = 'report' then do_report(arg)
+            elseif cmd = 'goal' or cmd = 'goals' then show_goal(arg)
             elseif cmd = 'time' then show_time()
             else printf('  I do not know ":%p".  Try :help\n', [^cmd])
             endif;

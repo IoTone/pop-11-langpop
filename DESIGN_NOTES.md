@@ -4071,3 +4071,59 @@ keeps its old place after them. Same order in `lp_m_next`. Oracle, seeds
 `vocabulary(50, hear)` at 50 of 50. No earlier run had finished the rung,
 because listening to the words never got going. English unchanged
 (206 right in 2,000, was 196).
+
+## A goal, asked at the door
+
+A native Japanese speaker read the TOEIC book the English track was
+drawn from and said the obvious thing nobody building it had: a TOEIC
+candidate, a retired person learning for a trip, and somebody who wants
+to read and write are three students, and the ladder treats them as one.
+
+The graph does not change with the reason a word is wanted, so the goal
+lives in the overlay: `lp_goals`, a property from language to one of
+`exam`, `everyday`, `reading`, saved as `goals` with a `goal_changes`
+log, the way aids are. Never asked is its own state (`lp_goal_set_for()`
+is false) and reads as `exam`, which is what every existing profile
+meant.
+
+It moves two things. `lp_goal_outside(c)` sets a criterion aside when
+its channel (`lp_crit_channel`) is not one the goal names; today that is
+listening, for `reading`. Status rows gain a tenth element for it and
+`lp_level_state` counts it as excused, while `lp_goal_aside` keeps the
+names apart so `:status` can say "outside your goal" and not "not
+checkable here". And `lp_goal_ms` multiplies a measured criterion's
+limit by 1.5 outside `exam`, at the four places the limit is read
+(`lp_status_rows`, `lp_status_work`, `lp_practice_items`,
+`lp_m_status`). Latency reaches nothing else: belief and mastery never
+looked at it.
+
+One scheduling change, behind the goal: under `reading` the words-by-ear
+slot no longer goes ahead of the reviews. Under `exam` and `everyday`
+`lp_next` and `lp_m_next` run as before.
+
+The TUI asks a new student after the name (`lp_goal_ask`, not in
+`--batch`) and tells a returning one, once per sitting, that it never
+asked. The server does not ask; `langpop/goal` reads and sets, and
+status carries `goal`, `goal_assumed`, `outside_goal`. 23 methods.
+
+A trap on the way: `member(consword('1'), [exam 1])` is false, because
+the list holds the integer. `lp_goal_parse` compares strings.
+
+Not done: content by goal. Nothing in the graph says a word is for
+travel or for the office, so the three goals learn the same words. The
+1.5 is a judgement. `everyday` does not yet ask for more listening than
+`exam`; the last attempt to raise the listening share cost the words
+(see the section above), so it wants its own measurement.
+
+## :status from the server, before the first answer
+
+Found while trying `:goal` through the line client: `langpop/status`
+failed with an internal error for any student who had never answered.
+`lp_period_answers` ended `returnif(not(lp_period_start))([])` in a
+procedure whose result is the output local `es`, so with no period
+started it returned two values. The TUI never noticed the spare. In
+`lp_m_status` it landed inside the list `jsonrpc_obj` was building, and
+`consistency` became a key with `[]` for a value and an object for the
+next key. There since 10-30; every status call in the server suite came
+after an answer. Now `returnunless(lp_period_start)`, and the suite asks
+for status from a student who has done nothing.

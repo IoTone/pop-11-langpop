@@ -69,7 +69,7 @@ enddefine;
 ;;; ------------------------------------------------------------- the door
 check('ping', result('ping', false), 'pong');
 check_true('methods are listable',
-           length(result('langpop/methods', false)) == 22);
+           length(result('langpop/methods', false)) == 23);
 check_true('and the list names them, not just counts them',
            member('langpop/card.render',
                   [% explode(result('langpop/methods', false)) %]) /== false);
@@ -953,6 +953,28 @@ check_true('an unknown aid is an error',
                 jsonrpc_obj([% 'session_id', osid,
                                'off', lp_vec(['cheat']) %]))('error') /== false);
 
+;;; What the student is learning for.  A client has its own onboarding,
+;;; so the question is the client's to put and this is where it lands.
+vars go = result('langpop/goal', jsonrpc_obj([% 'session_id', osid %]));
+check('never asked reads as a test', go('goal'), 'exam');
+check('and says nobody was asked', go('assumed'), true);
+check('three to choose from', length(go('goals')), 3);
+vars go2 = result('langpop/goal',
+                  jsonrpc_obj([% 'session_id', osid, 'goal', 'travel' %]));
+check('the word a person would use is understood', go2('goal'), 'everyday');
+check('and it is no longer assumed', go2('assumed'), false);
+check('logged', go2('changes_logged'), 1);
+vars gst = result('langpop/status', jsonrpc_obj([% 'session_id', osid %]));
+check('status says what for', gst('goal'), 'everyday');
+check('and sets nothing aside for it', length(gst('outside_goal')), 0);
+result('langpop/goal', jsonrpc_obj([% 'session_id', osid, 'goal', 'reading' %])).erase;
+result('langpop/status', jsonrpc_obj([% 'session_id', osid %])) -> gst;
+check_true('a reader has something set aside', length(gst('outside_goal')) >= 1);
+check_true('an unknown goal is an error',
+           call('langpop/goal',
+                jsonrpc_obj([% 'session_id', osid, 'goal', 'sideways' %]))('error') /== false);
+result('langpop/goal', jsonrpc_obj([% 'session_id', osid, 'goal', 'exam' %])).erase;
+
 ;;; An action nobody implements is an error, not a silently recorded
 ;;; wrong answer.
 check_true('an unknown action is refused',
@@ -1732,6 +1754,20 @@ check_false('and is still not asked to listen',
                                       'image', jsonrpc_obj([%
                                           'show', {% 'jpeg' %} %]) %]) %])
                   )('can_hear'));
+
+;;; A STUDENT WHO HAS ANSWERED NOTHING.  Every status call above comes
+;;; after an answer, and the first one a real client makes does not:
+;;; with no period started, lp_period_answers returned two values, the
+;;; spare one became an object key, and the reply could not be written.
+result('langpop/register', jsonrpc_obj([% 'student_id', 'untouched',
+                                          'language', 'ja' %])).erase;
+vars usid = result('langpop/session.open',
+                   jsonrpc_obj([% 'student_id', 'untouched' %]))('session_id');
+vars ust = call('langpop/status', jsonrpc_obj([% 'session_id', usid %]));
+check_true('status before any answer is a reply', ust('result') and true);
+check('with the consistency block where it belongs',
+      ust('result')('consistency')('days_worked'), 0);
+check('and a goal nobody has been asked for', ust('result')('goal_assumed'), true);
 
 jsonrpc_close(client); jsonrpc_close(server);
 sysobey('rm -rf ' <> tmpdir);

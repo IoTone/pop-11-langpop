@@ -1476,6 +1476,145 @@ define lp_aids_show();
     printf(',\n  so what was switched on at any answer stays recoverable.\n');
 enddefine;
 
+;;; ---------------------------------------------------------- the goal
+;;; WHAT THE STUDENT IS LEARNING FOR.  A ladder of exam bands assumes
+;;; everybody on it wants the exam, and a reader of the TOEIC book this
+;;; track was drawn from said otherwise: somebody retired who wants
+;;; English for a holiday is not levelling up a score, and somebody who
+;;; wants to read is not either.  The graph is the same for all three --
+;;; what a word requires does not depend on why it is wanted -- so the
+;;; goal lives with the student, and moves two things only:
+;;;
+;;;   WHICH CRITERIA HOLD THE RUNG SHUT.  A reader is not kept at a
+;;;   level by its listening counts.  They are still measured and still
+;;;   printed, by name, as outside the goal: set aside is not hidden.
+;;;
+;;;   HOW STRICT THE CLOCK IS.  The latency on a criterion is fluency,
+;;;   and everybody needs some; an exam needs it at the exam's pace,
+;;;   which is the figure the ladder declares.  Outside an exam the
+;;;   limit is half as long again.  1.5 is a judgement, not a
+;;;   measurement, and it is one number in one place so that it can be
+;;;   argued with.
+;;;
+;;; Per language, as the level is: JLPT in the evening and English for
+;;; a trip is one student.  Never asked reads as `exam`, which is what
+;;; every profile written before this meant.
+lconstant GOALS = [exam everyday reading],
+          GOAL_SLACK = 1.5;
+
+vars lp_goals = newproperty([], 4, false, "perm"),   ;;; lang -> goal
+     lp_goal_log = [];                  ;;; [{lang goal when_ms} ...]
+
+define lp_goal_names() -> l; lvars l = GOALS; enddefine;
+
+;;; The one on file for this language, or false: never asked.
+define lp_goal_set_for() -> g; lvars g = lp_goals(lp_lang); enddefine;
+
+define lp_goal() -> g;
+    lvars g = lp_goals(lp_lang) or "exam";
+enddefine;
+
+define lp_goal_channels(g) -> chs;
+    lvars g, chs;
+    if g == "reading" then [read] else false endif -> chs;   ;;; false: all
+enddefine;
+
+define lp_goal_outside_hear() -> yes;
+    lvars chs = lp_goal_channels(lp_goal()),
+          yes = chs and not(member("hear", chs));
+enddefine;
+
+define lp_goal_slack(g) -> f;
+    lvars g, f = if g == "exam" then 1 else GOAL_SLACK endif;
+enddefine;
+
+;;; A criterion's limit as this student is held to it.
+define lp_goal_ms(ms) -> out;
+    lvars ms, out = ms;
+    if ms then round(ms * lp_goal_slack(lp_goal())) -> out endif;
+enddefine;
+
+define lp_goal_why(g) -> s;
+    lvars g, s;
+    if     g == "exam" then
+        if lp_lang == "ja" then 'a test (JLPT): every criterion, at the test\'s pace'
+        else 'a test (TOEIC): every criterion, at the test\'s pace' endif
+    elseif g == "everyday" then
+        'for fun, travel, talking to people: every criterion, a gentler clock'
+    else
+        'to read and write: listening does not hold you back, a gentler clock'
+    endif -> s;
+enddefine;
+
+;;; What a person types, which is not the name on file.
+define lp_goal_parse(s) -> g;
+    lvars s, g = false;
+    returnunless(isstring(s) and s /= '');
+    ;;; Strings, compared with =.  A list of words would hold the
+    ;;; INTEGER 1 where consword('1') is a word, and never match it.
+    uppertolower(s) -> s;
+    if     member(s, ['exam' 'test' 'toeic' 'jlpt' 'eiken' 'work' 'job'
+                      'score' '1' 'a']) then "exam"
+    elseif member(s, ['everyday' 'fun' 'travel' 'hobby' 'talk' 'speak'
+                      'conversation' '2' 'b']) then "everyday"
+    elseif member(s, ['reading' 'read' 'write' 'writing' 'books' '3' 'c'])
+    then "reading"
+    else false endif -> g;
+enddefine;
+
+define lp_goal_set(g) -> ok;
+    lvars g, ok = false;
+    returnunless(member(g, GOALS));
+    true -> ok;
+    returnif(lp_goals(lp_lang) == g);
+    g -> lp_goals(lp_lang);
+    lp_goal_log <> [{% lp_lang, g, lp_now_ms() %}] -> lp_goal_log;
+enddefine;
+
+define lp_goals_reset();
+    clearproperty(lp_goals); [] -> lp_goal_log;
+enddefine;
+
+define lp_goal_show();
+    lvars g, nm;
+    printf('\n');
+    for g in GOALS do
+        g sys_>< '' -> nm;
+        until length(nm) >= 8 do nm <> ' ' -> nm enduntil;
+        printf('    %p %p %p\n',
+               [% if lp_goal() == g then '>' else ' ' endif, nm, lp_goal_why(g) %]);
+    endfor;
+    unless lp_goal_set_for() then
+        printf('\n  You have not told me, so I am assuming a test.');
+    endunless;
+    printf('\n  :goal <name> changes it.  The change is logged with the time.\n');
+enddefine;
+
+;;; Asked once, of a new student, after the name.  Enter is an answer:
+;;; it leaves the question open, and :goal is there for later.
+vars procedure (lp_readline, lp_trim);
+define lp_goal_ask();
+    lvars line, g;
+    printf('\nWhat are you learning %p for?\n',
+           [% if lp_lang == "ja" then 'Japanese' elseif lp_lang == "en" then 'English'
+              else lp_lang endif %]);
+    printf('  1  a test%p\n', [% if lp_lang == "ja" then ' (JLPT)'
+                                  elseif lp_lang == "en" then ' (TOEIC)' else '' endif %]);
+    printf('  2  for fun, or travel, or talking to people\n');
+    printf('  3  to read and write\n');
+    printf('(1, 2 or 3 -- or enter to decide later)  ');
+    sysflush(popdevout);
+    lp_readline() -> line;
+    returnif(line == termin);
+    lp_goal_parse(lp_trim(line)) -> g;
+    if g then
+        lp_goal_set(g).erase;
+        printf('  %p, then.  :goal changes it whenever you like.\n', [^g]);
+    else
+        printf('  Later, then -- :goal when you know.\n');
+    endif;
+enddefine;
+
 ;;; ------------------------------------------------------ typing slips
 ;;; A Japanese learner is typing romaji, or fighting an input method they
 ;;; do not know well, and a slip of the fingers is not a gap in their
@@ -1940,7 +2079,11 @@ lconstant SESSION_CAP = 288;
 ;;; Tier-1 answers this period, oldest first.
 define lp_period_answers() -> es;
     lvars e, es = [];
-    returnif(not(lp_period_start))([]);
+    ;;; NOT returnif(...)([]): `es` is the result, so a value pushed
+    ;;; here as well is a second result, and it sat on the stack until
+    ;;; lp_m_status built an object round it -- a student who had never
+    ;;; answered anything could not ask the server for :status.
+    returnunless(lp_period_start);
     for e in lp_journal do
         nextunless(e(3) == 1 and e(6) >= lp_period_start);
         conspair(e, es) -> es;              ;;; lp_journal is newest first
@@ -2463,6 +2606,19 @@ define lp_save();
     ;;; Written only when off: an absent field is the default, so a
     ;;; profile from before the switch existed reads as sound on.
     unless lp_sound then 'off' -> o('audio') endunless;
+    ;;; The goal, per language like the level, and absent when never
+    ;;; asked -- which is not the same as having answered `exam`.
+    lvars gm = newmapping([], 4, false, true), gany = false;
+    appproperty(lp_goals,
+        procedure(k, v); lvars k, v;
+            if v then v sys_>< '' -> gm(k sys_>< ''); true -> gany endif;
+        endprocedure);
+    if gany then gm -> o('goals') endif;
+    if lp_goal_log /== [] then
+        consvector(#| for a in lp_goal_log do
+                          {% a(1) sys_>< '', a(2) sys_>< '', a(3) %}
+                      endfor |#) -> o('goal_changes');
+    endif;
     lp_ensure_home();
     lp_write_file(lp_profile_path(lp_user), json_generate(o));
 enddefine;
@@ -2488,7 +2644,7 @@ define lp_load_profile(user) -> found;
     false -> lp_period_start; 1 -> lp_period_n;
     [] -> lp_passed;
     clearproperty(lp_reviews);
-    lp_aids_reset(); lp_queue_reset();
+    lp_aids_reset(); lp_queue_reset(); lp_goals_reset();
     clearproperty(lp_levels_at);
     true -> lp_sound;
     returnunless(s);
@@ -2601,6 +2757,23 @@ define lp_load_profile(user) -> found;
             o('aid_changes')(i) -> e;
             lp_aid_log <> [{% consword(e(1) sys_>< ''), e(2), e(3) %}]
                 -> lp_aid_log;
+        endfor;
+    endif;
+    if o('goals') then
+        lvars gl, gv;
+        for gl in lp_langs() do
+            o('goals')(gl sys_>< '') -> gv;
+            if gv and member(consword(gv sys_>< ''), lp_goal_names()) then
+                consword(gv sys_>< '') -> lp_goals(gl);
+            endif;
+        endfor;
+    endif;
+    if o('goal_changes') then
+        for i from 1 to length(o('goal_changes')) do
+            o('goal_changes')(i) -> e;
+            lp_goal_log <> [{% consword(e(1) sys_>< ''),
+                               consword(e(2) sys_>< ''), e(3) %}]
+                -> lp_goal_log;
         endfor;
     endif;
 enddefine;
@@ -5149,6 +5322,36 @@ define lp_count_items(kind) -> n;
     endfor;
 enddefine;
 
+;;; WHICH CHANNEL A CRITERION IS ABOUT, for the goal to read.  The
+;;; counts and the coverage say so themselves.  The rest are sets of
+;;; items, and such a set is a listening criterion exactly when none of
+;;; it can be read -- the English sound contrasts -- and a reading one
+;;; otherwise.
+define lp_crit_channel(c) -> ch;
+    lvars c, ch = "read", i, items;
+    if prolog_complexterm(c)
+    and member(prolog_functor(c), [vocabulary kanji]) then
+        prolog_deref(prolog_arg(2, c)) -> ch;
+    elseif prolog_complexterm(c) and prolog_functor(c) == "coverage" then
+        lp_cov_channel(prolog_deref(prolog_arg(1, c))) -> ch;
+    else
+        lp_criterion_items(c) -> items;
+        returnif(items == []);
+        for i in items do
+            returnif(member("read", lp_channels(i)));
+        endfor;
+        "hear" -> ch;
+    endif;
+enddefine;
+
+;;; Outside what this student is learning for: measured, printed, and
+;;; not holding the rung shut.
+define lp_goal_outside(c) -> yes;
+    lvars c, chs = lp_goal_channels(lp_goal()), yes = false;
+    returnunless(chs);
+    not(member(lp_crit_channel(c), chs)) -> yes;
+enddefine;
+
 ;;; One criterion, measured, as {criterion-text, what-it-says}.
 ;;;
 ;;; Pulled out of lp_status because the zine prints the same thing on
@@ -5222,13 +5425,15 @@ define lp_status_rows() -> rows;
             if items /== [] and askable == 0 then
                 {% "audio", 0, length(items), length(items), "item" %} -> row;
                 rows <> [{% lp_term_str(c), row(1), row(2), row(3), row(4),
-                            row(5), false, false, false %}] -> rows;
+                            row(5), false, false, false,
+                            lp_goal_outside(c) %}] -> rows;
                 nextloop;
             endif;
             ;;; Reviews, this period.  Not everything ever answered: see
             ;;; lp_measure_in for why that number cannot be passed.
             ;;; Each item once, by its latest review this period: see
             ;;; lp_measure_latest for why not every review.
+            lp_goal_ms(ms) -> ms;
             lp_measure_latest(items, ms, lp_period_start)
                 -> (acc, fast, n, );
             lvars settled = lp_settled_count(items);
@@ -5247,7 +5452,9 @@ define lp_status_rows() -> rows;
                     if length(row) > 6 then row(7) else false endif,
                     ;;; and how many are settled for good, which counts
                     ;;; towards the floor -- see lp_settled_count
-                    if length(row) > 7 then row(8) else false endif %}]
+                    if length(row) > 7 then row(8) else false endif,
+                    ;;; and whether the student's goal sets it aside
+                    lp_goal_outside(c) %}]
             -> rows;
     endfor;
 enddefine;
@@ -5330,6 +5537,11 @@ define lp_level_state() -> (passed, met, unmet, excused);
     lvars r, m, x, passed = true, met = [], unmet = [], excused = [];
     for r in lp_status_rows() do
         lp_criterion_met(r) -> (m, x);
+        ;;; Set aside by the goal counts as excused here -- it does not
+        ;;; hold the rung -- and lp_goal_aside names which those were,
+        ;;; because "you chose not to" and "nothing here can check it"
+        ;;; are different sentences.
+        if length(r) > 9 and r(10) then true -> x endif;
         if     x then excused <> [% r(1) %] -> excused;
         elseif m then met <> [% r(1) %] -> met;
         else        unmet <> [% r(1) %] -> unmet; false -> passed;
@@ -5339,6 +5551,13 @@ define lp_level_state() -> (passed, met, unmet, excused);
     ;;; Advancing through it would walk a student up the whole ladder on
     ;;; the strength of criteria nobody has written yet.
     if met == [] and unmet == [] then false -> passed endif;
+enddefine;
+
+;;; The criteria of this rung the goal sets aside, by name.
+define lp_goal_aside() -> names;
+    lvars r, names = [% for r in lp_status_rows() do
+                            if length(r) > 9 and r(10) then r(1) endif
+                        endfor %];
 enddefine;
 
 ;;; The next rung, or false at the top.
@@ -5602,6 +5821,7 @@ define lp_practice_items() -> out;
         nextif(prolog_complexterm(c)
                and member(prolog_functor(c), [vocabulary kanji coverage]));
         lp_criterion_items(c) -> items;
+        lp_goal_ms(ms) -> ms;
         lp_measure_latest(items, ms, lp_period_start)
             -> (acc, fast, rd, misses);
         for m in misses do
@@ -5699,6 +5919,7 @@ define lp_status_work();
                and member(prolog_functor(c), [vocabulary kanji coverage]));
         lp_criterion_items(c) -> items;
         nextif(items == []);
+        lp_goal_ms(ms) -> ms;
         lvars acc, fast, rd, misses;
         lp_measure_latest(items, ms, lp_period_start)
             -> (acc, fast, rd, misses);
@@ -5734,12 +5955,22 @@ define lp_status();
     printf('\n  %p, %p -- level %p, period %p\n',
            [% lp_display or (lp_user sys_>< ''), lp_lang, lp_level,
               lp_period_n %]);
+    printf('    learning for: %p%p\n',
+           [% lp_goal(),
+              if lp_goal_set_for() then ''
+              else ' (assumed -- :goal to tell me)' endif %]);
     for r in lp_status_rows() do
         printf('    %p: %p\n', [% r(1), lp_status_text(r) %]);
     endfor;
     lp_status_work();
-    lvars lpassed, lmet, lunmet, lexcused;
+    lvars lpassed, lmet, lunmet, lexcused, aside = lp_goal_aside(), q;
     lp_level_state() -> (lpassed, lmet, lunmet, lexcused);
+    [% for q in lexcused do unless member(q, aside) then q endunless endfor %]
+        -> lexcused;
+    if aside /== [] then
+        printf('    outside your goal (%p), so not holding you up: %p\n',
+               [% lp_goal(), aside %]);
+    endif;
     if lexcused /== [] then
         ;;; By name, every time.  Excusing something quietly would be
         ;;; the comfortable averaging the tiers exist to prevent.
@@ -6421,6 +6652,12 @@ define lp_register(user, display, batch);
                    [% lp_lang, lp_levels_at(othr) %]);
             printf('  were in %p, and it is kept.)\n', [^othr]);
         endif;
+        ;;; A profile from before the question existed.  Said, not
+        ;;; asked: somebody back for their reviews did not sit down to
+        ;;; fill in a form, and one line costs them nothing.
+        unless lp_goal_set_for() or batch then
+            printf('  (I never asked what you are learning for.  :goal, when you like.)\n');
+        endunless;
         return;
     endif;
     lp_greet();
@@ -6450,6 +6687,9 @@ define lp_register(user, display, batch);
     display -> lp_display;
     lp_roll_add(user, display);
     printf('%p, then.  We begin at %p.\n', [% lp_display, lp_level %]);
+    ;;; After the name, before the first question.  Not in batch: a
+    ;;; script has nobody to answer, and never asked is a state.
+    unless batch then lp_goal_ask() endunless;
 enddefine;
 
 ;;; ----------------------------------------------------------------- cards
@@ -6869,7 +7109,8 @@ define lp_help();
     printf('  :assign          something to do away from the keyboard\n');
     printf('  :report <n> ok   done it (compliance)\n');
     printf('  :report <n> 17/20  done it, with a result\n');
-    printf('  :level <name>    move the goal\n');
+    printf('  :goal            what you are learning for (exam, everyday, reading)\n');
+    printf('  :level <name>    move to another level\n');
     printf('  :time            how long this sitting has run\n');
     printf('  :quit            save and stop\n');
     printf('\n  At a question: enter means "I do not know", which is an answer.\n');
@@ -7098,7 +7339,7 @@ define lp_next();
     ;;; 2,694th answer of 3,000 instead of the first thousand.  So a word
     ;;; already read waits for nothing; a kana by ear keeps its place
     ;;; after the reviews, below.
-    if (lp_asked_n + 1) mod HEAR_EVERY == 0 then
+    if (lp_asked_n + 1) mod HEAR_EVERY == 0 and not(lp_goal_outside_hear()) then
         dlocal lp_hear_words_only = true;
         lp_choose_hear() -> hitem;
         false -> lp_hear_words_only;
@@ -7225,6 +7466,16 @@ define lp_session();
                 else
                     lp_aid_set(consword(a2), outcome = 'on').erase;
                     lp_aids_show();
+                endif;
+            elseif cmd = 'goal' or cmd = 'goals' then
+                if arg = '' then lp_goal_show();
+                elseif lp_goal_parse(arg) then
+                    lp_goal_set(lp_goal_parse(arg)).erase;
+                    lp_save();
+                    lp_goal_show();
+                else
+                    printf('  There is no "%p".  They are: %p\n',
+                           [% arg, lp_goal_names() %]);
                 endif;
             elseif cmd = 'sheet' then lp_show_sheet("today");
             elseif cmd = 'zine' then lp_show_sheet("zine");
