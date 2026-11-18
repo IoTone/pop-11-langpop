@@ -359,9 +359,10 @@ What it does **not** change yet is which words are taught: the graph has
 no notion of a travel word or an office word, so all three goals learn
 the same vocabulary in the same order.
 
-`:goal` shows the choice, `:goal travel` (or `toeic`, `read`, `2` — the
-word a person would use) changes it, and each change is logged with its
-time. The goal is kept per language. A student who was never asked — every
+`:goal` says which one is in force and what it asks of the student,
+in a sentence, and lists the choices. `:goal travel` (or `toeic`, `read`, `2` — the
+word a person would use) changes it and says what it was, what it is now,
+and what that means. Each change is logged with its time. The goal is kept per language. A student who was never asked — every
 profile from before this question existed, and anyone who pressed enter —
 is treated as `exam`, and `:status` says the goal is assumed. The 1.5 on
 the clock is a judgement, not a measurement.

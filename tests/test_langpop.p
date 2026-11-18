@@ -3540,6 +3540,31 @@ check('nothing required is missing, or this would not be running', dreq, 0);
 check('no voice config is OFF, not missing -- nothing depends on it',
       dvoice, "off");
 
+;;; A REVIEW TAKEN BACK WAITS OUT ITS GAP.  :oops undoes the review, so
+;;; it is owed again and is the oldest there is; it used to be the very
+;;; next question, straight after being told it would not be.
+lvars o_user = lp_user, o_journal = lp_journal, o_lang = lp_lang,
+      o_level = lp_level, o_asked = lp_asked_n, o_pending = lp_pending,
+      oi, och;
+"oopsrev" -> lp_user; [] -> lp_journal; "ja" -> lp_lang; "preschool" -> lp_level;
+lp_queue_reset(); clearproperty(lp_reviews);
+0.95 -> lp_beliefs(lp_bkey(lp_user, "hi_a", "read")); 0.95 -> lp_beliefs(lp_bkey(lp_user, "hi_i", "read"));
+{% 1, lp_now_ms() - 2000 %} -> lp_reviews(lp_bkey(lp_user, "hi_a", "read"));
+{% 1, lp_now_ms() - 1000 %} -> lp_reviews(lp_bkey(lp_user, "hi_i", "read"));
+lp_review_next() -> (oi, och);
+check('the oldest review is first', oi, "hi_a");
+lp_requeue("hi_a");                     ;;; what :oops does after undoing
+lp_review_next() -> (oi, och);
+check('taken back, it is not the next one', oi, "hi_i");
+check('nor served as something new', lp_due(), false);
+lp_asked_n + 3 -> lp_asked_n;
+check('after three answers it is still not new', lp_due(), false);
+lp_review_next() -> (oi, och);
+check('it comes round as the review it was', oi, "hi_a");
+clearproperty(lp_reviews); lp_queue_reset();
+o_user -> lp_user; o_journal -> lp_journal; o_lang -> lp_lang;
+o_level -> lp_level; o_asked -> lp_asked_n; o_pending -> lp_pending;
+
 ;;; ---------------------------------------------------------- the goal
 ;;; What the student is learning for.  It moves which criteria hold a
 ;;; rung and how strict the clock is, and nothing else.

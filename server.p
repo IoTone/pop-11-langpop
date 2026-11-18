@@ -1374,7 +1374,8 @@ define lp_m_goal(msg) -> res;
                    'language', lp_jkey(lp_lang),
                    'goals', lp_vec([% for w in lp_goal_names() do
                        jsonrpc_obj([% 'name', lp_jkey(w),
-                                      'means', lp_goal_why(w) %])
+                                      'for', lp_goal_why(w),
+                                      'means', lp_goal_means(w) %])
                    endfor %]),
                    'changes_logged', length(lp_goal_log) %]) -> res;
 enddefine;

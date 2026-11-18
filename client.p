@@ -489,14 +489,20 @@ define show_goal(arg);
         if arg = '' then jsonrpc_obj([% 'session_id', lp_sid %])
         else jsonrpc_obj([% 'session_id', lp_sid, 'goal', arg %]) endif);
     returnunless(r);
-    printf('\n');
     for g in_vector (p(r, 'goals') or {}) do
-        printf('    %p %p -- %p\n',
-               [% if p(g, 'name') = p(r, 'goal') then '>' else ' ' endif,
-                  p(g, 'name'), p(g, 'means') %]);
+        nextunless(p(g, 'name') = p(r, 'goal'));
+        printf('\n  %p: %p -- %p%p\n',
+               [% if arg = '' then 'You are learning for' else 'Now learning for' endif,
+                  p(g, 'name'), p(g, 'for'),
+                  if p(r, 'assumed') == true
+                  then '\n  (my assumption: you have not told me)' else '' endif %]);
+        printf('  %p\n', [% p(g, 'means') %]);
     endfor;
-    if p(r, 'assumed') == true then
-        printf('  You have not said, so a test is assumed.  :goal <name>\n');
+    if arg = '' then
+        printf('\n  The choices:\n');
+        for g in_vector (p(r, 'goals') or {}) do
+            printf('    :goal %p -- %p\n', [% p(g, 'name'), p(g, 'for') %]);
+        endfor;
     endif;
 enddefine;
 

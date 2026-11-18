@@ -1537,12 +1537,24 @@ enddefine;
 define lp_goal_why(g) -> s;
     lvars g, s;
     if     g == "exam" then
-        if lp_lang == "ja" then 'a test (JLPT): every criterion, at the test\'s pace'
-        else 'a test (TOEIC): every criterion, at the test\'s pace' endif
+        if lp_lang == "ja" then 'a test (JLPT)' else 'a test (TOEIC)' endif
+    elseif g == "everyday" then 'fun, travel, talking to people'
+    else                        'reading and writing'
+    endif -> s;
+enddefine;
+
+;;; What the choice does, in a sentence a student can act on.
+define lp_goal_means(g) -> s;
+    lvars g, s;
+    if     g == "exam" then
+        'To finish a level you need every skill, reading and listening, '
+        <> 'at the speed the test expects.'
     elseif g == "everyday" then
-        'for fun, travel, talking to people: every criterion, a gentler clock'
+        'To finish a level you need every skill, reading and listening, '
+        <> 'but you get half as long again to answer.'
     else
-        'to read and write: listening does not hold you back, a gentler clock'
+        'To finish a level you need the reading skills only.  Listening is '
+        <> 'still asked and still shown, and you get half as long again to answer.'
     endif -> s;
 enddefine;
 
@@ -1575,19 +1587,43 @@ define lp_goals_reset();
     clearproperty(lp_goals); [] -> lp_goal_log;
 enddefine;
 
+;;; Wrapped at a word, so the sentence is one string for a client and
+;;; two lines on a terminal.
+define lp_goal_say_means(g);
+    lvars g, s = lp_goal_means(g), i, cut = false;
+    if length(s) > 70 then
+        for i from 70 by -1 to 1 do
+            if s(i) == ` ` then i -> cut; quitloop endif;
+        endfor;
+    endif;
+    if cut then
+        printf('  %p\n  %p\n', [% substring(1, cut - 1, s), allbutfirst(cut, s) %]);
+    else printf('  %p\n', [^s]);
+    endif;
+enddefine;
+
 define lp_goal_show();
     lvars g, nm;
-    printf('\n');
+    printf('\n  You are learning for: %p -- %p%p\n',
+           [% lp_goal(), lp_goal_why(lp_goal()),
+              if lp_goal_set_for() then ''
+              else '\n  (my assumption: you have not told me)' endif %]);
+    lp_goal_say_means(lp_goal());
+    printf('\n  The choices:\n');
     for g in GOALS do
         g sys_>< '' -> nm;
         until length(nm) >= 8 do nm <> ' ' -> nm enduntil;
-        printf('    %p %p %p\n',
-               [% if lp_goal() == g then '>' else ' ' endif, nm, lp_goal_why(g) %]);
+        printf('    :goal %p %p\n', [% nm, lp_goal_why(g) %]);
     endfor;
-    unless lp_goal_set_for() then
-        printf('\n  You have not told me, so I am assuming a test.');
-    endunless;
-    printf('\n  :goal <name> changes it.  The change is logged with the time.\n');
+enddefine;
+
+;;; After a change: what it was, what it is, and what that does.  The
+;;; list on its own did not say whether anything had happened.
+define lp_goal_changed(was);
+    lvars was;
+    printf('\n  Now learning for: %p -- %p (it was %p).\n',
+           [% lp_goal(), lp_goal_why(lp_goal()), was %]);
+    lp_goal_say_means(lp_goal());
 enddefine;
 
 ;;; Asked once, of a new student, after the name.  Enter is an answer:
@@ -1610,6 +1646,7 @@ define lp_goal_ask();
     if g then
         lp_goal_set(g).erase;
         printf('  %p, then.  :goal changes it whenever you like.\n', [^g]);
+        lp_goal_say_means(g);
     else
         printf('  Later, then -- :goal when you know.\n');
     endif;
@@ -1940,11 +1977,29 @@ define lp_record_phase(phase, item, ch, tier, outcome, latency_ms);
 enddefine;
 
 ;;; The review owed longest, as (item, channel).
+;;;
+;;; NOT ONE THAT IS WAITING OUT ITS GAP.  :oops on a review undoes it, so
+;;; the review is owed again and is the oldest there is -- and it came
+;;; back as the very next question, straight after "I will ask it again
+;;; shortly -- not now, because you have just seen the answer".  A
+;;; student whose sittings are all reviews saw that nearly every time.
+;;; lp_choose has stepped round a deferred item since the gap was
+;;; written; this did not.
+vars procedure lp_deferred;
 define lp_review_next() -> (item, ch);
-    lvars d = lp_review_due();
-    if d == [] then (false, false) -> (item, ch)
-    else (hd(d)(1), hd(d)(2)) -> (item, ch)
-    endif;
+    lvars d, item = false, ch = false;
+    for d in lp_review_due() do
+        nextif(lp_deferred(d(1)));
+        d(1) -> item; d(2) -> ch; return;
+    endfor;
+enddefine;
+
+;;; Is a review of this one owed now?
+define lp_review_owed(item) -> yes;
+    lvars item, d, yes = false;
+    for d in lp_review_due() do
+        if d(1) == item then true -> yes; return endif;
+    endfor;
 enddefine;
 
 ;;; A CAP IS A CEILING ON WHAT EVIDENCE CAN REACH, NOT A LEVEL IT DRAGS
@@ -4281,6 +4336,9 @@ define lp_due() -> item;
     lvars p, item = false;
     for p in lp_pending do
         if p(2) <= lp_asked_n and lp_drillable_on(p(1), p(3)) then
+            ;;; A review taken back comes round as the review it was,
+            ;;; from lp_review_next, and not from here as something new.
+            nextif(lp_review_owed(p(1)));
             p(1) -> item; return
         endif;
     endfor;
@@ -7470,9 +7528,18 @@ define lp_session();
             elseif cmd = 'goal' or cmd = 'goals' then
                 if arg = '' then lp_goal_show();
                 elseif lp_goal_parse(arg) then
+                    lvars gwas = lp_goal(), gasked = lp_goal_set_for();
                     lp_goal_set(lp_goal_parse(arg)).erase;
                     lp_save();
-                    lp_goal_show();
+                    if gasked and gwas == lp_goal() then
+                        printf('\n  Already %p -- nothing changed.\n', [^gwas]);
+                        lp_goal_say_means(gwas);
+                    elseif not(gasked) then
+                        printf('\n  Learning for: %p -- %p.\n',
+                               [% lp_goal(), lp_goal_why(lp_goal()) %]);
+                        lp_goal_say_means(lp_goal());
+                    else lp_goal_changed(gwas);
+                    endif;
                 else
                     printf('  There is no "%p".  They are: %p\n',
                            [% arg, lp_goal_names() %]);

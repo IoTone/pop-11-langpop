@@ -4127,3 +4127,26 @@ started it returned two values. The TUI never noticed the spare. In
 next key. There since 10-30; every status call in the server suite came
 after an answer. Now `returnunless(lp_period_start)`, and the suite asks
 for status from a student who has done nothing.
+
+## :oops on a review came straight back
+
+Reported from a real sitting: "I will ask it again shortly -- not now,
+because you have just seen the answer", almost always followed by the
+same question. `:oops` undoes the answer, and undoing a review puts the
+review back on the list as the oldest one owed. `lp_choose` steps round
+an item waiting out `REQUEUE_GAP`; `lp_review_next` took the head of
+`lp_review_due()` and did not. A student whose sittings are all reviews
+hit it nearly every time. Now `lp_review_next` skips anything
+`lp_deferred`, and `lp_due` leaves an item with a review owed to come
+round as that review (`lp_review_owed`) instead of serving it as a
+learning question once the gap is up. The server shares both.
+
+## :goal says what happened
+
+`:goal exam` printed the list of three with a `>` beside one, the same
+screen as `:goal` alone: nothing said whether a change had been made, and
+"every criterion, at the test's pace" explained nothing. Now `:goal`
+states the goal in force and what it asks (`lp_goal_means`, one sentence,
+wrapped by `lp_goal_say_means`) and then the choices as commands; setting
+one says what it was and what it is, or "Already exam -- nothing
+changed". `langpop/goal` carries `for` and `means` per goal.
