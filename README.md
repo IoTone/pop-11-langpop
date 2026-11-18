@@ -332,40 +332,52 @@ A new student is asked one question after their name:
 ```
 What are you learning English for?
   1  a test (TOEIC)
-  2  for fun, or travel, or talking to people
-  3  to read and write
-(1, 2 or 3 -- or enter to decide later)
+  2  a trip: signs, tickets, simple questions
+  3  talking with people
+  4  to read: books, mail, the web
+(1, 2, 3 or 4 -- or enter to decide later)
 ```
 
 The ladder is made of exam bands, and not everybody on it wants the
 exam. Somebody retired who wants English for a holiday is not raising a
-score, and neither is somebody who wants to read. The answer changes two
-things, and only two:
+score, and neither is somebody who wants to read. A trip and a
+conversation are different goals too: a traveller needs to find the
+bathroom, check in and ask for a platform, which is a low bar and a short
+road, while somebody who wants to talk with people needs their ear far
+more than their reading. The answer changes these things, and only these:
 
-| goal | which criteria hold a level shut | the clock |
-|---|---|---|
-| `exam` | all of them | the limit the ladder declares |
-| `everyday` | all of them | half as long again |
-| `reading` | the reading ones; listening is measured, shown, and does not hold the student back | half as long again |
+| goal | which criteria hold a level shut | the clock | listening |
+|---|---|---|---|
+| `exam` | all of them | the limit the ladder declares | words by ear every fourth question |
+| `travel` | all of them | twice as long | the same |
+| `conversation` | the listening ones; reading is measured, shown, and does not hold the student back | half as long again | words by ear every second question |
+| `reading` | the reading ones; listening is measured, shown, and does not hold the student back | half as long again | words by ear no longer go ahead of the day's reviews |
 
 So a `reading` student can leave Japanese pre-school without the 50
-words by ear, and an `everyday` student passes hiragana at three seconds
-a character where the test asks for two. `:status` says which goal the
+words by ear, a `conversation` student can leave it on the words by ear
+alone, and a `travel` student passes hiragana at four seconds a character
+where the test asks for two. `travel` also names where it ends: `:goal`
+says a trip needs nothing past N5 in Japanese, or A2 in English. That is
+advice; nobody is stopped from going on.
+
+Two honest limits. Reading is still how a new word is first met, so a
+`conversation` student reads the kana and the words like anybody else;
+what changes is that reading does not hold the level shut and the ear
+gets twice the practice. And there is no speaking or writing criterion on
+the ladder yet, so `conversation` measures listening, not talking. `:status` says which goal the
 figures were measured against, and names anything the goal set aside.
-With `reading`, words by ear also stop being asked ahead of the day's
-reviews.
 
 What it does **not** change yet is which words are taught: the graph has
-no notion of a travel word or an office word, so all three goals learn
+no notion of a travel word or an office word, so all four goals learn
 the same vocabulary in the same order.
 
 `:goal` says which one is in force and what it asks of the student,
-in a sentence, and lists the choices. `:goal travel` (or `toeic`, `read`, `2` — the
+in a sentence, and lists the choices. `:goal travel` (or `toeic`, `talk`, `read`, `2` — the
 word a person would use) changes it and says what it was, what it is now,
 and what that means. Each change is logged with its time. The goal is kept per language. A student who was never asked — every
 profile from before this question existed, and anyone who pressed enter —
-is treated as `exam`, and `:status` says the goal is assumed. The 1.5 on
-the clock is a judgement, not a measurement.
+is treated as `exam`, and `:status` says the goal is assumed. The 1.5 and the 2 on
+the clock are judgements, not measurements.
 
 ### Which language a session is in
 
@@ -2687,7 +2699,7 @@ arrows into nothing.
 | `:assign` | something to do away from the keyboard |
 | `:report <n> ok` | done it (tier 3) |
 | `:report <n> 17/20` | done it, with a result (tier 2) |
-| `:goal [name]` | what the student is learning for: `exam`, `everyday` or `reading` |
+| `:goal [name]` | what the student is learning for: `exam`, `travel`, `conversation` or `reading` |
 | `:level <name>` | move to another level |
 | `:time` | how long this sitting has run, and how many questions were in it |
 | `:quit` | stop (every answer is already saved, so Ctrl-C or closing the window loses nothing) |

@@ -958,15 +958,19 @@ check_true('an unknown aid is an error',
 vars go = result('langpop/goal', jsonrpc_obj([% 'session_id', osid %]));
 check('never asked reads as a test', go('goal'), 'exam');
 check('and says nobody was asked', go('assumed'), true);
-check('three to choose from', length(go('goals')), 3);
+check('four to choose from', length(go('goals')), 4);
 vars go2 = result('langpop/goal',
                   jsonrpc_obj([% 'session_id', osid, 'goal', 'travel' %]));
-check('the word a person would use is understood', go2('goal'), 'everyday');
+check('the word a person would use is understood', go2('goal'), 'travel');
 check('and it is no longer assumed', go2('assumed'), false);
 check('logged', go2('changes_logged'), 1);
 vars gst = result('langpop/status', jsonrpc_obj([% 'session_id', osid %]));
-check('status says what for', gst('goal'), 'everyday');
+check('status says what for', gst('goal'), 'travel');
 check('and sets nothing aside for it', length(gst('outside_goal')), 0);
+result('langpop/goal', jsonrpc_obj([% 'session_id', osid, 'goal', 'everyday' %])) -> go2;
+check('the old name still lands, as conversation', go2('goal'), 'conversation');
+result('langpop/status', jsonrpc_obj([% 'session_id', osid %])) -> gst;
+check_true('a talker has reading set aside', length(gst('outside_goal')) >= 1);
 result('langpop/goal', jsonrpc_obj([% 'session_id', osid, 'goal', 'reading' %])).erase;
 result('langpop/status', jsonrpc_obj([% 'session_id', osid %])) -> gst;
 check_true('a reader has something set aside', length(gst('outside_goal')) >= 1);

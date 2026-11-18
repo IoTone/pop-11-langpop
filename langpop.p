@@ -1499,8 +1499,20 @@ enddefine;
 ;;; Per language, as the level is: JLPT in the evening and English for
 ;;; a trip is one student.  Never asked reads as `exam`, which is what
 ;;; every profile written before this meant.
-lconstant GOALS = [exam everyday reading],
-          GOAL_SLACK = 1.5;
+;;;
+;;; FOUR, NOT THREE.  `everyday` was one goal for "fun, travel, talking
+;;; to people", and a native speaker who was asked said those are two
+;;; people.  TRAVEL is a low bar and a short road: the bathroom, the
+;;; hotel desk, the platform -- signs read slowly and a short answer
+;;; understood.  Both channels, twice the time, and a rung past which
+;;; the trip needs nothing more.  CONVERSATION is the mirror of reading:
+;;; the criteria by ear hold the rung and the written ones are set
+;;; aside, and the words come by ear on every second question instead
+;;; of every fourth.  A profile that says `everyday` reads as
+;;; conversation, which is the word she chose.
+lconstant GOALS = [exam travel conversation reading],
+          GOAL_SLACK = 1.5,
+          TRAVEL_SLACK = 2;
 
 vars lp_goals = newproperty([], 4, false, "perm"),   ;;; lang -> goal
      lp_goal_log = [];                  ;;; [{lang goal when_ms} ...]
@@ -1516,7 +1528,9 @@ enddefine;
 
 define lp_goal_channels(g) -> chs;
     lvars g, chs;
-    if g == "reading" then [read] else false endif -> chs;   ;;; false: all
+    if     g == "reading"      then [read]
+    elseif g == "conversation" then [hear]
+    else false endif -> chs;                                 ;;; false: all
 enddefine;
 
 define lp_goal_outside_hear() -> yes;
@@ -1525,7 +1539,24 @@ define lp_goal_outside_hear() -> yes;
 enddefine;
 
 define lp_goal_slack(g) -> f;
-    lvars g, f = if g == "exam" then 1 else GOAL_SLACK endif;
+    lvars g, f = if     g == "exam"   then 1
+                 elseif g == "travel" then TRAVEL_SLACK
+                 else GOAL_SLACK endif;
+enddefine;
+
+;;; The rung past which a trip needs nothing more, or false: the goal
+;;; has no end short of the ladder's.  Said, not enforced -- nobody is
+;;; stopped from going on.
+define lp_goal_far(g) -> lev;
+    lvars g, lev = false;
+    returnunless(g == "travel");
+    if lp_lang == "ja" then "n5" elseif lp_lang == "en" then "a2"
+    else false endif -> lev;
+enddefine;
+
+;;; The old name, in a profile or from a client that still sends it.
+define lp_goal_named(w) -> g;
+    lvars w, g = if w == "everyday" then "conversation" else w endif;
 enddefine;
 
 ;;; A criterion's limit as this student is held to it.
@@ -1538,8 +1569,9 @@ define lp_goal_why(g) -> s;
     lvars g, s;
     if     g == "exam" then
         if lp_lang == "ja" then 'a test (JLPT)' else 'a test (TOEIC)' endif
-    elseif g == "everyday" then 'fun, travel, talking to people'
-    else                        'reading and writing'
+    elseif g == "travel"       then 'a trip: signs, tickets, simple questions'
+    elseif g == "conversation" then 'talking with people'
+    else                            'reading: books, mail, the web'
     endif -> s;
 enddefine;
 
@@ -1549,9 +1581,17 @@ define lp_goal_means(g) -> s;
     if     g == "exam" then
         'To finish a level you need every skill, reading and listening, '
         <> 'at the speed the test expects.'
-    elseif g == "everyday" then
+    elseif g == "travel" then
         'To finish a level you need every skill, reading and listening, '
-        <> 'but you get half as long again to answer.'
+        <> 'but you get twice as long to answer.'
+        <> if lp_goal_far(g) then
+               '  A trip needs nothing past ' <> lowertoupper(lp_goal_far(g) sys_>< '')
+               <> '.'
+           else '' endif
+    elseif g == "conversation" then
+        'To finish a level you need the listening skills only, and words '
+        <> 'come by ear twice as often.  Reading is still asked and still '
+        <> 'shown, and you get half as long again to answer.'
     else
         'To finish a level you need the reading skills only.  Listening is '
         <> 'still asked and still shown, and you get half as long again to answer.'
@@ -1567,9 +1607,12 @@ define lp_goal_parse(s) -> g;
     uppertolower(s) -> s;
     if     member(s, ['exam' 'test' 'toeic' 'jlpt' 'eiken' 'work' 'job'
                       'score' '1' 'a']) then "exam"
-    elseif member(s, ['everyday' 'fun' 'travel' 'hobby' 'talk' 'speak'
-                      'conversation' '2' 'b']) then "everyday"
-    elseif member(s, ['reading' 'read' 'write' 'writing' 'books' '3' 'c'])
+    elseif member(s, ['travel' 'trip' 'holiday' 'vacation' 'tourist'
+                      '2' 'b']) then "travel"
+    elseif member(s, ['conversation' 'talk' 'talking' 'speak' 'speaking'
+                      'chat' 'friends' 'fun' 'hobby' 'everyday' '3' 'c'])
+    then "conversation"
+    elseif member(s, ['reading' 'read' 'write' 'writing' 'books' '4' 'd'])
     then "reading"
     else false endif -> g;
 enddefine;
@@ -1590,16 +1633,18 @@ enddefine;
 ;;; Wrapped at a word, so the sentence is one string for a client and
 ;;; two lines on a terminal.
 define lp_goal_say_means(g);
-    lvars g, s = lp_goal_means(g), i, cut = false;
-    if length(s) > 70 then
+    lvars g, s = lp_goal_means(g), i, cut;
+    while length(s) > 70 do
+        false -> cut;
         for i from 70 by -1 to 1 do
             if s(i) == ` ` then i -> cut; quitloop endif;
         endfor;
-    endif;
-    if cut then
-        printf('  %p\n  %p\n', [% substring(1, cut - 1, s), allbutfirst(cut, s) %]);
-    else printf('  %p\n', [^s]);
-    endif;
+        quitunless(cut);
+        printf('  %p\n', [% substring(1, cut - 1, s) %]);
+        allbutfirst(cut, s) -> s;
+        while s /= '' and s(1) == ` ` do allbutfirst(1, s) -> s endwhile;
+    endwhile;
+    printf('  %p\n', [^s]);
 enddefine;
 
 define lp_goal_show();
@@ -1612,7 +1657,7 @@ define lp_goal_show();
     printf('\n  The choices:\n');
     for g in GOALS do
         g sys_>< '' -> nm;
-        until length(nm) >= 8 do nm <> ' ' -> nm enduntil;
+        until length(nm) >= 12 do nm <> ' ' -> nm enduntil;
         printf('    :goal %p %p\n', [% nm, lp_goal_why(g) %]);
     endfor;
 enddefine;
@@ -1636,9 +1681,10 @@ define lp_goal_ask();
               else lp_lang endif %]);
     printf('  1  a test%p\n', [% if lp_lang == "ja" then ' (JLPT)'
                                   elseif lp_lang == "en" then ' (TOEIC)' else '' endif %]);
-    printf('  2  for fun, or travel, or talking to people\n');
-    printf('  3  to read and write\n');
-    printf('(1, 2 or 3 -- or enter to decide later)  ');
+    printf('  2  a trip: signs, tickets, simple questions\n');
+    printf('  3  talking with people\n');
+    printf('  4  to read: books, mail, the web\n');
+    printf('(1, 2, 3 or 4 -- or enter to decide later)  ');
     sysflush(popdevout);
     lp_readline() -> line;
     returnif(line == termin);
@@ -2818,8 +2864,8 @@ define lp_load_profile(user) -> found;
         lvars gl, gv;
         for gl in lp_langs() do
             o('goals')(gl sys_>< '') -> gv;
-            if gv and member(consword(gv sys_>< ''), lp_goal_names()) then
-                consword(gv sys_>< '') -> lp_goals(gl);
+            if gv and member(lp_goal_named(consword(gv sys_>< '')), lp_goal_names()) then
+                lp_goal_named(consword(gv sys_>< '')) -> lp_goals(gl);
             endif;
         endfor;
     endif;
@@ -2827,7 +2873,7 @@ define lp_load_profile(user) -> found;
         for i from 1 to length(o('goal_changes')) do
             o('goal_changes')(i) -> e;
             lp_goal_log <> [{% consword(e(1) sys_>< ''),
-                               consword(e(2) sys_>< ''), e(3) %}]
+                               lp_goal_named(consword(e(2) sys_>< '')), e(3) %}]
                 -> lp_goal_log;
         endfor;
     endif;
@@ -7167,7 +7213,7 @@ define lp_help();
     printf('  :assign          something to do away from the keyboard\n');
     printf('  :report <n> ok   done it (compliance)\n');
     printf('  :report <n> 17/20  done it, with a result\n');
-    printf('  :goal            what you are learning for (exam, everyday, reading)\n');
+    printf('  :goal            what you are learning for (exam, travel, conversation, reading)\n');
     printf('  :level <name>    move to another level\n');
     printf('  :time            how long this sitting has run\n');
     printf('  :quit            save and stop\n');
@@ -7366,8 +7412,16 @@ enddefine;
 lconstant HEAR_EVERY = 4;
 
 ;;; lconstant is file-local, and server.p interleaves by the same rule.
-define lp_hear_every() -> n;
+define lp_hear_every_any() -> n;
     lvars n = HEAR_EVERY;
+enddefine;
+
+;;; The words by ear, that is: for conversation they are the rung, so
+;;; they take every second question.  Anything else by ear -- a kana,
+;;; a length pair -- keeps the fourth, because kana by ear at a higher
+;;; rate was measured and put the words off by two thousand answers.
+define lp_hear_every_words() -> n;
+    lvars n = if lp_goal() == "conversation" then 2 else HEAR_EVERY endif;
 enddefine;
 
 define lp_next();
@@ -7397,7 +7451,7 @@ define lp_next();
     ;;; 2,694th answer of 3,000 instead of the first thousand.  So a word
     ;;; already read waits for nothing; a kana by ear keeps its place
     ;;; after the reviews, below.
-    if (lp_asked_n + 1) mod HEAR_EVERY == 0 and not(lp_goal_outside_hear()) then
+    if (lp_asked_n + 1) mod lp_hear_every_words() == 0 and not(lp_goal_outside_hear()) then
         dlocal lp_hear_words_only = true;
         lp_choose_hear() -> hitem;
         false -> lp_hear_words_only;

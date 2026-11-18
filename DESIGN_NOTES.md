@@ -4115,6 +4115,47 @@ travel or for the office, so the three goals learn the same words. The
 `exam`; the last attempt to raise the listening share cost the words
 (see the section above), so it wants its own measurement.
 
+## Four goals: a trip is not a conversation
+
+`everyday` was one goal for "fun, travel, talking to people". The same
+native speaker, asked which she would pick, said conversation, not
+everyday, and that travel is a much lower bar: the bathroom, the hotel
+desk, the train platform. She speaks well and writes badly, which is the
+mirror of the `reading` student and had no goal at all.
+
+So `GOALS` is `exam travel conversation reading`.
+
+- `travel`: every channel, `TRAVEL_SLACK` 2 on the clock, and
+  `lp_goal_far` names the rung a trip needs nothing past (`n5`, `a2`).
+  It is said in `lp_goal_means` and enforced nowhere.
+- `conversation`: `lp_goal_channels` is `[hear]`, so the written
+  criteria are set aside the way listening is for `reading`. And the
+  words-by-ear slot fires every second question:
+  `lp_hear_every_words()` is 2 for this goal and 4 otherwise.
+  `lp_hear_every_any()` stays 4 for kana and length pairs by ear,
+  because raising that rate is what cost the words last time. The server
+  had one slot for both and now has two.
+
+`everyday` in a saved profile, in the change log, or sent by a client
+reads as `conversation` (`lp_goal_named`, and `lp_goal_parse`). The menu
+has four lines, so `3` used to be reading and is now conversation; `4`
+is reading.
+
+The oracle takes `--goal`. Seed 42 at 5,000 answers, Japanese: all three
+of `exam`, `conversation`, `travel` finish pre-school, reach N5 with 50
+of 50 words by ear, and pass; right answers 3511, 3482, 3445. So the
+faster listening slot costs nothing measurable, and it also buys nothing
+measurable in a run that is nearly all kana: the slot only has work once
+words are read. English `conversation` at 2,000: 198 right against 204,
+pass.
+
+Not done, and it is the substance of `travel`: situations. The graph
+holds words, not "where is the toilet" or "which platform", so a
+traveller gets the same vocabulary in the same order with a kinder clock.
+A phrase set by situation is a new kind of item. Nor is there a speaking
+criterion: `conversation` gates on listening because that is the only
+half of talking the ladder measures.
+
 ## :status from the server, before the first answer
 
 Found while trying `:goal` through the line client: `langpop/status`

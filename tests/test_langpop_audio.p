@@ -1077,7 +1077,7 @@ check('a plain requeue is the gate channel', lp_due_ch("w_neko"), "read");
 lp_queue_reset();
 
 ;;; --- the interleave is one rule, shared with the protocol
-check('one question in four is by ear', lp_hear_every(), 4);
+check('one question in four is by ear', lp_hear_every_any(), 4);
 
 ;;; ------------------------------------------------------- the microphone
 ;;; Stage A: the seam, with no model behind it.  The recorder and the

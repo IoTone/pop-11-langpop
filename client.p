@@ -223,7 +223,7 @@ define help();
     printf('  :card <item>     ask the tutor to draw it\n');
     printf('  :assign          something to do away from the keyboard\n');
     printf('  :report <n> ok | 17/20\n');
-    printf('  :goal [name]     what you are learning for (exam, everyday, reading)\n');
+    printf('  :goal [name]     what you are learning for (exam, travel, conversation, reading)\n');
     printf('  :time            how long this sitting has run\n');
     printf('  :quit            close the session and stop\n');
 enddefine;

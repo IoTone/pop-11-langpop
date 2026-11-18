@@ -575,7 +575,9 @@ define lp_m_next(msg) -> res;
     ;;; The order lp_next asks in, so both doors ask the same way: the
     ;;; words by ear on the fourth question even with reviews owed, then
     ;;; the reviews, then anything else by ear on the fourth question.
-    lvars slot = not(requeued) and (lp_asked_n + 1) mod lp_hear_every() == 0
+    lvars slot = not(requeued) and (lp_asked_n + 1) mod lp_hear_every_words() == 0
+                 and not(lp_goal_outside_hear()),
+          anyslot = not(requeued) and (lp_asked_n + 1) mod lp_hear_every_any() == 0
                  and not(lp_goal_outside_hear()),
           hitem;
     if slot then
@@ -589,7 +591,7 @@ define lp_m_next(msg) -> res;
         lp_review_next() -> (ritem, rch);
         if ritem then ritem -> item; rch -> ch; "review" -> phase endif;
     endunless;
-    if slot and not(ch) then
+    if anyslot and not(ch) then
         lp_choose_hear() -> hitem;
         if hitem then hitem -> item; "hear" -> ch endif;
     endif;

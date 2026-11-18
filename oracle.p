@@ -71,6 +71,7 @@ vars
     ora_sid = false,
     ora_user = false,
     ora_lang = 'ja',
+    ora_goal = false,
     ora_place = false,
     ora_comp = newproperty([], 256, false, "perm"),  ;;; item -> competence
     ora_assigned = newproperty([], 16, 0, "perm"),   ;;; item -> reports sent
@@ -956,6 +957,7 @@ define ora_main();
         elseif a = '--skill' then strnumber(hd(tl(args))) -> ora_skill; tl(tl(args)) -> args;
         elseif a = '--user' then hd(tl(args)) -> ora_user; tl(tl(args)) -> args;
         elseif a = '--lang' then hd(tl(args)) -> ora_lang; tl(tl(args)) -> args;
+        elseif a = '--goal' then hd(tl(args)) -> ora_goal; tl(tl(args)) -> args;
         elseif a = '--place' then true -> ora_place; tl(args) -> args;
         elseif a = '--verbose' then true -> ora_verbose; tl(args) -> args;
         else tl(args) -> args;
@@ -985,6 +987,19 @@ define ora_main();
         sysexit(3);
     endunless;
     ora_p(res, 'session_id') -> ora_sid;
+
+    ;;; What the student is learning for: the server gates and schedules
+    ;;; by it, and the local engine must judge by the same one.
+    if ora_goal then
+        ora_rpc('langpop/goal', jsonrpc_obj([% 'session_id', ora_sid,
+                                               'goal', ora_goal %])) -> res;
+        unless res and lp_goal_parse(ora_goal) then
+            printf('oracle: no such goal: %p\n', [^ora_goal]);
+            sysexit(3);
+        endunless;
+        lp_goal_set(lp_goal_parse(ora_goal)).erase;
+        printf('oracle: learning for %p\n', [% lp_goal() %]);
+    endif;
 
     if ora_place then
         printf('oracle: placement, seed %p, skill %p, as %p\n',

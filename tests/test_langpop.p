@@ -3575,8 +3575,12 @@ lvars g_lang = lp_lang, g_level = lp_level, g_user = lp_user,
 lp_goals_reset();
 check('never asked reads as a test', lp_goal(), "exam");
 check('and is known to be unasked', lp_goal_set_for(), false);
-check('a digit is an answer', lp_goal_parse('2'), "everyday");
-check('so is the word a person would use', lp_goal_parse('Travel'), "everyday");
+check('a digit is an answer', lp_goal_parse('2'), "travel");
+check('so is the word a person would use', lp_goal_parse('Trip'), "travel");
+check('talking is not a trip', lp_goal_parse('speak'), "conversation");
+check('the old name is conversation', lp_goal_parse('everyday'), "conversation");
+check('and so it is in an old profile', lp_goal_named("everyday"), "conversation");
+check('four is reading now', lp_goal_parse('4'), "reading");
 check('and the name of the test', lp_goal_parse('toeic'), "exam");
 check('reading by either word', lp_goal_parse('write'), "reading");
 check('and nonsense is not', lp_goal_parse('sideways'), false);
@@ -3587,15 +3591,30 @@ for gr in lp_status_rows() do
     if gr(1) = 'recognise(hiragana)' then gr(5) -> gms endif;
 endfor;
 check('hiragana at the test\'s pace', gms, 2000);
-check('everyday is a goal', lp_goal_set("everyday"), true);
-check('and is now on file', lp_goal_set_for(), "everyday");
-check('with half as long again', lp_goal_ms(2000), 3000);
+check('everyday is not a goal any more', lp_goal_set("everyday"), false);
+check('a trip is', lp_goal_set("travel"), true);
+check('and is now on file', lp_goal_set_for(), "travel");
+check('with twice as long', lp_goal_ms(2000), 4000);
 for gr in lp_status_rows() do
     if gr(1) = 'recognise(hiragana)' then gr(5) -> gms endif;
 endfor;
-check('which the criterion is measured at', gms, 3000);
-check('and still nothing aside', lp_goal_aside(), []);
+check('which the criterion is measured at', gms, 4000);
+check('and nothing aside', lp_goal_aside(), []);
 check('listening still takes its slot', lp_goal_outside_hear(), false);
+check('at the usual rate', lp_hear_every_words(), 4);
+check('a trip ends at N5', lp_goal_far("travel"), "n5");
+check_true('and says so', issubstring('nothing past N5', lp_goal_means("travel")) /== false);
+check('nothing else ends early', lp_goal_far("conversation"), false);
+;;; Conversation: the mirror of reading.
+lp_goal_set("conversation").erase;
+check('half as long again', lp_goal_ms(2000), 3000);
+lp_goal_aside() -> gaside;
+check_true('reading the kana does not hold a talker', member('recognise(hiragana)', gaside));
+check_true('nor reading the words', member('vocabulary(50, read)', gaside));
+check_false('the words by ear do', member('vocabulary(50, hear)', gaside));
+check('and come twice as often', lp_hear_every_words(), 2);
+check('anything else by ear keeps its rate', lp_hear_every_any(), 4);
+check('listening takes its slot', lp_goal_outside_hear(), false);
 lp_goal_set("reading").erase;
 lp_goal_aside() -> gaside;
 check('a reader is not held by the words by ear', gaside, ['vocabulary(50, hear)']);
@@ -3605,7 +3624,7 @@ check_true('so it is excused', member('vocabulary(50, hear)', gx));
 check_false('and not unmet', member('vocabulary(50, hear)', gu));
 check_true('while reading the words still is', member('vocabulary(50, read)', gu));
 check('and the words by ear do not jump the reviews', lp_goal_outside_hear(), true);
-check('two changes, both logged', length(lp_goal_log), 2);
+check('three changes, all logged', length(lp_goal_log), 3);
 ;;; Per language, as the level is.
 "en" -> lp_lang;
 check('the other language was never asked', lp_goal_set_for(), false);
@@ -3625,7 +3644,7 @@ check('the profile is found', lp_load_profile("goaler"), true);
 check('the goal comes back', lp_goal(), "reading");
 "en" -> lp_lang;
 check('for each language', lp_goal(), "exam");
-check('with the log of changes', length(lp_goal_log), 4);
+check('with the log of changes', length(lp_goal_log), 5);
 lp_goals_reset();
 g_lang -> lp_lang; g_level -> lp_level; g_user -> lp_user; g_journal -> lp_journal;
 
