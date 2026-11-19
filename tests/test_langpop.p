@@ -3685,6 +3685,15 @@ check('the sentence is the prompt', ph_prompt, 'いくらですか');
 check('four to choose from', length(ph_opts), 4);
 check('and the key is where the answer says',
       ph_opts(strnumber(hd(ph_answer))), 'How much is it?');
+;;; NOT ALWAYS FIRST.  The position turned on the ask count alone, so
+;;; the key of anything asked for the first time was option 1.
+lvars ph_pos = [], ph_a;
+for ph_i in [t_sumimasen t_arigatou t_onegai t_wakarimasen t_eigo
+             t_mouichido t_yukkuri t_toire] do
+    lp_question(ph_i, "read") -> (, , ph_a, );
+    unless member(hd(ph_a), ph_pos) then ph_pos <> [% hd(ph_a) %] -> ph_pos endunless;
+endfor;
+check_true('the key of a new phrase moves about', length(ph_pos) >= 3);
 check('no option twice', length(ph_opts),
       length([% for ph_i in ph_opts do
                     if length([% lvars z; for z in ph_opts do

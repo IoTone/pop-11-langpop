@@ -4198,6 +4198,32 @@ Not done: the phrases were written by nobody who is a native speaker of
 Japanese, and none has been read by one. A student who leaves `travel`
 keeps the reviews of phrases already learned and is taught no new ones.
 
+## A travel sitting, sat
+
+Sat by hand in a scratch home, Japanese with the kana seeded and English
+from a new student, and four things were wrong that no test had asked
+about.
+
+The key was option 1 the first time anything was asked. The position was
+`asked mod 4`, and every item starts at nought, so a student typing 1 was
+right about every new phrase, and about every new English word, which
+had the same line since `lp_word_question` was written. `lp_item_salt`
+adds a number that belongs to the item.
+
+The three distractors were neighbours in the file: three things about a
+hotel beside one about a train. They are eleven apart now.
+
+The heading said "What does this word mean?" over a sentence, and by ear
+"You will hear one word". `lp_task_line` has a phrase arm for each.
+
+A wrong answer read `It is Do you speak English?.` A phrase is quoted.
+
+And `:level a1` answered "Goal is now a1", which was harmless until
+there was a `:goal`. It says Level.
+
+Listening was checked through the audio suite's stand-in voice, not
+through a speaker.
+
 ## :status from the server, before the first answer
 
 Found while trying `:goal` through the line client: `langpop/status`

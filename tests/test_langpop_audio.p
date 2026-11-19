@@ -1011,6 +1011,17 @@ check_true('and the gloss pair is what it offers',
            member(lp_gloss_of("t_mansion", "en") sys_>< '',
                   [% lvars oo; for oo in hopt do oo sys_>< '' endfor %])
            /== false);
+;;; A phrase for a trip, by ear: the sentence is played whole and the
+;;; four meanings stay on the screen.
+lp_audio_make("et_bathroom", "normal") -> (path, made, why);
+check_true('a phrase renders, whole', why == false);
+lp_question("et_bathroom", "hear") -> (hsh, hpr, hans, hopt);
+check('a phrase by ear is a pick', hsh, "listen_pick");
+check('of four meanings', length(hopt), 4);
+check('keyed to its own', hopt(strnumber(hd(hans))) sys_>< '', 'トイレはどこですか');
+check_true('and announced as a sentence, not a word',
+           issubstring('one sentence',
+                       lp_task_line("et_bathroom", "hear", hsh, hpr)) /== false);
 "ja" -> lp_lang;
 lp_write_file(lp_audio_conf_path(), encfg);
 lp_voices_load();

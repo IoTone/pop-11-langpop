@@ -4005,6 +4005,17 @@ enddefine;
 ;;; situation would ask "which of these four things about a train".
 ;;; Position and distractors turn over with the ask count, as
 ;;; lp_word_question argues.
+;;; A number that belongs to the item and to nothing else about the
+;;; sitting.  The ask count alone starts every item at nought, and a
+;;; position chosen by `count mod 4` then puts the key FIRST the first
+;;; time anything is asked: a student who always typed 1 was right about
+;;; every new word and every new phrase.  Found by sitting a travel
+;;; session, not by a test.
+define lp_item_salt(item) -> n;
+    lvars item, n = 0, i, s = item sys_>< '';
+    for i from 1 to length(s) do (n * 31 + s(i)) mod 9973 -> n endfor;
+enddefine;
+
 define lp_phrase_pool(lang, l1) -> pool;
     lvars lang, l1, pool, i, g,
           key = consword('phrase/' <> (lang sys_>< '') <> '/' <> (l1 sys_>< ''));
@@ -4039,15 +4050,19 @@ define lp_phrase_question(item) -> (shape, prompt, answer, options);
        endfor %] -> pool;
     returnif(length(pool) < 3);
     lp_asked(item) -> a;
-    ;;; Strided by the item as well as the count, or every phrase asked
-    ;;; for the first time would stand beside the same three others.
-    (a * 7 + length(item sys_>< '') * 5 + (item sys_>< '')(length(item sys_>< ''))) mod length(pool) -> at;
+    ;;; Salted by the item as well as the count, or every phrase asked
+    ;;; for the first time would stand beside the same three others; and
+    ;;; eleven apart, or the three would be neighbours in the file --
+    ;;; three things about a hotel beside one about a train.
+    (a * 7 + lp_item_salt(item)) mod length(pool) -> at;
     until length(picks) >= 3 do
         pool((at mod length(pool)) + 1) -> g;
-        unless member(g, picks) then picks <> [^g] -> picks endunless;
+        unless member(g, picks) then
+            picks <> [^g] -> picks; at + 10 -> at;
+        endunless;
         at + 1 -> at;
     enduntil;
-    (a mod 4) + 1 -> pos;
+    ((a + lp_item_salt(item)) mod 4) + 1 -> pos;
     for i from 1 to 4 do
         if i == pos then out <> [^key] -> out
         else out <> [% hd(picks) %] -> out; tl(picks) -> picks
@@ -4112,7 +4127,7 @@ define lp_word_question(item) -> (shape, prompt, answer, options);
         at + 1 -> at;
     enduntil;
 
-    (a mod (want + 1)) + 1 -> pos;
+    ((a + lp_item_salt(item)) mod (want + 1)) + 1 -> pos;   ;;; see lp_item_salt
     for i from 1 to want + 1 do
         if i == pos then out <> [^key] -> out
         else out <> [% hd(picks) %] -> out; tl(picks) -> picks
@@ -4597,6 +4612,9 @@ define lp_task_line(item, ch, shape, prompt) -> s;
         if k == "sound" or k == "confusion" then
             lp_task_pair('LISTENING.  You will hear ONE of these two words.  Type the number of the one you heard.',
                          '聞き取り：下の二つの単語のうち、一つを言います。聞こえた方の番号を書いてください。')
+        elseif k == "phrase" then
+            lp_task_pair('LISTENING.  You will hear one sentence.  Type the number of what it means.',
+                         '聞き取り：文を一つ言います。その意味の番号を書いてください。')
         else
             lp_task_pair('LISTENING.  You will hear one word.  Type the number of what it means.',
                          '聞き取り：単語を一つ言います。その意味の番号を書いてください。')
@@ -4616,6 +4634,9 @@ define lp_task_line(item, ch, shape, prompt) -> s;
         if lp_mix_of(item) then
             lp_task_pair('MEANING.  Which word means this?  Type its number.',
                          '意味：この意味の単語はどれですか。番号を書いてください。')
+        elseif k == "phrase" then
+            lp_task_pair('MEANING.  What does this say?  Type the number.',
+                         '意味：この文の意味はどれですか。番号を書いてください。')
         else
             lp_task_pair('MEANING.  What does this word mean?  Type the number.',
                          '意味：この単語の意味はどれですか。番号を書いてください。')
@@ -4695,6 +4716,9 @@ define lp_drill(item, ch) -> done;
     if (shape == "pick" or shape == "listen_pick")
     and strnumber(hd(answer)) and strnumber(hd(answer)) <= length(options)
     then options(strnumber(hd(answer))) else hd(answer) endif -> shown;
+    ;;; A sentence is quoted: "It is Do you speak English?." reads as
+    ;;; the tutor losing its place.
+    if lp_kind(item) == "phrase" then '"' <> (shown sys_>< '') <> '"' -> shown endif;
 
     ;;; THE PICTURE GOES UP BEFORE THE CLOCK STARTS.  Rasterising an SVG
     ;;; and pushing 20KB of base64 at a terminal takes a fifth of a
@@ -7749,7 +7773,7 @@ define lp_session();
             elseif cmd = 'level' then
                 if member(consword(arg), lp_levels(lp_lang)) then
                     consword(arg) -> lp_level;
-                    printf('  Goal is now %p.\n', [% lp_level %]);
+                    printf('  Level is now %p.\n', [% lp_level %]);
                 else
                     printf('  Levels for %p: %p\n', [% lp_lang, lp_levels(lp_lang) %]);
                 endif;
