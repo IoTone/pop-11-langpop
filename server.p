@@ -1119,6 +1119,13 @@ define lp_m_status(msg) -> res;
                    'goal', lp_jkey(lp_goal()),
                    'goal_assumed', not(lp_goal_set_for()),
                    'outside_goal', lp_vec([% lvars q; for q in lp_goal_aside() do q endfor %]),
+                   ;;; the trip's own list, which holds no rung: null
+                   ;;; unless the goal is travel
+                   'phrases', if lp_goal() == "travel" then
+                                  jsonrpc_obj([% lvars pr, ph, pt;
+                                      lp_phrase_counts() -> (pr, ph, pt);
+                                      'read', pr, 'heard', ph, 'total', pt %])
+                              else json_null endif,
                    'next_level', if lp_level_next() then lp_jkey(lp_level_next())
                                  else json_null endif,
                    'criteria', lp_vec(crits) %]) -> res;

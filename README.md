@@ -367,9 +367,40 @@ gets twice the practice. And there is no speaking or writing criterion on
 the ladder yet, so `conversation` measures listening, not talking. `:status` says which goal the
 figures were measured against, and names anything the goal set aside.
 
-What it does **not** change yet is which words are taught: the graph has
-no notion of a travel word or an office word, so all four goals learn
-the same vocabulary in the same order.
+#### Phrases for a trip
+
+A `travel` student is also taught the sentences a trip is made of, and
+nobody else is: 38 in Japanese and 38 in English, in six situations
+(getting by, finding things, trains, the hotel, eating and paying, and
+when it goes wrong). Some are what the traveller says and some are what
+is said to them, because half of asking for a platform is understanding
+the answer.
+
+```
+  トイレはどこですか
+    1) The bill, please
+    2) Where is the bathroom?
+    3) Which platform is it?
+    4) Cash only
+```
+
+A phrase is shown whole, or played, and answered by meaning. In Japanese
+the phrases open once the hiragana are read (six with a loanword in them
+wait for the katakana as well); in English they open at A1. They come
+ahead of the level's vocabulary, and `:status` counts them:
+
+```
+    phrases for the trip: 12 of 38 read, 5 by ear
+```
+
+They hold no level shut and count towards no vocabulary figure. The
+lists are `graph/ja/travel.pl` and `graph/en/travel.pl`, one line a
+phrase, and a teacher can add to them. **Neither list has been checked by
+a native speaker yet.**
+
+Apart from the phrases, the goals do not change which words are taught:
+the graph has no notion of a travel word or an office word, so all four
+learn the same vocabulary in the same order.
 
 `:goal` says which one is in force and what it asks of the student,
 in a sentence, and lists the choices. `:goal travel` (or `toeic`, `talk`, `read`, `2` — the

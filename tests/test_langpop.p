@@ -239,6 +239,31 @@ check('whose own belief IS untouched',
 check_false('katakana_all stays shut on the same evidence',
             lp_mastered("katakana_all"));
 
+;;; PHRASES FOR A TRIP are in the plan of a student whose goal is travel
+;;; and of nobody else, and at the front of it.  Here, where the whole
+;;; graph is loaded and every hiragana has just been read.
+lvars ph_i, ph_plan;
+lp_goals_reset();
+[% for ph_i in lp_plan() do if lp_kind(ph_i) == "phrase" then ph_i endif endfor %]
+    -> ph_plan;
+check('an exam student is offered no phrase', ph_plan, []);
+check_true('and has the words',
+           member("w_neko", [% for ph_i in lp_plan() do ph_i endfor %]));
+lp_goal_set("conversation").erase;
+check('nor is a talker',
+      [% for ph_i in lp_plan() do if lp_kind(ph_i) == "phrase" then ph_i endif endfor %],
+      []);
+lp_goal_set("travel").erase;
+lp_plan() -> ph_plan;
+check('a traveller is, first', lp_kind(hd(ph_plan)), "phrase");
+check('the thirty-two that need no katakana',
+      length([% for ph_i in ph_plan do
+                    if lp_kind(ph_i) == "phrase" then ph_i endif endfor %]), 32);
+check_false('a loanword waits for it', member("t_toire", ph_plan));
+check_true('with the words after', member("w_neko", ph_plan));
+check('the first thing asked is a phrase', lp_kind(lp_choose(ph_plan)), "phrase");
+lp_goals_reset();
+
 ;;; A probe-carrying skill is NOT a roll-up: mora_count must still be
 ;;; answered, not aggregated -- its requires are teaching order.
 for ri in lp_edges_of("mora_count") do mark_known(ri) endfor;
@@ -3645,6 +3670,39 @@ check('the goal comes back', lp_goal(), "reading");
 "en" -> lp_lang;
 check('for each language', lp_goal(), "exam");
 check('with the log of changes', length(lp_goal_log), 5);
+
+;;; ---------------------------------------------------- phrases for a trip
+;;; A sentence asked whole and answered by meaning, and offered only to
+;;; a student whose goal is travel.
+"goaler" -> lp_user; "ja" -> lp_lang; "preschool" -> lp_level;
+lvars ph_shape, ph_prompt, ph_answer, ph_opts, ph_r, ph_h, ph_t;
+check('a phrase is its own kind', lp_kind("t_ikura"), "phrase");
+check('read and heard', lp_channels("t_ikura"), [read hear]);
+check('it waits for the kana', lp_prereqs_ok("t_ikura"), false);
+lp_question("t_ikura", "read") -> (ph_shape, ph_prompt, ph_answer, ph_opts);
+check('asked by meaning', ph_shape, "pick");
+check('the sentence is the prompt', ph_prompt, 'いくらですか');
+check('four to choose from', length(ph_opts), 4);
+check('and the key is where the answer says',
+      ph_opts(strnumber(hd(ph_answer))), 'How much is it?');
+check('no option twice', length(ph_opts),
+      length([% for ph_i in ph_opts do
+                    if length([% lvars z; for z in ph_opts do
+                                     if z = ph_i then z endif endfor %]) == 1
+                    then ph_i endif
+                endfor %]));
+lp_goal_set("travel").erase;
+lp_phrase_counts() -> (ph_r, ph_h, ph_t);
+check('none known yet, of 38', [% ph_r, ph_h, ph_t %], [0 0 38]);
+mark_known("t_ikura");
+lp_phrase_counts() -> (ph_r, ph_h, ph_t);
+check('one read', ph_r, 1);
+;;; and in English, for somebody who reads Japanese
+"en" -> lp_lang; "a1" -> lp_level;
+lp_question("et_bathroom", "read") -> (ph_shape, ph_prompt, ph_answer, ph_opts);
+check('the English sentence is shown', ph_prompt, 'Where is the bathroom?');
+check('and answered in Japanese',
+      ph_opts(strnumber(hd(ph_answer))), 'トイレはどこですか');
 lp_goals_reset();
 g_lang -> lp_lang; g_level -> lp_level; g_user -> lp_user; g_journal -> lp_journal;
 

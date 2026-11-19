@@ -4156,6 +4156,48 @@ A phrase set by situation is a new kind of item. Nor is there a speaking
 criterion: `conversation` gates on listening because that is the only
 half of talking the ladder measures.
 
+## Phrases for a trip
+
+The substance `travel` was missing. `graph/ja/travel.pl` and
+`graph/en/travel.pl` hold 38 sentences each, hand-written, with a
+`situation/2` fact apiece (basics, street, train, hotel, food, shop,
+help) that nothing reads yet.
+
+A new kind, `phrase`, and not `word`: `vocabulary(N, Ch)` counts words,
+and `lp_count_items("word")` is printed beside it. Channels are
+`[read hear]`. The question is `lp_phrase_question`: the sentence as the
+prompt, four meanings, the key's position and the three distractors
+turning over with the ask count. The distractors are every other phrase
+of the language, not the same situation's. The gloss language comes from
+the item (`lp_l1`, else the flip of `lp_ilang`), so an English phrase has
+a question whatever `lp_lang` is; the suite's "every item that cannot be
+typed" invariant found that. By ear it needs nothing new:
+`lp_hear_question` swaps the stimulus of a `pick` for the recording.
+
+Japanese phrases sit at pre-school and require `hiragana_all`; six with
+a loanword require `katakana_all` too, listed in `travel_ja_kata/1`.
+Their one form is filed as `hiragana` though it holds katakana, because
+SPOKEN_JA reads that script first and the schema has no name for "kana,
+mixed". English phrases sit at A1 and require nothing.
+
+Goal, in three places. `lp_plan` drops phrases unless the goal is
+`travel` and otherwise moves them to the front, since `lp_choose` breaks
+ties in plan order. `lp_hear_plan` drops them the same way. And the
+words-only listening slot now lets a phrase through. `:status` and
+`langpop/status` (`phrases: {read, heard, total}`, null outside travel)
+count them over the whole language; no exit criterion reads them.
+
+`lp_plan` first split the plan by appending item by item, which is
+quadratic on an eight-hundred-item N5 plan and runs once a question.
+
+The plan checks live early in `test_langpop.p`, after the roll-up block:
+by the goal block near the end the Prolog store is a fixture graph and
+`plan/3` answers `[b_low]`.
+
+Not done: the phrases were written by nobody who is a native speaker of
+Japanese, and none has been read by one. A student who leaves `travel`
+keeps the reviews of phrases already learned and is taught no new ones.
+
 ## :status from the server, before the first answer
 
 Found while trying `:goal` through the line client: `langpop/status`

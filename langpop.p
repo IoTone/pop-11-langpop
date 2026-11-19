@@ -277,6 +277,7 @@ enddefine;
 ;;;   sound     [hear]            a contrast is heard or it is nothing
 ;;;   photo     [see]             a picture is looked at
 ;;;   pattern   [produce]         a pattern is produced
+;;;   phrase    [read hear]       a sentence for a trip, by meaning
 ;;;   skill     [read]            a roll-up over whatever it requires
 ;;; `speak` is SAYING it, and it is not `produce`.  produce is composing
 ;;; a sentence, which a pattern item asks for and a keyboard can answer;
@@ -336,6 +337,7 @@ define lp_channels(item) -> chs;
     ;;; there is no question left, only four sentences.
     elseif k == "photo"    then [see]
     elseif k == "pattern"  then [produce]
+    elseif k == "phrase"   then [read hear]
     elseif k == "word"     then [read hear speak]
     elseif k == "grapheme" then
         if lp_kana_heard(item) then [read hear speak] else [read speak] endif
@@ -883,9 +885,10 @@ enddefine;
 ;;; a human curates, and the manifest below is the load order.
 lconstant GRAPH_FILES = ['graph/schema.pl' 'graph/resources.pl'
                          'graph/ja/ladder.pl' 'graph/ja/kana.pl'
-                         'graph/ja/items.pl'
+                         'graph/ja/items.pl' 'graph/ja/travel.pl'
                          'graph/en/ladder.pl' 'graph/en/items.pl'
                          'graph/en/a1.pl' 'graph/en/a2.pl'
+                         'graph/en/travel.pl'
                          'graph/en/photos.pl'];
 
 ;;; The imported levels.  Each of these is a BUILD PRODUCT written by
@@ -1063,10 +1066,26 @@ define lp_levels(lang) -> ls;
     rev(ls) -> ls;
 enddefine;
 
-;;; What the student may be taught next, straight out of ready/4.
+;;; What the student may be taught next, out of ready/4 -- and then the
+;;; one thing ready/4 cannot know, which is what they are learning FOR.
+;;;
+;;; A PHRASE IS FOR A TRIP (graph/ja/travel.pl).  Under any other goal
+;;; it is left out, so the exam student's plan is what it was before
+;;; there were phrases.  Under `travel` the phrases go to the FRONT:
+;;; lp_choose breaks a tie in plan order, and a traveller with eight
+;;; hundred N5 words ready and a flight on Friday wants "which platform"
+;;; before the eight hundredth noun.
+vars procedure (lp_goal, lp_kind);
 define lp_plan() -> items;
-    lvars items;
+    lvars items, i, ph, rest;
     lp_ask(lp_user, lp_lang, lp_level, "plan", 3) -> items;
+    ;;; built in one pass each: appending item by item is quadratic, and
+    ;;; an N5 plan is eight hundred items long, asked for every question
+    [% for i in items do if lp_kind(i) == "phrase" then i endif endfor %] -> ph;
+    returnif(ph == []);
+    [% for i in items do unless lp_kind(i) == "phrase" then i endunless endfor %]
+        -> rest;
+    if lp_goal() == "travel" then ph <> rest else rest endif -> items;
 enddefine;
 
 ;;; A term printed the way Prolog wrote it, without pulling in the
@@ -3975,6 +3994,69 @@ enddefine;
 ;;; rule out vocabulary they have not met -- and it also keeps the
 ;;; question stable under placement, which probes a level that is not
 ;;; lp_level.
+;;; ------------------------------------------------------ a phrase asked
+;;; HERE IS A SENTENCE; WHICH OF THESE DOES IT SAY.  The question a
+;;; traveller is actually put: a sign, or a clerk, and four things it
+;;; might mean.  Picked and not typed, because the answer is a meaning
+;;; and there is no one spelling of a meaning.
+;;;
+;;; The distractors are the other phrases of the same language, all of
+;;; them and not one rung's worth: there are forty, and a pool cut by
+;;; situation would ask "which of these four things about a train".
+;;; Position and distractors turn over with the ask count, as
+;;; lp_word_question argues.
+define lp_phrase_pool(lang, l1) -> pool;
+    lvars lang, l1, pool, i, g,
+          key = consword('phrase/' <> (lang sys_>< '') <> '/' <> (l1 sys_>< ''));
+    lp_glosspool(key) -> pool;
+    returnif(pool);
+    [% for i in lp_items do
+           nextunless(lp_kind(i) == "phrase" and lp_ilang(i) == lang);
+           lp_gloss_of(i, l1) -> g;
+           if g then g sys_>< '' endif;
+       endfor %] -> pool;
+    pool -> lp_glosspool(key);
+enddefine;
+
+define lp_phrase_question(item) -> (shape, prompt, answer, options);
+    lvars item, shape, prompt, answer, options, text, l1, key, g,
+          pool, picks = [], a, at, pos, i, out = [];
+    ("none", '', [], []) -> (shape, prompt, answer, options);
+    lp_any_form(item) -> text;
+    returnunless(text and text /== item);
+    ;;; The language of the reader, taken from the ITEM: an English
+    ;;; phrase is glossed for somebody who reads Japanese whatever
+    ;;; lp_lang happens to be.  --l1 wins where the graph can pay for it.
+    lp_l1 or (if lp_ilang(item) == "ja" then "en" else "ja" endif) -> l1;
+    unless lp_gloss_of(item, l1) then
+        if lp_ilang(item) == "ja" then "en" else "ja" endif -> l1;
+    endunless;
+    lp_gloss_of(item, l1) -> key;
+    returnunless(key);
+    key sys_>< '' -> key;
+    [% for g in lp_phrase_pool(lp_ilang(item), l1) do
+           unless g = key then g endunless
+       endfor %] -> pool;
+    returnif(length(pool) < 3);
+    lp_asked(item) -> a;
+    ;;; Strided by the item as well as the count, or every phrase asked
+    ;;; for the first time would stand beside the same three others.
+    (a * 7 + length(item sys_>< '') * 5 + (item sys_>< '')(length(item sys_>< ''))) mod length(pool) -> at;
+    until length(picks) >= 3 do
+        pool((at mod length(pool)) + 1) -> g;
+        unless member(g, picks) then picks <> [^g] -> picks endunless;
+        at + 1 -> at;
+    enduntil;
+    (a mod 4) + 1 -> pos;
+    for i from 1 to 4 do
+        if i == pos then out <> [^key] -> out
+        else out <> [% hd(picks) %] -> out; tl(picks) -> picks
+        endif;
+    endfor;
+    ("pick", text sys_>< '', [% pos sys_>< '' %], out)
+        -> (shape, prompt, answer, options);
+enddefine;
+
 define lp_word_question(item) -> (shape, prompt, answer, options);
     lvars item, shape, prompt, answer, options, word, l1, key, en, ja,
           i, g, pool = [], picks = [], a, pos, out = [], want, at;
@@ -4150,6 +4232,8 @@ define lp_question(item, ch) -> (shape, prompt, answer, options);
         lp_mix_question(item) -> (shape, prompt, answer, options);
     elseif k == "word" and lp_ilang(item) == "en" then
         lp_word_question(item) -> (shape, prompt, answer, options);
+    elseif k == "phrase" then
+        lp_phrase_question(item) -> (shape, prompt, answer, options);
     endif;
 enddefine;
 
@@ -5386,6 +5470,20 @@ define lp_count_mastered(kind, ch) -> n;
     endfor;
 enddefine;
 
+;;; The phrases of a trip: how many are known by eye, how many by ear,
+;;; and how many there are.  Over the whole language and not up to the
+;;; student's rung, because this is not a criterion -- no rung is held
+;;; by it -- it is how far along the trip's own list they are.
+define lp_phrase_counts() -> (nread, nheard, total);
+    lvars i, nread = 0, nheard = 0, total = 0;
+    for i in lp_items do
+        nextunless(lp_kind(i) == "phrase" and lp_ilang(i) == lp_lang);
+        total + 1 -> total;
+        if lp_mastered_on(i, "read") then nread + 1 -> nread endif;
+        if lp_mastered_on(i, "hear") then nheard + 1 -> nheard endif;
+    endfor;
+enddefine;
+
 ;;; The kanji criterion.  NOT lp_count_mastered("grapheme"): the kana are
 ;;; graphemes too, and the 92 of them at pre-school would satisfy
 ;;; kanji(100) before the student had met a single character.  What counts
@@ -6066,6 +6164,14 @@ define lp_status();
     for r in lp_status_rows() do
         printf('    %p: %p\n', [% r(1), lp_status_text(r) %]);
     endfor;
+    if lp_goal() == "travel" then
+        lvars pr, ph, pt;
+        lp_phrase_counts() -> (pr, ph, pt);
+        if pt > 0 then
+            printf('    phrases for the trip: %p of %p read, %p by ear\n',
+                   [% pr, pt, ph %]);
+        endif;
+    endif;
     lp_status_work();
     lvars lpassed, lmet, lunmet, lexcused, aside = lp_goal_aside(), q;
     lp_level_state() -> (lpassed, lmet, lunmet, lexcused);
@@ -7260,6 +7366,8 @@ define lp_hear_plan() -> items;
         nextunless(lp_level_index(lp_ilevel(i)) >= 0
                    and lp_level_index(lp_ilevel(i)) <= top);
         nextunless(member("hear", lp_channels(i)));
+        ;;; a phrase is for a trip: see lp_plan
+        nextif(lp_kind(i) == "phrase" and lp_goal() /== "travel");
         ;;; Hearing comes after reading ON AN ITEM THAT CAN BE READ.  A
         ;;; sound contrast cannot: its channels are [hear speak], so its
         ;;; read belief is 0.0 forever, and this gate -- written for
@@ -7315,7 +7423,10 @@ define lp_choose_hear() -> best;
     lvars best = false, i, b, a, bb = false, ba = false, fresh,
           pool = lp_hear_plan(), e, last = false, rest;
     if lp_hear_words_only then
-        [% for i in pool do if lp_kind(i) == "word" then i endif endfor %] -> pool;
+        ;;; and a phrase, which no criterion counts and a trip is made of
+        [% for i in pool do
+               if lp_kind(i) == "word" or lp_kind(i) == "phrase" then i endif
+           endfor %] -> pool;
     endif;
     ;;; NOT TWO CONTRASTS RUNNING, when there is a word waiting.  Weakest
     ;;; first is the rule, and a contrast a student cannot yet hear stays
