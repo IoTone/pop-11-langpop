@@ -1502,6 +1502,67 @@ endfor;
 check_true('a fresh student is placed at the bottom',
            lp_place_level() == "preschool" or lp_place_level() == false);
 
+;;; A PASS COUNTS DOWNWARD, and is taken to mean something.  The student
+;;; who knows everything up to a rung and nothing past it: every question
+;;; at or below it right, a freeze above.
+define sit_interview(knows) -> asked;
+    lvars knows, asked = 0, a, l, its, i;
+    repeat
+        lp_place_next() -> (a, l, its);
+        quitunless(a);
+        quitif(its == []);
+        hd(its) -> i;
+        lp_record(i, lp_primary(i), 1,
+                  if lp_level_index(lp_ilevel(i)) <= lp_level_index(knows)
+                  then "right" else "skip" endif, 800);
+        asked + 1 -> asked;
+        quitif(asked > 80);
+    endrepeat;
+enddefine;
+
+"placer5" -> lp_user; [] -> lp_journal;
+lvars p5 = sit_interview("preschool"), p5top = false, p5l, p5a, p5took, p5e,
+      p5clean = true, p5i, p5r;
+check_true('the interview ends', p5 < 80);
+for p5l in lp_levels(lp_lang) do
+    for p5a in lp_place_axes() do
+        if lp_place_items(p5a, p5l) /== []
+        and lp_level_index(p5l) > lp_level_index("preschool")
+        and not(p5top) then p5l -> p5top endif;
+    endfor;
+endfor;
+;;; the rung above pre-school if the graph has one, or pre-school if not
+check('whoever knows pre-school is placed just above it',
+      lp_place_level(), p5top or "preschool");
+lp_place_credit() -> p5took;
+check_true('and pre-school is taken as known', p5took > 60);
+check_true('a kana never asked about is known', lp_mastered("hi_a") or lp_asked("hi_a") > 0);
+check_true('so the hiragana roll-up opens', lp_mastered("hiragana_all"));
+for p5e in lp_journal do
+    if p5e(4) /== "right" and lp_mastered(p5e(1)) then false -> p5clean endif;
+endfor;
+check_true('nothing missed in the interview is taken on trust', p5clean);
+false -> p5i;
+for p5a in lp_items do
+    if not(p5i) and lp_ilang(p5a) == lp_lang and lp_asked(p5a) == 0
+    and lp_review_of(p5a, lp_primary(p5a)) then p5a -> p5i endif;
+endfor;
+lp_review_of(p5i, lp_primary(p5i)) -> p5r;
+check('what is on trust goes on the review ladder, late', p5r(1), 3);
+check_true('to be checked on a later day', p5r(2) > lp_now_ms());
+check_true('and is counted as on trust', lp_place_on_trust() > 0);
+if member("hear", lp_channels(p5i)) then
+    check('by ear it is one answer short, not mastered',
+          lp_bel(p5i, "hear"), INFERRED_CAP);
+endif;
+check('crediting twice credits nothing', lp_place_credit(), 0);
+
+;;; and the one who knows nothing is still placed at the bottom
+"placer6" -> lp_user; [] -> lp_journal;
+sit_interview(false).erase;
+check('a beginner is placed at the bottom', lp_place_level(), "preschool");
+check('and nothing is taken on trust', lp_place_credit(), 0);
+
 ;;; ------------------------------------------------- inferred evidence
 ;;; Reading 誕生日 says something about 日 without the student ever being
 ;;; asked about 日.  The DAG is what makes that free -- and the cap is

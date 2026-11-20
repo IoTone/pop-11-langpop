@@ -1310,8 +1310,20 @@ define lp_m_place_next(msg) -> res;
     returnif(lp_is_err(s))(s -> res);
     lp_place_next() -> (axis, level, items);
     unless axis and items /== [] then
+        ;;; The verdict is APPLIED here, as lp_place_show applies it in
+        ;;; the terminal: a client that sat the interview and then had to
+        ;;; know to set the level itself was a placement that placed
+        ;;; nobody.  Only where something was asked -- a client that
+        ;;; calls this cold has not been placed, it has been greeted.
+        lvars took = 0, lv = lp_place_level();
+        if lv and lp_journal /== [] then
+            lp_place_credit() -> took;
+            lv -> lp_level;
+            lp_save();
+        endif;
         jsonrpc_obj([% 'done', true,
-                       'level', lp_jkey(lp_place_level() or lp_level) %]) -> res;
+                       'level', lp_jkey(lv or lp_level),
+                       'credited', took %]) -> res;
         return;
     endunless;
     hd(items) -> item;

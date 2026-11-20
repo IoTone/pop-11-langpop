@@ -1616,7 +1616,30 @@ The point is not the questions. It is that the teacher **starts above**
 where they expect and lets failure locate the student, and that a freeze
 ends that line of questioning.
 
-`:place` in the terminal, `langpop/placement.next` on the wire.
+A new student is asked, straight after what they are learning for:
+
+```
+Have you studied English before?
+  1  no -- start at the beginning
+  2  yes -- ask me a few questions and find where I am
+```
+
+Answering 2 runs the interview before the first lesson. `:place` runs it
+at any other time, and it is `langpop/placement.next` on the wire.
+
+**What a pass means.** Passing at a rung counts for every rung below it,
+and everything on that axis at or below the pass is taken as known, so a
+student placed at N4 is not taught hiragana. It is taken on trust, not
+on evidence: each of those items comes back as a review over the
+following weeks, about fifteen a day, and one that is missed is taught
+properly like anything else forgotten. By ear they are left one right
+answer short of known. Anything answered wrong in the interview is not
+credited and is taught first.
+
+**English pronunciation is not skipped.** Placement in English measures
+vocabulary, which says nothing about r and l, final consonants or
+katakana readings. A student placed at A2 gets A2 words with the
+pre-school sound work running alongside.
 
 **Placement is not a teaching mode.** It is a fast way to populate the
 student record, and everything downstream already works off that record:
@@ -1643,8 +1666,9 @@ skill mora_sokuon  : nothing here I can ask about
 teach at: preschool
 ```
 
-Twenty questions. The level is **derived**, not chosen: the lowest rung
-that still has an axis the student has not passed. The characters they
+Between four questions and about forty, depending on the language and
+how uneven the student is. The level is **derived**, not chosen: the
+lowest rung that still has an axis the student has not passed. The characters they
 proved they can read sit near mastery in the record, so they are not taught
 again.
 

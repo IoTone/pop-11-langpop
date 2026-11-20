@@ -4262,6 +4262,74 @@ starts at pre-school with the phrases at A1; in 2,000 oracle answers
 none was asked. A real student is placed or types `:level a1`, so it is
 unmeasured rather than known to be broken.
 
+## Placement placed nobody
+
+Asked: how does a learner who is not a beginner get out of pre-school,
+and how long does it take. Measured with the oracle, the answer was
+that nothing did it.
+
+- **The verdict was always the bottom rung.** The descent stops asking
+  below a pass, and `lp_place_level` read the rungs it had therefore
+  never asked about as not passed. A student answering everything right
+  was placed at N1 for kanji, N2 for vocabulary, and told teaching starts
+  at pre-school. Same in English: A2, pre-school.
+- **A higher level skipped nothing.** A fresh student set to N4 was
+  offered あ い う え お; everything is behind its prerequisites.
+- **Only the items asked were credited**, four an axis.
+- **Nobody was told `:place` existed.**
+- A student who knew everything took over 1,000 perfect answers to leave
+  Japanese pre-school by the ordinary road.
+
+Now: a pass counts downward (`lp_place_passed_at`); `lp_place_credit`
+takes everything on a passed axis at or below the pass as known and puts
+it on the review ladder at stage 3, spread at fifteen a day, so the
+trust is checked afterwards and a miss falls back into the plan. Items
+missed in the interview are never credited. The ear is set to
+`INFERRED_CAP`, one right answer short. The server applies the verdict
+on `done` and reports `credited`. A new student is asked whether they
+have studied before (`lp_before_ask`).
+
+This is a deliberate exception to "inference cannot reach mastery". The
+alternative kept the rule and taught hiragana to N4 readers.
+
+English pre-school is not credited and is not an axis: its criteria are
+pronunciation, which a vocabulary score says nothing about, and for a
+Japanese learner it is the real beginner's problem rather than the
+letters. A placed student gets it alongside their level.
+
+Measured after (oracle, `--place --climb --knows LEVEL`, a student who
+knows that rung and below and nothing above; days set long enough that
+reviews trickle as they would in life):
+
+| student | interview | placed | next 300 questions |
+|---|---|---|---|
+| ja, knows N5 | 42 | N4 | 224 at N4, 76 pre-school by ear |
+| en, knows A1 | 8 | A2 | 214 at A2, 86 pre-school sounds |
+| en, knows A2 | 4 | A2 (top) | 142 at A2, 158 pre-school sounds |
+| ja, knows everything | 18 | N1 | |
+| ja, knows nothing | 38 | pre-school | |
+| en, knows nothing | 12 | pre-school | |
+
+Found on the way, by the run being too slow to finish:
+
+- `lp_review_due` sorted by insertion with list appends: 1.16s for 1,088
+  owed, every question, twice on the server. Now `syssort`. A placement
+  is the first thing to put a thousand items on the ladder at once, but
+  a student back from a month away would have met it too.
+- `lp_place_items` asked `lp_question` of the whole graph for every axis
+  and rung before every interview question: 0.8s a question. Cached.
+- An interview answer got right was left at the 0.45 one right answer
+  earns, under mastery, which held the hiragana roll-up shut and locked
+  the placed student out of every word.
+
+Known and left: four multiple-choice answers is thin. The oracle at
+skill 0.5 in English passed A2 on four questions by luck (seed 7). The
+reviews are what catch that. Uncredited below a pass are the few things
+no axis probes (the youon and long-vowel skills, three patterns, the
+length pairs); they are asked first. The oracle's default 200ms day makes
+the whole credited set fall due at once, which is why these runs set
+`LANGPOP_DAY_MS=120000`.
+
 ## :status from the server, before the first answer
 
 Found while trying `:goal` through the line client: `langpop/status`

@@ -1039,6 +1039,14 @@ repeat
 endrepeat;
 check_true('a placement terminates', pn < 60);
 check_true('and does not take all day', pn < 40);
+;;; And the verdict is APPLIED: a client that sat the interview and then
+;;; had to know to set the level itself was placed nowhere.
+check_true('what was passed is taken as known', pq('credited') > 0);
+check_true('and the level is the one it reported',
+           consword(pq('level') sys_>< '') == lp_level);
+check_true('asking again credits nothing twice',
+           result('langpop/placement.next',
+                  jsonrpc_obj([% 'session_id', psid %]))('credited') == 0);
 
 vars prep = result('langpop/placement.report', jsonrpc_obj([% 'session_id', psid %]));
 check_true('every axis is reported', length(prep('axes')) > 3);

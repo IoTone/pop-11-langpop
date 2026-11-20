@@ -190,6 +190,7 @@ vars
     ;;; them without a forward reference.
     lp_edges_ready = false,
     lp_crit_cache = newproperty([], 64, false, "perm"), ;;; see lp_criterion_items
+    lp_place_cache = newproperty([], 64, false, "perm"), ;;; see lp_place_items
     lp_kana_rom_ready = false,
     lp_journal  = [],
     lp_assigns  = [],
@@ -1007,6 +1008,7 @@ define lp_index();
     [] -> lp_gens;
     false -> lp_edges_ready;
     clearproperty(lp_crit_cache);
+    clearproperty(lp_place_cache);
     false -> lp_kanji_map_ready;
     lp_ask("index", 0).erase;
     rev(lp_items) -> lp_items;
@@ -1717,6 +1719,33 @@ define lp_goal_ask();
     endif;
 enddefine;
 
+;;; HAVE YOU DONE THIS BEFORE.  :place existed and nobody was told: a
+;;; new student was asked their goal and started at the first kana, and
+;;; one who was not a beginner had to know a command to say so.  Asked
+;;; once, of a new student; the interview itself runs when the session
+;;; opens, because it asks questions and those belong to a sitting.
+vars lp_place_wanted = false;
+
+define lp_before_ask();
+    lvars line;
+    printf('\nHave you studied %p before?\n',
+           [% if lp_lang == "ja" then 'Japanese' elseif lp_lang == "en" then 'English'
+              else lp_lang endif %]);
+    printf('  1  no -- start at the beginning\n');
+    printf('  2  yes -- ask me a few questions and find where I am\n');
+    printf('(1 or 2 -- enter for 1; :place does this any time)  ');
+    sysflush(popdevout);
+    lp_readline() -> line;
+    returnif(line == termin);
+    lp_trim(line) -> line;
+    if line = '2' or (line /= '' and (line(1) == `y` or line(1) == `Y`)) then
+        true -> lp_place_wanted;
+        printf('  Good.  A few questions first, then.\n');
+    else
+        printf('  From the beginning, then.  :place if that turns out too easy.\n');
+    endif;
+enddefine;
+
 ;;; ------------------------------------------------------ typing slips
 ;;; A Japanese learner is typing romaji, or fighting an input method they
 ;;; do not know well, and a slip of the fingers is not a gap in their
@@ -1928,7 +1957,7 @@ enddefine;
 ;;; Everything whose gap has elapsed, soonest first, so that a session
 ;;; clears the oldest debt before the freshest.
 define lp_review_due() -> due;
-    lvars due = [], item, ch, r, p, q, out;
+    lvars due = [], item, ch, r;
     for item in lp_items do
         ;;; ONLY THE LANGUAGE BEING STUDIED.  The schedule is per student,
         ;;; not per ladder, so a Japanese learner who asked for --lang en
@@ -1945,20 +1974,18 @@ define lp_review_due() -> due;
             ;;; taught, not in the review queue being tested.
             nextunless(lp_mastered_on(item, ch));
             nextunless(lp_drillable_on(item, ch));
-            due <> [{% item, ch, r(2) %}] -> due;
+            conspair({% item, ch, r(2) %}, due) -> due;
         endfor;
     endfor;
-    ;;; An insertion sort over a list that holds a day's reviews, not a
-    ;;; lifetime's.  syssort would want a vector copy of it.
-    [] -> out;
-    for p in due do
-        [] -> q;
-        until out == [] or hd(out)(3) > p(3) do
-            q <> [% hd(out) %] -> q; tl(out) -> out;
-        enduntil;
-        q <> [% p %] <> out -> out;
-    endfor;
-    out -> due;
+    ;;; syssort, and not the insertion sort this was while the list held
+    ;;; "a day's reviews, not a lifetime's".  A placement puts a thousand
+    ;;; items on the ladder at once, and a student back from a month away
+    ;;; owes most of them: measured at 1.16s for 1,088 owed, on every
+    ;;; question, and twice on the server.  Stable, so equal dates keep
+    ;;; the graph's order as they always did.
+    ncrev(due) -> due;
+    syssort(due, false, procedure(p, q); lvars p, q; p(3) <= q(3) endprocedure)
+        -> due;
 enddefine;
 
 ;;; How many of a set are waiting, which is the number a student needs
@@ -5135,8 +5162,19 @@ enddefine;
 ;;; The items at one level that probe one axis, and that can be asked.
 ;;; An axis with nothing askable at a level is not searched there, which
 ;;; is how the empty rungs and the unprobeable roll-ups drop out.
+;;; Remembered: this asks lp_question of every item in the graph, and the
+;;; interview asked it of every axis at every rung before every question
+;;; -- 0.8s a question, measured.  What can be asked about is a fact of
+;;; the graph and the language, so it is worked out once.
 define lp_place_items(axis, level) -> items;
-    lvars axis, level, i, items = [], pool, sh, how = axis(2), arg = axis(3);
+    lvars axis, level, i, items = [], pool, sh, how = axis(2), arg = axis(3),
+          ck = consword((lp_lang sys_>< '/') <> (axis(1) sys_>< '/')
+                        <> (level sys_>< '')),
+          hit = lp_place_cache(ck);
+    if hit then
+        if hit == "none" then [] else hit endif -> items;
+        return;
+    endif;
     if     how == "crit"  then lp_criterion_items(arg) -> pool
     elseif how == "skill" then lp_edges_of(arg) -> pool
     else                       lp_items -> pool
@@ -5149,8 +5187,10 @@ define lp_place_items(axis, level) -> items;
         endif;
         lp_question(i, lp_primary(i)) -> (sh, , , );
         nextif(sh == "none");
-        items <> [^i] -> items;
+        conspair(i, items) -> items;
     endfor;
+    ncrev(items) -> items;
+    if items == [] then "none" else items endif -> lp_place_cache(ck);
 enddefine;
 
 ;;; n items spread across the difficulty of the set, which is the whole
@@ -5306,14 +5346,118 @@ enddefine;
 ;;; N5 kanji they proved they can read are already sitting near mastery
 ;;; in the overlay -- so lp_choose, which takes the lowest belief first,
 ;;; gives them their katakana immediately and skims the rest.
+define lp_place_passed_at(axis) -> level;
+    lvars axis, level = false, l, st, acc, n, frozen;
+    for l in lp_place_levels(axis) do               ;;; highest first
+        lp_place_state(axis, l) -> (st, acc, n, frozen);
+        if st == "passed" then l -> level; return endif;
+    endfor;
+enddefine;
+
+;;; A PASS COUNTS DOWNWARD.  The descent stops asking below a pass --
+;;; "they are at least that good" -- and this used to read the rungs it
+;;; had therefore never asked about as rungs not passed.  So the verdict
+;;; was the bottom rung for everybody: the oracle answering every
+;;; question right was placed at N2 for vocabulary, N1 for kanji, and
+;;; told teaching starts at pre-school.
+;;;
+;;; With everything passed, the top rung that has anything on it: there
+;;; is nowhere higher to send them.
 define lp_place_level() -> level;
-    lvars level = false, a, l, st, acc, n, frozen;
+    lvars level = false, a, l, p, top = false,
+          axes = lp_place_axes(),
+          at = [% for a in axes do lp_place_passed_at(a) endfor %], rest;
     for l in lp_levels(lp_lang) do
-        for a in lp_place_axes() do
+        at -> rest;
+        for a in axes do
+            dest(rest) -> (p, rest);
             nextif(lp_place_items(a, l) == []);
-            lp_place_state(a, l) -> (st, acc, n, frozen);
-            if st /== "passed" then l -> level; return endif;
+            l -> top;
+            unless p and lp_level_index(p) >= lp_level_index(l) then
+                l -> level; return
+            endunless;
         endfor;
+    endfor;
+    top -> level;
+enddefine;
+
+;;; WHAT A PASS IS TAKEN TO MEAN.  Placement used to credit the four
+;;; items it asked and nothing else, so a student placed at N4 still had
+;;; every kana and eight hundred N5 words at belief nought in front of
+;;; them, behind their prerequisites: a fresh student set to N4 was
+;;; offered あ い う え お.  A teacher who puts somebody in the N4 section
+;;; does not then teach them hiragana.
+;;;
+;;; So everything on a passed axis, at the rung it passed and below, is
+;;; taken as known -- and put ON THE REVIEW LADDER, late, a few a day,
+;;; because four answers are not evidence about eight hundred words.
+;;; Each comes back to be checked, and one missed falls out of mastery
+;;; into the plan like anything else forgotten.  Taken on trust, then
+;;; verified: the cap on inference (lp_cap) is kept in spirit, the debt
+;;; is just collected afterwards instead of before.
+;;;
+;;; Never an item that was MISSED: that is real evidence, and a kana got
+;;; wrong in the interview stays wrong and is taught.  One answered right
+;;; is credited with the rest -- left at the 0.45 a single right answer
+;;; earns, it sat under mastery and held the hiragana roll-up shut, so
+;;; a student placed at N4 was locked out of every word for having
+;;; answered the interview correctly.
+lconstant PLACE_REVIEW_STAGE = 3, PLACE_PER_DAY = 15;
+
+define lp_place_credit() -> n;
+    lvars n = 0, a, p, l, i, k, todo = [], span, j = 0, e,
+          missed = newproperty([], 256, false, "perm");
+    ;;; anything ever got wrong or frozen on is not taken on trust
+    for e in lp_journal do
+        unless e(4) == "right" then true -> missed(e(1)) endunless;
+    endfor;
+    for a in lp_place_axes() do
+        lp_place_passed_at(a) -> p;
+        nextunless(p);
+        for l in lp_levels(lp_lang) do
+            quitif(lp_level_index(l) > lp_level_index(p));
+            for i in lp_place_items(a, l) do
+                nextif(lp_mastered_on(i, lp_primary(i)));
+                nextif(missed(i));
+                conspair(i, todo) -> todo;
+            endfor;
+        endfor;
+    endfor;
+    max(7, length(todo) div PLACE_PER_DAY + 1) -> span;
+    for i in ncrev(todo) do
+        lp_bkey(lp_user, i, lp_primary(i)) -> k;
+        nextif(lp_beliefs(k) >= MASTERY);             ;;; on two axes
+        MASTERY -> lp_beliefs(k);
+        {% PLACE_REVIEW_STAGE,
+           lp_now_ms() + (1 + j mod span) * lp_day_ms %} -> lp_reviews(k);
+        j + 1 -> j;
+        n + 1 -> n;
+        ;;; BY EAR, HALFWAY.  The interview is read, not heard, so it says
+        ;;; nothing certain about the ear -- but leaving the ear at nought
+        ;;; gave an N4 reader every kana to hear three times over before
+        ;;; a single word: 76 of the first 300 questions after placement.
+        ;;; The cap on inference is what this is for: one right answer by
+        ;;; ear tips it over, one wrong drops it to be taught, and a word
+        ;;; newly read (nought by ear) is still asked before any of them.
+        if member("hear", lp_channels(i)) and lp_primary(i) /== "hear" then
+            lp_bkey(lp_user, i, "hear") -> k;
+            if lp_beliefs(k) < INFERRED_CAP then
+                INFERRED_CAP -> lp_beliefs(k);
+            endif;
+        endif;
+    endfor;
+enddefine;
+
+;;; How many are still on trust: mastered, and never once asked.
+define lp_place_on_trust() -> n;
+    lvars n = 0, i, r, asked = newproperty([], 512, false, "perm"), e;
+    for e in lp_journal do true -> asked(e(1)) endfor;
+    for i in lp_items do
+        nextunless(lp_ilang(i) == lp_lang);
+        nextif(asked(i));
+        lp_review_of(i, lp_primary(i)) -> r;
+        if r and r(1) == PLACE_REVIEW_STAGE
+        and lp_mastered_on(i, lp_primary(i)) then n + 1 -> n endif;
     endfor;
 enddefine;
 
@@ -5344,10 +5488,20 @@ define lp_place_show();
     endfor;
     lp_place_level() -> lv;
     if lv then
+        lvars took = lp_place_credit();
         lv -> lp_level;
         printf('\n  We will work at %p -- that is the lowest thing not yet\n', [^lv]);
         printf('  settled.  What you already showed me is remembered, so I\n');
         printf('  will not teach you those again.\n');
+        if took > 0 then
+            printf('\n  I am taking %p things below that as known, on the strength\n', [^took]);
+            printf('  of what you answered.  They will come back a few a day to be\n');
+            printf('  checked, and anything you miss I will teach properly.\n');
+        endif;
+        if lp_lang == "en" then
+            printf('\n  The sounds of English come along whatever the level: that\n');
+            printf('  is the part no vocabulary score says anything about.\n');
+        endif;
     else
         printf('\n  Nothing here is left to settle.\n');
     endif;
@@ -6946,7 +7100,7 @@ define lp_register(user, display, batch);
     printf('%p, then.  We begin at %p.\n', [% lp_display, lp_level %]);
     ;;; After the name, before the first question.  Not in batch: a
     ;;; script has nobody to answer, and never asked is a state.
-    unless batch then lp_goal_ask() endunless;
+    unless batch then lp_goal_ask(); lp_before_ask() endunless;
 enddefine;
 
 ;;; ----------------------------------------------------------------- cards
@@ -7708,6 +7862,10 @@ define lp_session();
     ;;; a long pause over them is not time this sitting owes back.
     0 -> lp_idle_ms;
     lp_help();
+    if lp_place_wanted then
+        false -> lp_place_wanted;
+        lp_place_run();
+    endif;
     repeat
         ;;; The clock is in the prompt because a student who has to ask
         ;;; what time it is has already lost track of it.

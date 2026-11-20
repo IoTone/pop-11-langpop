@@ -326,6 +326,18 @@ define ora_fixed_point(sample);
     endfor;
 enddefine;
 
+;;; --knows LEVEL: the student who is clearly not a beginner.  Everything
+;;; at that rung and below is known cold, everything above not at all --
+;;; which one --skill for the whole ladder cannot say.
+vars ora_knows = false;
+
+define ora_skill_of(item) -> sk;
+    lvars item, sk = ora_skill;
+    returnunless(ora_knows);
+    if lp_level_index(lp_ilevel(item)) <= lp_level_index(ora_knows)
+    then 1.0 else 0.0 endif -> sk;
+enddefine;
+
 ;;; -------------------------------------------------------- away from keys
 ;;; When nothing is left that typing can check, a real student asks for
 ;;; homework, does it, and reports back -- the tier-2/3 path, which no
@@ -361,7 +373,7 @@ define ora_study() -> did;
     returnif(ora_assigned(itemw) >= 3);
     ora_assigned(itemw) + 1 -> ora_assigned(itemw);
 
-    if ora_comp(itemw) == false then ora_skill -> ora_comp(itemw) endif;
+    if ora_comp(itemw) == false then ora_skill_of(itemw) -> ora_comp(itemw) endif;
     ora_comp(itemw) -> c;
     belief_of(itemw) -> pre;
     returnunless(pre /== false)(true -> did);
@@ -427,6 +439,10 @@ lconstant ORA_WAIT_MS = 6000, ORA_WAITS = 400;
 vars ora_waited = 0;
 ;;; the answer at which a trip phrase was first asked, and how many simulated
 ;;; days had been waited by then: the traveller's wait, as a number
+;;; --place --climb: sit the interview, then study on from the verdict,
+;;; and say which rungs the questions came from -- whether a placed
+;;; student is in fact asked about the place they were put.
+vars ora_climb = false, ora_by_level = newproperty([], 16, 0, "perm");
 vars ora_prechecked = newproperty([], 512, false, "perm");
 vars ora_first_phrase = false, ora_first_phrase_days = 0, ora_asked = 0;
 
@@ -475,6 +491,7 @@ define ora_turn() -> more;
     consword(item sys_>< '') -> itemw;
     ora_p(q, 'shape') sys_>< '' -> shape;
     ora_asked + 1 -> ora_asked;
+    ora_by_level(lp_ilevel(itemw)) + 1 -> ora_by_level(lp_ilevel(itemw));
     if not(ora_first_phrase) and lp_kind(itemw) == "phrase" then
         ora_asked -> ora_first_phrase;
         ora_waited -> ora_first_phrase_days;
@@ -533,8 +550,17 @@ define ora_turn() -> more;
     ;;; A TRIP PHRASE BY EAR NEEDS NO KANA, so its first offer by ear is
     ;;; not the offer this invariant is about: see lp_hear_plan.  Its
     ;;; first offer to be READ still is, and is checked when it comes.
-    unless ora_prechecked(itemw)
-    or (chw == "hear" and lp_kind(itemw) == "phrase") then
+    ;;; NOR IS A REVIEW.  A review is of something known, and after a
+    ;;; placement that includes things taken on trust whose prerequisite
+    ;;; the student got wrong in the interview -- an N4 reader who
+    ;;; muddled シ and ツ still has their words checked while the kana is
+    ;;; retaught.  Teaching is what prerequisites order.
+    ;;; NOR SOMETHING READABLE, BY EAR: it is heard because it was read
+    ;;; to mastery (lp_hear_plan), and after a placement that reading may
+    ;;; be on trust.  What lives on the ear alone is still checked --
+    ;;; that is the length-pair fault this invariant caught.
+    unless ora_prechecked(itemw) or phase = 'review'
+    or (chw == "hear" and member("read", lp_channels(itemw))) then
         true -> ora_prechecked(itemw);
         ora_check_prereqs(itemw);
     endunless;
@@ -548,9 +574,9 @@ define ora_turn() -> more;
         ;;; It still has a competence, for the arithmetic at the end of
         ;;; the turn: without one, the first pair with an `expected` in
         ;;; its reply was 1.0 - false.
-        if ora_comp(itemw) == false then ora_skill -> ora_comp(itemw) endif;
+        if ora_comp(itemw) == false then ora_skill_of(itemw) -> ora_comp(itemw) endif;
     else
-        if ora_comp(itemw) == false then ora_skill -> ora_comp(itemw) endif;
+        if ora_comp(itemw) == false then ora_skill_of(itemw) -> ora_comp(itemw) endif;
         ora_comp(itemw) -> c;
 
         if ora_u() < ora_later_rate and not(requeued) then
@@ -740,7 +766,7 @@ define ora_place_run();
         endif;
 
         ora_truth(itemw, shape, prompt, options) -> truth;
-        if truth == [] or (ora_u() >= ora_skill) then
+        if truth == [] or (ora_u() >= ora_skill_of(itemw)) then
             ;;; wrong on purpose: half freezes, half reaches for the
             ;;; confusable -- the two mistakes the descent reads
             if truth == [] or ora_u() < 0.5 then '' -> given;
@@ -955,6 +981,16 @@ define ora_report();
            [% ora_stats("learn_known"), ora_stats("learn_known_requeued") %]);
     printf('%p day(s) waited for the next review to come round\n',
            [% ora_waited %]);
+    if ora_climb then
+        lvars bl;
+        printf('asked, by the rung the item belongs to:');
+        for bl in lp_levels(lp_lang) do
+            if ora_by_level(bl) > 0 then
+                printf(' %p=%p', [% bl, ora_by_level(bl) %]);
+            endif;
+        endfor;
+        printf('\n');
+    endif;
     if ora_first_phrase then
         printf('first trip phrase asked at question %p, after %p day(s) waited\n',
                [% ora_first_phrase, ora_first_phrase_days %]);
@@ -985,6 +1021,8 @@ define ora_main();
         elseif a = '--lang' then hd(tl(args)) -> ora_lang; tl(tl(args)) -> args;
         elseif a = '--goal' then hd(tl(args)) -> ora_goal; tl(tl(args)) -> args;
         elseif a = '--place' then true -> ora_place; tl(args) -> args;
+        elseif a = '--knows' then consword(hd(tl(args))) -> ora_knows; tl(tl(args)) -> args;
+        elseif a = '--climb' then true -> ora_climb; tl(args) -> args;
         elseif a = '--verbose' then true -> ora_verbose; tl(args) -> args;
         else tl(args) -> args;
         endif;
@@ -1031,7 +1069,9 @@ define ora_main();
         printf('oracle: placement, seed %p, skill %p, as %p\n',
                [% ora_seed, ora_skill, ora_user %]);
         ora_place_run();
-        if ora_violations == [] then
+        if ora_climb and ora_violations == [] then
+            ;;; study on from the verdict: see ora_by_level
+        elseif ora_violations == [] then
             printf('ORACLE PASS (placement, seed %p)\n', [^ora_seed]);
             sysexit(0);
         else
