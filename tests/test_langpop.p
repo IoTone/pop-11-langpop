@@ -1502,6 +1502,27 @@ endfor;
 check_true('a fresh student is placed at the bottom',
            lp_place_level() == "preschool" or lp_place_level() == false);
 
+;;; With no rank and no confusable partner, the sample is SPREAD: the
+;;; English words have neither, and four from the front of the file was
+;;; people, family, father, mother.
+procedure();
+    dlocal lp_lang = "en";
+    lvars a, pool = [], smp, i, far = 0;
+    for a in lp_place_axes() do
+        if a(1) = 'vocabulary' then lp_place_items(a, "a1") -> pool endif;
+    endfor;
+    if length(pool) > 40 then
+        lp_place_sample(pool, 4) -> smp;
+        check('four are asked', length(smp), 4);
+        for i in smp do
+            unless member(i, [% pool(1), pool(2), pool(3), pool(4),
+                                pool(5), pool(6), pool(7), pool(8) %])
+            then far + 1 -> far endunless;
+        endfor;
+        check_true('and not the first four in the file', far >= 3);
+    endif;
+endprocedure();
+
 ;;; A PASS COUNTS DOWNWARD, and is taken to mean something.  The student
 ;;; who knows everything up to a rung and nothing past it: every question
 ;;; at or below it right, a freeze above.

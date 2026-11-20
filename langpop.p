@@ -5229,10 +5229,24 @@ define lp_place_sample(items, n) -> sample;
         ;;; past them into the easy tail -- and a katakana test made of
         ;;; ア and ヲ certifies everybody, while シ against ツ and ソ
         ;;; against ン is where forgetting actually shows.
-        [% for i in items do if lp_confs(i) /== [] then i endif endfor;
-           for i in items do if lp_confs(i) == [] then i endif endfor %]
-            -> ordered;
-        ordered -> sample;
+        ;;;
+        ;;; AND THE REST SPREAD, where the confusable ones run out.  With
+        ;;; none at all -- the English words have neither a rank nor a
+        ;;; partner -- "from the front" was the first four in the file:
+        ;;; a student was placed at A1, and 567 words taken as known, on
+        ;;; people, family, father and mother, which also share one set
+        ;;; of four options and so answer each other.  Found by sitting
+        ;;; it.
+        lvars hard = [% for i in items do if lp_confs(i) /== [] then i endif endfor %],
+              easy = [% for i in items do if lp_confs(i) == [] then i endif endfor %],
+              want = n - length(hard);
+        if want > 0 and length(easy) > want then
+            length(easy) -> len;
+            max(1, len div want) -> stride;
+            [% for k from 1 + stride div 2 by stride to len do easy(k) endfor %]
+                -> easy;
+        endif;
+        hard <> easy -> sample;
     endif;
     [% for k from 1 to min(n, length(sample)) do sample(k) endfor %] -> sample;
 enddefine;
@@ -6372,6 +6386,11 @@ define lp_status();
                 printf('      ./langpop --audio %p   makes it\n', [^ul]);
             endif;
         endif;
+    endif;
+    lvars trust = lp_place_on_trust();
+    if trust > 0 then
+        printf('    taken as known from your placement, still to be checked: %p\n',
+               [^trust]);
     endif;
     lp_status_work();
     lvars lpassed, lmet, lunmet, lexcused, aside = lp_goal_aside(), q;

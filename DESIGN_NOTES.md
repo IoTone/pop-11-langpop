@@ -4330,6 +4330,21 @@ length pairs); they are asked first. The oracle's default 200ms day makes
 the whole credited set fall due at once, which is why these runs set
 `LANGPOP_DAY_MS=120000`.
 
+## A passing placement, sat
+
+The passing path had only been run by the oracle, so it was sat through
+the terminal with a driver that answers as an English student who knows
+A1: 6 questions, placed at A2, 567 words taken as known, and the trip
+phrases first in the plan (which is also how an English traveller now
+reaches a phrase at all; the oracle's from-pre-school one never did).
+
+One fault. With no frequency rank and no confusable partner, which is
+every English word, `lp_place_sample` took its four from the front of
+the file: people, family, father, mother, sharing one set of four
+options. The remainder after the confusable items is now an even spread
+(learn, difficult, tooth, road). `:status` also says how many items are
+still on trust.
+
 ## :status from the server, before the first answer
 
 Found while trying `:goal` through the line client: `langpop/status`
