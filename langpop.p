@@ -5508,6 +5508,23 @@ define lp_phrase_counts() -> (nread, nheard, total);
     endfor;
 enddefine;
 
+;;; The phrases this machine has a voice for and has not yet said, and
+;;; the rung to hand --audio.  Nothing is synthesised inside a question
+;;; (audio.p), so a phrase with no file is a phrase never asked by ear --
+;;; and every cache made before the phrases were written has none.
+define lp_phrase_unsaid() -> (n, level);
+    lvars i, n = 0, level = false, path, why;
+    returnunless(lp_audio_loaded and lp_audio_ready(lp_lang));
+    for i in lp_items do
+        nextunless(lp_kind(i) == "phrase" and lp_ilang(i) == lp_lang);
+        lp_audio_path(i, "normal") -> (path, why);
+        if why then
+            n + 1 -> n;
+            unless level then lp_ilevel(i) -> level endunless;
+        endif;
+    endfor;
+enddefine;
+
 ;;; The kanji criterion.  NOT lp_count_mastered("grapheme"): the kana are
 ;;; graphemes too, and the 92 of them at pre-school would satisfy
 ;;; kanji(100) before the student had met a single character.  What counts
@@ -6194,6 +6211,12 @@ define lp_status();
         if pt > 0 then
             printf('    phrases for the trip: %p of %p read, %p by ear\n',
                    [% pr, pt, ph %]);
+            lvars un, ul;
+            lp_phrase_unsaid() -> (un, ul);
+            if un > 0 then
+                printf('      %p of them have no sound yet, so they wait to be read:\n', [^un]);
+                printf('      ./langpop --audio %p   makes it\n', [^ul]);
+            endif;
         endif;
     endif;
     lp_status_work();
@@ -7382,8 +7405,12 @@ enddefine;
 ;;; convenient one: recognising a word by ear that you cannot read is a
 ;;; harder and different task, and langpop has no criterion that asks
 ;;; for it.  Hearing comes after reading, on the same item.
+;;; How many unread trip phrases are in play by ear at once.
+lconstant EAR_FIRST_OPEN = 4;
+
 define lp_hear_plan() -> items;
-    lvars items = [], i, top = lp_level_index(lp_level);
+    lvars items = [], i, top = lp_level_index(lp_level),
+          fresh = [], earnew = 0, open = 0;
     returnunless(lp_can_hear())(items);
     for i in lp_items do
         nextunless(lp_ilang(i) == lp_lang);
@@ -7406,6 +7433,25 @@ define lp_hear_plan() -> items;
         ;;; thirty silent unseen items.  Found from a journal: eight
         ;;; hear answers, a wrong, a silent question, and the session
         ;;; ends.
+        ;;; A TRIP PHRASE IS HEARD BEFORE IT IS READ.  Measured with the
+        ;;; oracle: a traveller starting from nothing was asked their
+        ;;; first phrase at question 2,421, because a phrase is written
+        ;;; in kana and so waited for all of them.  The ear needs none.
+        ;;; A few at a time, though: weakest-then-least-asked would walk
+        ;;; all thirty-eight once before repeating one, and nothing
+        ;;; heard once in thirty-eight is learned.
+        if lp_kind(i) == "phrase" and not(lp_mastered_on(i, "read")) then
+            nextif(lp_mastered_on(i, "hear"));
+            nextif(lp_deferred(i));
+            nextunless(lp_drillable_on(i, "hear"));
+            if lp_asked(i) > 0 then
+                items <> [^i] -> items;
+            elseif earnew < EAR_FIRST_OPEN then
+                earnew + 1 -> earnew;
+                fresh <> [^i] -> fresh;
+            endif;
+            nextloop;
+        endif;
         nextunless(not(member("read", lp_channels(i)))
                    or lp_mastered_on(i, "read"));
         ;;; AND ITS PREREQUISITES, which the line above was standing in
@@ -7423,6 +7469,17 @@ define lp_hear_plan() -> items;
         nextif(lp_mastered_on(i, "hear"));
         nextif(lp_deferred(i));
         nextunless(lp_drillable_on(i, "hear"));
+        items <> [^i] -> items;
+    endfor;
+    ;;; new phrases only up to the open set: the ones begun count first
+    for i in items do
+        if lp_kind(i) == "phrase" and not(lp_mastered_on(i, "read")) then
+            open + 1 -> open;
+        endif;
+    endfor;
+    for i in fresh do
+        quitif(open >= EAR_FIRST_OPEN);
+        open + 1 -> open;
         items <> [^i] -> items;
     endfor;
 enddefine;
@@ -7556,7 +7613,10 @@ enddefine;
 ;;; a length pair -- keeps the fourth, because kana by ear at a higher
 ;;; rate was measured and put the words off by two thousand answers.
 define lp_hear_every_words() -> n;
-    lvars n = if lp_goal() == "conversation" then 2 else HEAR_EVERY endif;
+    ;;; and for travel, where the phrases by ear are all a student who
+    ;;; cannot yet read kana has of the trip
+    lvars n = if lp_goal() == "conversation" or lp_goal() == "travel"
+              then 2 else HEAR_EVERY endif;
 enddefine;
 
 define lp_next();

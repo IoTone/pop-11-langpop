@@ -3626,7 +3626,9 @@ endfor;
 check('which the criterion is measured at', gms, 4000);
 check('and nothing aside', lp_goal_aside(), []);
 check('listening still takes its slot', lp_goal_outside_hear(), false);
-check('at the usual rate', lp_hear_every_words(), 4);
+;;; every second question: the phrases by ear are all a traveller
+;;; who cannot read kana yet has of the trip
+check('and every second question, for the phrases', lp_hear_every_words(), 2);
 check('a trip ends at N5', lp_goal_far("travel"), "n5");
 check_true('and says so', issubstring('nothing past N5', lp_goal_means("travel")) /== false);
 check('nothing else ends early', lp_goal_far("conversation"), false);

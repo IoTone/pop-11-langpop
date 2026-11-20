@@ -385,8 +385,15 @@ the answer.
 ```
 
 A phrase is shown whole, or played, and answered by meaning. In Japanese
-the phrases open once the hiragana are read (six with a loanword in them
-wait for the katakana as well); in English they open at A1. They come
+a traveller **hears** the phrases from the first sitting, four at a time
+on every second question, because the ear needs no kana; **reading** them
+opens once the hiragana are read (six with a loanword in them wait for
+the katakana as well). In English they open at A1.
+
+Hearing them needs their sound to have been made on this machine. If
+`:status` says some "have no sound yet", run the command it names
+(`./langpop --audio preschool` for Japanese) once; until then the phrases
+wait to be read, which for a beginner is weeks away. They come
 ahead of the level's vocabulary, and `:status` counts them:
 
 ```

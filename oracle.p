@@ -189,7 +189,11 @@ define ora_truth(item, shape, prompt, options) -> t;
                 [% i sys_>< '' %] -> t; quitloop;
             endif;
         endfor;
-    elseif shape = 'pick' then
+    elseif shape = 'pick'
+    or (shape = 'listen_pick' and lp_kind(item) == "phrase") then
+        ;;; A phrase by ear is the same question with the sentence played
+        ;;; instead of shown: the answer is a meaning, not a sound, so
+        ;;; this side can know it -- unlike a listening pair.
         ;;; The local coin flip need not match the server's, so the match
         ;;; is on the TEXT of the right option, mapped to the server's
         ;;; numbering.
@@ -421,6 +425,10 @@ enddefine;
 ;;; would stop one rung short of every burn.
 lconstant ORA_WAIT_MS = 6000, ORA_WAITS = 400;
 vars ora_waited = 0;
+;;; the answer at which a trip phrase was first asked, and how many simulated
+;;; days had been waited by then: the traveller's wait, as a number
+vars ora_prechecked = newproperty([], 512, false, "perm");
+vars ora_first_phrase = false, ora_first_phrase_days = 0, ora_asked = 0;
 
 define ora_wait() -> did;
     lvars did = false, res, ms;
@@ -466,6 +474,11 @@ define ora_turn() -> more;
     endunless;
     consword(item sys_>< '') -> itemw;
     ora_p(q, 'shape') sys_>< '' -> shape;
+    ora_asked + 1 -> ora_asked;
+    if not(ora_first_phrase) and lp_kind(itemw) == "phrase" then
+        ora_asked -> ora_first_phrase;
+        ora_waited -> ora_first_phrase_days;
+    endif;
     ora_p(q, 'prompt') -> prompt;
     datalist(ora_p(q, 'options') or {}) -> options;
     ora_p(q, 'channel') -> ch;
@@ -517,7 +530,14 @@ define ora_turn() -> more;
         endif;
     endif;
 
-    if ora_offered(itemw) == 0 then ora_check_prereqs(itemw) endif;
+    ;;; A TRIP PHRASE BY EAR NEEDS NO KANA, so its first offer by ear is
+    ;;; not the offer this invariant is about: see lp_hear_plan.  Its
+    ;;; first offer to be READ still is, and is checked when it comes.
+    unless ora_prechecked(itemw)
+    or (chw == "hear" and lp_kind(itemw) == "phrase") then
+        true -> ora_prechecked(itemw);
+        ora_check_prereqs(itemw);
+    endunless;
     ora_offered(itemw) + 1 -> ora_offered(itemw);
 
     ora_truth(itemw, shape, prompt, options) -> truth;
@@ -935,6 +955,12 @@ define ora_report();
            [% ora_stats("learn_known"), ora_stats("learn_known_requeued") %]);
     printf('%p day(s) waited for the next review to come round\n',
            [% ora_waited %]);
+    if ora_first_phrase then
+        printf('first trip phrase asked at question %p, after %p day(s) waited\n',
+               [% ora_first_phrase, ora_first_phrase_days %]);
+    elseif ora_goal = 'travel' then
+        printf('no trip phrase was asked in this run\n');
+    endif;
     printf('%p of them reviews; %p items burned\n',
            [% ora_stats("review"),
               length([% appproperty(ora_passed,

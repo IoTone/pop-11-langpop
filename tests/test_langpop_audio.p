@@ -1026,6 +1026,41 @@ check_true('and announced as a sentence, not a word',
 lp_write_file(lp_audio_conf_path(), encfg);
 lp_voices_load();
 
+;;; --- a traveller hears a phrase before they can read it
+;;; Measured: from nothing, the first phrase came at question 2,421,
+;;; behind every kana.  By ear it needs none -- but only where the sound
+;;; has been made, and only a few at a time.
+procedure();
+    lvars i, n = 0, plan, un, ul, saved_goal = lp_goal();
+    dlocal lp_journal = [];
+    lp_goal_set("travel").erase;
+    check_true('nothing has been read', not(lp_mastered_on("t_sumimasen", "read")));
+    for i in lp_items do
+        if lp_kind(i) == "phrase" and lp_ilang(i) == "ja" then
+            lp_audio_make(i, "normal") -> (, , );
+        endif;
+    endfor;
+    lp_phrase_unsaid() -> (un, ul);
+    check('made, none is unsaid', un, 0);
+    ;;; one file gone is one phrase unsaid, and the rung to make is named
+    lvars gone, gwhy;
+    lp_audio_path("t_ikura", "normal") -> (gone, gwhy);
+    sysdelete(gone).erase;
+    lp_phrase_unsaid() -> (un, ul);
+    check('a phrase with no file is counted', un, 1);
+    check('and the rung to make is named', ul, "preschool");
+    lp_audio_make("t_ikura", "normal") -> (, , );
+    [% for i in lp_hear_plan() do
+           if lp_kind(i) == "phrase" then i endif endfor %] -> plan;
+    check('four phrases open by ear, with no kana read', length(plan), 4);
+    check('by ear on every second question', lp_hear_every_words(), 2);
+    lp_goal_set("exam").erase;
+    check('and for an exam student none, as before',
+          [% for i in lp_hear_plan() do
+                 if lp_kind(i) == "phrase" then i endif endfor %], []);
+    lp_goal_set(saved_goal).erase;
+endprocedure();
+
 ;;; --- what lives on the ear alone, in a rung that also has reading
 ;;; The Japanese length pairs: contrasts with prerequisites, beside kana
 ;;; and words.  Found by the oracle, which was offered small っ by ear

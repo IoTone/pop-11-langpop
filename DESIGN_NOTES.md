@@ -4224,6 +4224,44 @@ there was a `:goal`. It says Level.
 Listening was checked through the audio suite's stand-in voice, not
 through a speaker.
 
+## The traveller's first phrase came at question 2,421
+
+The sat travel sitting was seeded with every kana known, and said so.
+The path from nothing was then measured: the oracle now prints the
+question at which a trip phrase is first asked, and for a from-zero
+Japanese traveller (seed 42) it was 2,421. A phrase is written in kana,
+so it required `hiragana_all`, and the goal whose whole point is a lower
+bar put its content behind the same wall as everything else.
+
+The ear needs no kana. `lp_hear_plan` now admits an unread phrase for a
+travel student without the read-first gate or the prerequisite check,
+four in play at a time (`EAR_FIRST_OPEN`; weakest-then-least-asked would
+otherwise walk all 38 once before repeating any), and the words-by-ear
+slot is every second question for travel as it is for conversation.
+Reading a phrase still waits for the kana. First phrase: question 3.
+Seed 42 at 5,000 and seed 7 at 3,000 pass; exam is unchanged.
+
+Two things the measurement turned up on the way:
+
+- **No phrase had a sound file.** Nothing is synthesised inside a
+  question, by design, and the phrases were written after `--audio
+  preschool` was last run, so on the one real machine no phrase had ever
+  been asked by ear, and the first attempt at this change did nothing at
+  all. The previous entry's "phrases by ear" had only been exercised in
+  the suite, which makes its own. `:status` now counts the unsaid ones
+  and names the command (`lp_phrase_unsaid`). The measurements above were
+  taken against a scratch copy of the cache with the 38 made.
+- **The oracle could not answer a phrase by ear** (no `listen_pick` arm,
+  so it skipped them like a listening pair) and its prerequisite
+  invariant fired on the first by-ear offer. It now answers them, and
+  checks prerequisites at a phrase's first offer to be READ.
+
+Not done: without a voice a from-zero traveller still waits for the
+kana, since there is no romaji for a phrase. And the English traveller
+starts at pre-school with the phrases at A1; in 2,000 oracle answers
+none was asked. A real student is placed or types `:level a1`, so it is
+unmeasured rather than known to be broken.
+
 ## :status from the server, before the first answer
 
 Found while trying `:goal` through the line client: `langpop/status`
