@@ -45,6 +45,10 @@ phone app would not have.
 ./langpop oracle --seed 42 --answers 3000
 ```
 
+**Sitting down for the first time?** There is a one-page run guide for
+each track: [learning Japanese](GETTING_STARTED_JA.md) and [learning
+English](GETTING_STARTED_EN.md).
+
 ---
 
 ## Contents
