@@ -24,6 +24,15 @@ level_name(ja, n3, 'N3', 'the bridge level').
 level_name(ja, n2, 'N2', 'everyday Japanese at natural speed').
 level_name(ja, n1, 'N1', 'a broad range of circumstances').
 
+% level_means(Lang, Level, Plain) -- what the rung is, said to a student
+% who has never heard of the JLPT.  Shown when placement names a level.
+level_means(ja, preschool, 'hiragana, katakana and your first 50 words').
+level_means(ja, n5, 'beginner Japanese: about 100 kanji and 800 words').
+level_means(ja, n4, 'elementary Japanese: everyday conversation and simple reading').
+level_means(ja, n3, 'intermediate Japanese: the bridge to everyday material').
+level_means(ja, n2, 'upper-intermediate Japanese: newspapers, and speech at natural speed').
+level_means(ja, n1, 'advanced Japanese').
+
 % exit(Lang, Level, Criterion, Threshold, LatencyMs)
 %
 % The latency is not decoration.  A student who works out か from a chart

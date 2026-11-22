@@ -3797,6 +3797,23 @@ check('the English sentence is shown', ph_prompt, 'Where is the bathroom?');
 check('and answered in Japanese',
       ph_opts(strnumber(hd(ph_answer))), 'トイレはどこですか');
 lp_goals_reset();
+
+;;; A level is named to the student in words, and in the words of the
+;;; language being studied: both ladders have a `preschool`.
+"en" -> lp_lang;
+check('a2 has a name', lp_level_title("a2"), 'A2');
+check('and says what it is',
+      not(not(isstartstring('elementary English', lp_level_means("a2")))), true);
+check('the English pre-school is sounds',
+      not(not(isstartstring('the sounds of English', lp_level_means("preschool")))), true);
+"ja" -> lp_lang;
+check('the Japanese pre-school is kana',
+      not(not(isstartstring('hiragana', lp_level_means("preschool")))), true);
+check('every Japanese rung is described',
+      [% lvars lv_l; for lv_l in lp_levels("ja") do
+             unless lp_level_means(lv_l) then lv_l endunless endfor %], []);
+check('a passed axis is said with the name',
+      lp_place_says([vocabulary n5 askable]), 'known up to N5');
 g_lang -> lp_lang; g_level -> lp_level; g_user -> lp_user; g_journal -> lp_journal;
 
 sysobey('rm -rf ' <> tmpdir);

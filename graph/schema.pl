@@ -391,5 +391,10 @@ freqs.
 corpora :- corpus(S, E, T), S \== none, lp_take(c(S, E, T)), fail.
 corpora.
 
+% What a level is called and what it is, in words a student can read.
+level_says :- level_name(L, V, N, _), level_means(L, V, M),
+    lp_take(n(L, V, N, M)), fail.
+level_says.
+
 probes :- probe(S, F), S \== none, lp_take(p(S, F)), fail.
 probes.

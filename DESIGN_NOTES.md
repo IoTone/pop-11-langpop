@@ -4380,3 +4380,39 @@ states the goal in force and what it asks (`lp_goal_means`, one sentence,
 wrapped by `lp_goal_say_means`) and then the choices as commands; setting
 one says what it was and what it is, or "Already exam -- nothing
 changed". `langpop/goal` carries `for` and `means` per goal.
+
+## The verdict was written for the author
+
+The user read the end of a placement and said it sounded like someone
+who does not understand English:
+
+    We will work at a2 -- that is the lowest thing not yet
+    settled.  What you already showed me is remembered, so I
+    will not teach you those again.
+
+It described the algorithm (the lowest rung with an axis not passed) to
+a person who wanted to know where they start. And `a2` is an identifier:
+the ladder had a name and a gloss for every level in `level_name/4` and
+nothing ever read them.
+
+Now the interview says what it will do, names the level, says what the
+level is, and stops:
+
+    We will start at A2.
+    A2 is elementary English: everyday words for work, travel, money and health.
+    This is the right place for you to begin.
+
+The plain sentence is a new fact, `level_means/3`, one line a level in
+each `ladder.pl`. The existing gloss was not reused: "TOEIC 225-550" is
+true and tells a holiday-maker nothing. The axis lines changed with it
+("below the ladder" is now "still to learn", "a1" is "known up to A1").
+
+The first sitting of the new wording told a student of Japanese that
+Pre-school was the sounds of English. Both ladders have a `preschool`
+and the lookup was keyed on the level alone. It is kept per language
+now and there is a check for it. The suites were green while it was
+wrong; it was found by reading the screen.
+
+Not done: the axis names themselves (`skill mora_sokuon`,
+`recognise katakana`) are still the criteria's identifiers, and the
+rest of the tutor's sentences have not had the same read.

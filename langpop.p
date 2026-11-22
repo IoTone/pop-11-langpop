@@ -5485,18 +5485,52 @@ lconstant PLACE_MAX = 40;
 ;;; lp_place_show because the zine prints the same standing on paper,
 ;;; and two wordings of one verdict is one too many -- `askable` is what
 ;;; the report says and "below the ladder" is what it means.
+;;; A LEVEL, SAID TO A PERSON.  `a2` is an identifier; "A2" is its name
+;;; and "elementary English: ..." is what it is.  The verdict used to
+;;; print the identifier and leave the student to know what it meant.
+;;; Kept for ONE language at a time: both ladders have a `preschool`,
+;;; and the first sitting told a student of Japanese that Pre-school
+;;; was the sounds of English.
+vars lp_level_words = false, lp_level_words_for = false;
+
+define lp_level_load();
+    lvars t;
+    returnif(lp_level_words and lp_level_words_for == lp_lang);
+    newproperty([], 16, false, "perm") -> lp_level_words;
+    lp_lang -> lp_level_words_for;
+    for t in lp_ask("level_says", 0) do
+        nextunless(prolog_deref(prolog_arg(1, t)) == lp_lang);
+        {% prolog_full_deref(prolog_arg(3, t)),
+           prolog_full_deref(prolog_arg(4, t)) %}
+            -> lp_level_words(prolog_deref(prolog_arg(2, t)));
+    endfor;
+enddefine;
+
+define lp_level_title(l) -> s;
+    lvars l, s;
+    lp_level_load();
+    if lp_level_words(l) then lp_level_words(l)(1) sys_>< ''
+    else l sys_>< '' endif -> s;
+enddefine;
+
+define lp_level_means(l) -> s;
+    lvars l, s;
+    lp_level_load();
+    lp_level_words(l) and (lp_level_words(l)(2) sys_>< '') -> s;
+enddefine;
+
 define lp_place_says(r) -> s;
     lvars r, s;
-    if     r(2)             then r(2) sys_>< ''
-    elseif r(3) == "none"   then 'nothing here I can ask about'
-    elseif r(3) == "unasked" then 'not asked about yet'
-    else                         'below the ladder'
+    if     r(2)             then 'known up to ' <> lp_level_title(r(2))
+    elseif r(3) == "none"   then 'no questions for this yet'
+    elseif r(3) == "unasked" then 'not asked yet'
+    else                         'still to learn'
     endif -> s;
 enddefine;
 
 define lp_place_show();
     lvars r, rows = lp_place_report(), lv;
-    printf('\n  Here is where I think you are.\n');
+    printf('\n  Here is what I found.\n');
     for r in rows do
         printf('    %p: %p\n', [% r(1), lp_place_says(r) %]);
     endfor;
@@ -5504,29 +5538,32 @@ define lp_place_show();
     if lv then
         lvars took = lp_place_credit();
         lv -> lp_level;
-        printf('\n  We will work at %p -- that is the lowest thing not yet\n', [^lv]);
-        printf('  settled.  What you already showed me is remembered, so I\n');
-        printf('  will not teach you those again.\n');
+        printf('\n  We will start at %p.\n', [% lp_level_title(lv) %]);
+        if lp_level_means(lv) then
+            printf('  %p is %p.\n', [% lp_level_title(lv), lp_level_means(lv) %]);
+        endif;
+        printf('  This is the right place for you to begin.\n');
         if took > 0 then
-            printf('\n  I am taking %p things below that as known, on the strength\n', [^took]);
-            printf('  of what you answered.  They will come back a few a day to be\n');
-            printf('  checked, and anything you miss I will teach properly.\n');
+            printf('\n  I will treat the %p items below %p as known.  A few of them\n',
+                   [% took, lp_level_title(lv) %]);
+            printf('  will come back each day as a quick check, and I will teach\n');
+            printf('  any that you miss.\n');
         endif;
         if lp_lang == "en" then
-            printf('\n  The sounds of English come along whatever the level: that\n');
-            printf('  is the part no vocabulary score says anything about.\n');
+            printf('\n  We will also practise the sounds of English, at every level.\n');
+            printf('  A vocabulary test cannot measure pronunciation.\n');
         endif;
+        printf('\n  Let us get started.\n');
     else
-        printf('\n  Nothing here is left to settle.\n');
+        printf('\n  You passed everything I can ask about.\n');
     endif;
 enddefine;
 
 define lp_place_run();
     dlocal lp_allow_later = false;
     lvars ax, lv, its, asked = 0, last = false;
-    printf('\n  Let me find out where you are rather than guess.  Say nothing\n');
-    printf('  -- just press enter -- for anything you do not know; that is\n');
-    printf('  worth more to me than a guess.\n');
+    printf('\n  I will ask a few questions to find your level.  If you do not\n');
+    printf('  know an answer, just press enter.  Please do not guess.\n');
     repeat
         lp_place_next() -> (ax, lv, its);
         quitunless(ax);
@@ -5538,14 +5575,14 @@ define lp_place_run();
         ;;; printed only when it changes, so the conversation still reads
         ;;; as sections rather than as forty separate questions.
         unless last = (ax(1) sys_>< '') <> '/' <> (lv sys_>< '') then
-            printf('\n  -- %p, at %p\n', [% ax(1), lv %]);
+            printf('\n  -- %p, %p level\n', [% ax(1), lp_level_title(lv) %]);
             (ax(1) sys_>< '') <> '/' <> (lv sys_>< '') -> last;
         endunless;
         quitunless(lp_drill(hd(its), lp_primary(hd(its))));
         asked + 1 -> asked;
         quitif(asked >= PLACE_MAX);
     endrepeat;
-    printf('\n  %p questions.\n', [^asked]);
+    printf('\n  That was %p questions.\n', [^asked]);
     lp_place_show();
 enddefine;
 

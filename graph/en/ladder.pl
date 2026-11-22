@@ -26,6 +26,15 @@ level_name(en, b1, 'B1', 'TOEIC 550-785').
 level_name(en, b2, 'B2', 'TOEIC 785-945 -- the usual hiring bar').
 level_name(en, c1, 'C1', 'TOEIC 945-990').
 
+% level_means(Lang, Level, Plain) -- what the rung is, said to a student
+% who has never heard of CEFR.  Shown when placement names a level.
+level_means(en, preschool, 'the sounds of English, and the katakana words that mislead').
+level_means(en, a1, 'beginner English: the first 500 words, for family, food, the body and the house').
+level_means(en, a2, 'elementary English: everyday words for work, travel, money and health').
+level_means(en, b1, 'intermediate English: enough for most everyday situations').
+level_means(en, b2, 'upper-intermediate English: the level most employers ask for').
+level_means(en, c1, 'advanced English').
+
 % band(Lang, Level, TotalMin, TotalMax)
 band(en, a1, 120, 225).
 band(en, a2, 225, 550).

@@ -1661,14 +1661,20 @@ search runs per **axis**, and the axes are the exit criteria — a ladder that
 adds a criterion gets an axis for free:
 
 ```
-kanji              : up to n5           <- knows kanji
-vocabulary         : up to preschool    <- thin at N5
-recognise katakana : below the ladder   <- froze on シ/ツ, ソ/ン
-recognise hiragana : up to preschool
-skill mora_sokuon  : nothing here I can ask about
+  Here is what I found.
+    kanji: known up to N5                 <- knows kanji
+    vocabulary: known up to Pre-school    <- thin at N5
+    recognise katakana: still to learn    <- froze on シ/ツ, ソ/ン
+    recognise hiragana: known up to Pre-school
 
-teach at: preschool
+  We will start at Pre-school.
+  Pre-school is hiragana, katakana and your first 50 words.
+  This is the right place for you to begin.
 ```
+
+The level is named and then said in plain words, because `a2` or `n4`
+means nothing to somebody who has not met the exam. Those sentences are
+`level_means` in each `ladder.pl`, one line a level.
 
 Between four questions and about forty, depending on the language and
 how uneven the student is. The level is **derived**, not chosen: the
