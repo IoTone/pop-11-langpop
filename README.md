@@ -1503,7 +1503,7 @@ all; the student gets one more go.
 
 ```
 一    ->   hto
-Typing, I think, not reading.  Once more:
+Typo!  Please try again.
 一    ->   hito
 そうです。
 ```
